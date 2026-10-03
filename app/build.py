@@ -122,7 +122,7 @@ style_name = 'style-' + hashlib.sha256(style).hexdigest()[:16] + '.css'
 
 gallery = {'images': {}, 'places': {}}
 # Provider map mosaics and development photos are not release assets.
-paths = {'assets/materials-display.jpg', texture_file}
+paths = {'assets/materials-display.jpg', texture_file, 'assets/brand/ink-swallow.png'}
 manifest = json.loads((R / 'assets/runtime-v46/scene/manifest.json').read_text())
 scene_paths = [manifest['atlas'], 'manifest.json', 'bucket-hashes.json']
 for chunk in manifest['chunks']:

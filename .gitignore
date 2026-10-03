@@ -35,6 +35,9 @@ node_modules/
 
 # Large runtime assets use the checksum-pinned release archive.
 /app/assets/*
+!/app/assets/brand/
+/app/assets/brand/*
+!/app/assets/brand/ink-swallow.png
 !/app/assets/references/
 /app/assets/references/*
 !/app/assets/references/pku-official-wordmark.png
@@ -147,3 +150,11 @@ node_modules/
 
 !app/tests/research2-atrium338.test.cjs
 !/app/tests/assets-roundtrip.test.py
+
+!/app/tests/first-person.test.cjs
+
+!/app/src/studentcenter195-side-stairs.js
+!/app/tests/studentcenter195-side-stairs.test.cjs
+!/app/src/studentcenter195-name-trace.js
+!/app/src/studentcenter195-name.js
+!/app/tools/extract-studentcenter-name.py

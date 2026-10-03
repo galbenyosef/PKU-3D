@@ -39,6 +39,10 @@ For interface and documentation changes, use `npm run build`. After changing bui
 
 Directional building views fit the eight envelope corners using the current yaw, elevation, perspective and visible space beside or above the detail panel. Point-mapped gates use their declared display extent. Keep the camera offset and framing calculation consistent; a universal mobile distance multiplier cannot fit both long side elevations and roof views. Mapped envelopes may omit projecting sculptures or boundary walls, so inspect those separately rather than claiming the envelope is a surveyed model boundary.
 
+## First-person navigation
+
+The navigation controller in `app-v29.js` projects the starting point onto the existing road graph. Manual movement stays within the connected road corridors and rejects mapped building footprints. These footprint checks do not model every wall, tree, stair or gate. Route playback uses the same graph, stops at overlapping building footprints, and never creates links between disconnected roads. Eye height follows the landscape at 1.68 metres; exit restores the previous camera and label preference. Input is cleared on focus loss, page hiding and WebGL context loss. Navigation changes do not alter the baked scene.
+
 ## Rendering
 
 Surface lighting, reflected color, fog, glass and particles share a linear HDR target when half-float color rendering supports the existing MSAA sample count. The final composite applies contact shading and tone mapping once. Other devices retain the 8-bit target and antialiasing; reflection sampling reverses the display map before mixing light.

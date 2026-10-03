@@ -16,3 +16,5 @@ Reference photographs, videos and research collections remain outside the source
 Some heights, dimensions, concealed elevations and fine details are approximations. The scene is not a surveyed building model. For corrections, include a building name, marked screenshot and public source link in an [issue](https://github.com/sldyns/PKU-3D/issues/new/choose).
 
 The published website links to satellite and standard maps on provider websites. Downloaded map mosaics are excluded from the source repository and release assets.
+
+The interface uses the project-specific Ink Swallow mark, created with image generation from an abstract swallow and orbit concept.

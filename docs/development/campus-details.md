@@ -61,3 +61,7 @@ The final scene cache rebuilt successfully. All 253 runtime/model tests and six 
 The sign atlas retains its full 2048-pixel resolution. Changes against the preceding scene are limited to text-edge rasterisation pixels on the existing lake lettering; other atlas pixels and the West Gate plaque components are unchanged. No visual-quality reduction was used.
 
 The fixed-condition comparison completed all 24 phases with stable inputs and owned-process cleanup. All six incremental checks passed the original thresholds; three of six checks against the unchanged frozen reference passed. The remaining global gaps are first-frame submission, campus FPS and lake FPS. These results remain separate from this scoped geometry review; full values and limits are in [Rendering performance](performance.md). Direct local-file runtime, physical-phone behaviour and whole-campus fidelity are not established by these checks. The reference limits above remain open.
+
+## 新太阳学生中心两侧下行台阶
+
+入口桥两侧补入通往既有下沉院的楼梯，临路挡墙和栏杆只在两处顶端平台留出通道，平台接至街边，梯脚接至原院底。主桥梯、楼体和门窗保持原几何。位置按使用者标注，并参照[校方东入口原图](https://scc.pku.edu.cn/userfiles/22e90345830e61cc01831266fda405f6/images/cms/article/2025/09/image-20250901104041-1.jpeg)中可见的下行栏杆；两侧级数、净宽和平台尺寸为现有高差下的拟合，未作实测。

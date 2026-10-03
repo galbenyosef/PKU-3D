@@ -36,7 +36,7 @@ PKU-3D is an interactive model of Peking University's Yanyuan campus, with indiv
 - Building search and selection, with front, side and roof views.
 - 3D and plan views in the same coordinate system, with links to satellite and standard maps.
 - Time of day, seasons and weather, with vegetation, water reflections and walking pedestrians.
-- Route planning along the campus road network.
+- First-person walking, with keyboard/touch controls and automatic routes along the campus road network.
 
 ## Controls
 
@@ -51,7 +51,9 @@ PKU-3D is an interactive model of Peking University's Yanyuan campus, with indiv
 | `/` | Open building search |
 | `Esc` | Close a dialog or building details |
 
-On touchscreens, drag with one finger and pinch with two fingers to zoom. Use the **⌂** button to return to the campus overview. The **操作说明** button at the bottom right opens the controls guide.
+On touchscreens, drag with one finger and pinch with two fingers to zoom. The corner-frame button returns to the campus overview; **操作指南** opens the controls guide.
+
+Choose **步行** in the bottom-right dock or **在附近步行** in place details for a first-person view. Move with `WASD` or arrow keys, hold `Shift` to move faster, and drag to look around. Touchscreens have directional buttons. `Esc` or **退出** restores the previous view. **沿路探索** plans a route with automatic walking, pause/resume and a progress slider. Movement follows mapped roads; these routes are a visualization, not real-world navigation.
 
 A desktop browser with WebGL 2 support is recommended. The interface currently uses Chinese.
 

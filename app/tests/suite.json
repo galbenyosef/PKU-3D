@@ -55,7 +55,9 @@
     "dorm45-basement-region338.test.cjs",
     "eastfield338.test.cjs",
     "research-entrance338.test.cjs",
-    "research2-atrium338.test.cjs"
+    "research2-atrium338.test.cjs",
+    "first-person.test.cjs",
+    "studentcenter195-side-stairs.test.cjs"
   ],
   "packagingTests": [
     "runtime-scene-package284.test.py",
