@@ -30,13 +30,20 @@ function render(b,f,add){
    for(let fl=0;fl<floors;fl++){
     const y=base+fl*fh,lo=y+.53,hi=y+2.72,win=bw*.69;
     group('wall',()=>{
-     for(const [a,q] of[[y,lo],[hi,y+fh]])b.box(width/2,(a+q)/2,-depth-.17,width,q-a,.34,options.col||C.wall,options.col?13:24);
+     for(const [a,q] of[[y,lo],[hi,y+fh]]){
+      if(name==='main-west'&&fl===0&&a===y){
+       // The photographed entry reaches the raised floor, not a window sill.
+       const gap=Math.max(win,3.32),side=(width-gap)/2;
+       for(const xx of[side/2,width-side/2])b.box(xx,(a+q)/2,-depth-.17,side,q-a,.34,C.wall,24);
+      }else b.box(width/2,(a+q)/2,-depth-.17,width,q-a,.34,options.col||C.wall,options.col?13:24);
+     }
+     if(name==='main-west'&&fl===0)b.box(width/2,(3.45+hi)/2,-depth-.17,3.32,hi-3.45,.34,C.wall,24);
      let cursor=0;
-     for(let i=0;i<bays;i++){const mid=bw*(i+.5),a=mid-win/2;if(a>cursor)b.box((a+cursor)/2,(lo+hi)/2,-depth-.17,a-cursor,hi-lo,.34,options.col||C.wall,options.col?13:24);cursor=mid+win/2;}
+     for(let i=0;i<bays;i++){const mid=bw*(i+.5),opening=name==='main-west'&&fl===0&&i===1?3.32:win,a=mid-opening/2;if(a>cursor)b.box((a+cursor)/2,(lo+hi)/2,-depth-.17,a-cursor,hi-lo,.34,options.col||C.wall,options.col?13:24);cursor=mid+opening/2;}
      b.box((width+cursor)/2,(lo+hi)/2,-depth-.17,width-cursor,hi-lo,.34,options.col||C.wall,options.col?13:24);
     });
     for(let i=0;i<bays;i++){
-     const mid=bw*(i+.5);group('window-'+fl+'-'+i,()=>{
+     const mid=bw*(i+.5);if(name==='main-west'&&fl===0&&i===1)continue;group('window-'+fl+'-'+i,()=>{
       b.box(mid,(lo+hi)/2,-depth-.07,win-.08,hi-lo-.06,.045,C.glass,5);
       for(const a of[mid-win/2,mid,mid+win/2])b.box(a,(lo+hi)/2,-depth+.005,.09,hi-lo+.10,.16,C.red,6);
       for(const yy of[lo,hi,hi-.5])b.box(mid,yy,-depth+.01,win+.1,.09,.17,C.red,6);
@@ -80,6 +87,13 @@ function render(b,f,add){
     for(const xx of[-1.61,0,1.61])b.box(xx,2.05,-1.64,.12,2.64,.16,'#543f30',6);
     b.box(0,3.38,-1.64,3.32,.13,.16,'#543f30',6);
     for(let i=0;i<4;i++)b.box(0,.1+i*.2,3.12-i*.35,5.65,.2,1.8-i*.35,C.stone,10);
+   });
+   // The source photo shows a continuous stone landing under the canopy.
+   // Bridge the old 1.575m gap from gallery edge (+.12) to top stair (+1.695).
+   group('entrance-landing',()=>{
+    b.box(0,.40,.905,5.65,.80,1.61,C.stone,10);
+    // Retain existing tread slabs and fill only the hidden volume beneath them.
+    for(let i=1;i<4;i++)b.box(0,i*.10,3.12-i*.35,5.65,i*.20,1.8-i*.35,C.stone,10);
    });
    group('entrance-posts',()=>{for(const xx of[-2.36,2.36])b.cyl(xx,.8,2.28,.20,2.57,C.green,12,1,6);});
    group('entrance-painted-frame',()=>{

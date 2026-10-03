@@ -49,9 +49,13 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
     {const floorBalconies=floor>0?balconies:groundBalconies,sill=floor>0?.12:.3;openings=openings.flatMap(q=>{if(!floorBalconies.some(([s,e])=>(q.s+q.e)/2>s&&(q.s+q.e)/2<e))return[q];const cut=q.s+Math.min(.78,(q.e-q.s)*.4);return[{...q,e:cut,bottom:base+sill,top:base+2.5,door:true},{...q,s:cut+.10}];});
      for(const [s,e] of floorBalconies)group('balcony-'+floor,()=>{const w=e-s,x=(s+e)/2; b.box(x,base+(floor>0?.04:.15),.24,w,floor>0?.16:.3,1.68,C.stone,24); b.box(x,base+1.1,1.03,w,.07,.07,C.frame,6); b.box(x,base+.55,1.03,w,.05,.06,C.frame,6); const n=Math.max(2,Math.ceil(w/.8));for(let k=0;k<=n;k++)b.box(s+w*k/n,base+.61,1.03,.05,.98,.05,C.frame,6);for(const end of [s,e])b.box(end,base+.63,.23,.07,1.02,1.65,C.wall,24);});
     }
-    if(floor===0)for(const door of entrances.filter(q=>q.face===face)){const x=(door.axis===0?(door.u-la[0])/du:(door.v-la[1])/dv)*len,s=Math.max(0,x-door.width/2),e=Math.min(len,x+door.width/2);if(e>s+.15){openings=openings.filter(q=>q.e<s-.12||q.s>e+.12);openings.push({s,e,bottom:door.sill,top:3.03,door:true});}}
+    if(floor===0)for(const door of entrances.filter(q=>q.face===face)){const x=(door.axis===0?(door.u-la[0])/du:(door.v-la[1])/dv)*len,s=Math.max(0,x-door.width/2),e=Math.min(len,x+door.width/2);if(e>s+.15){openings=openings.filter(q=>q.e<s-.12||q.s>e+.12);openings.push({s,e,bottom:door.sill,top:3.03,door:true,groundEntrance:door.name});}}
     openings.sort((a,c)=>a.s-c.s);let cursor=0;
     for(const q of openings){panel(cursor,q.s,base,base+H.floor);panel(q.s,q.e,base,q.bottom);panel(q.s,q.e,q.top,base+H.floor);const w=q.e-q.s,h=q.top-q.bottom,y=(q.top+q.bottom)/2,x=(q.s+q.e)/2,depth=q.door?.34:.55;
+     // The own-building first plan shows a continuous path through these two
+     // doorways. Extend the sill to the recessed glass, without changing its
+     // fitted height, exterior landing, stair profile or upper balcony doors.
+     if(q.groundEntrance)group('threshold-'+q.groundEntrance,()=>b.box(x,q.bottom/2,-.17,w+.08,q.bottom,.40,C.stone,24));
      // Returns and recessed glazing form real apertures, without extruded continuous corridors.
      for(const xx of [q.s,q.e])b.box(xx,y,-depth/2,.045,h,depth,C.frame,24);
      for(const yy of [q.bottom,q.top])b.box(x,yy,-depth/2,w,.045,depth,C.frame,24);
@@ -82,6 +86,10 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
   b.local(a[0],0,a[1],Math.atan2(-dz,dx),()=>{
    for(const x of [(len-w)/4,len-(len-w)/4])b.box(x,1.66,-.035,(len-w)/2,3.32,.07,C.wall,24);
    b.box(len/2,3.13,-.035,w,.38,.07,C.wall,24);b.box(len/2,.15,-.035,w,.3,.07,C.stone,24);
+   // The diagonal exit on the first plan is a true doorway; close the thin
+   // facade-to-glass reveal and provide a solid threshold beneath its floor cap.
+   group('diagonal-threshold',()=>b.box(len/2,.15,-.13,w+.08,.30,.32,C.stone,24));
+   group('diagonal-reveals',()=>{for(const x of[(len-w)/2,(len+w)/2])b.box(x,1.62,-.12,.05,2.64,.24,C.frame,24);b.box(len/2,2.94,-.12,w,.05,.24,C.frame,24);});
    b.box(len/2,1.62,-.22,w,2.64,.05,C.door,5);
    for(const x of [(len-w)/2,len/2,(len+w)/2])b.box(x,1.62,-.18,.05,2.64,.06,C.frame,6);
    for(const y of [.3,2.94])b.box(len/2,y,-.18,w,.05,.06,C.frame,6);

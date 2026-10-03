@@ -57,17 +57,20 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
  b.local(O[0],0,O[1],R,()=>{for(const q of entrances)group('entrance-'+q.number,()=>{
   if(q.number===40){
    b.box(q.u-.7,.30,q.v,1.4,.6,2.5,C.stone,24);
-   for(let k=0;k<5;k++){const h=.1*(k+1);b.box(q.u-3.35+k*.43,h/2,q.v,.45,h,2.0,C.stone,24);}
+   for(let k=0;k<5;k++){const h=.1*(k+1);b.box(q.u-3.575+(k+.5)*.435,h/2,q.v,.435,h,2.0,C.stone,24);}
   }else if(q.number===41){
    b.box(q.u,.30,q.v-.7,2.5,.6,1.4,C.stone,24);
-   for(let k=0;k<5;k++){const h=.1*(k+1);b.box(q.u,h/2,q.v-3.35+k*.43,2.0,h,.45,C.stone,24);}
+   for(let k=0;k<5;k++){const h=.1*(k+1);b.box(q.u,h/2,q.v-3.575+(k+.5)*.435,2.0,h,.435,C.stone,24);}
   }else{
    b.box(q.u+.75,.30,q.v,1.5,.6,2.4,C.stone,24);
    // The first-floor plan also shows a short northern stair into this platform.
-   group('entrance-42-north-steps',()=>{for(let k=0;k<5;k++){const h=.1*(k+1);b.box(q.u+.875,h/2,q.v-3+k*.4,1.25,h,.45,C.stone,24);}});
+   group('entrance-42-north-steps',()=>{for(let k=0;k<5;k++){const h=.1*(k+1);b.box(q.u+.875,h/2,q.v-3.225+(k+.5)*.405,1.25,h,.405,C.stone,24);}});
    // A narrow external run descends south from the east entrance, as drawn on the first-floor plan.
-   const mesh=new G.Geometry(),u0=q.u+.25,u1=q.u+1.5,v0=q.v+1.15,v1=q.v+10.5;
-   mesh.quad(...[[u0,.6,v0],[u1,.6,v0],[u1,.03,v1],[u0,.03,v1]].map(p=>b.world(p)));
+   const mesh=new G.Geometry(),u0=q.u+.25,u1=q.u+1.5,v0=q.v+1.20,v1=q.v+10.5;
+   // Closed fitted wedge: upward walking surface, sidewalls and end caps.
+   // The top starts at the landing edge instead of intersecting its surface.
+   const vertices=[[u0,0,v0],[u1,0,v0],[u1,0,v1],[u0,0,v1],[u0,.6,v0],[u1,.6,v0],[u1,.03,v1],[u0,.03,v1]].map(p=>b.world(p));
+   for(const face of [[4,7,6,5],[0,1,2,3],[0,3,7,4],[1,5,6,2],[0,4,5,1],[3,2,6,7]])mesh.quad(...face.map(i=>vertices[i]));
    b.e.add('ramp',mesh,Y.M.identity(),C.stone,[24,id,0,0]);
    for(const u of [u0,u1]){b.beam([u,1.45,v0],[u,.88,v1],.025,'#6c7870',6);for(let k=0;k<5;k++){const t=k/4;b.cyl(u,.6-.57*t,v0+(v1-v0)*t,.024,.85,'#6c7870',8,1,6);}}
   }

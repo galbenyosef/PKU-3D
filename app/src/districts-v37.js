@@ -14,9 +14,9 @@ function window(b,x,y,z,w,h,r=0,{frame=palette.frame,glass=palette.glass,vertica
   for(let k=1;k<=horizontal;k++)box(b,'window-transom',0,-h/2+h*k/(horizontal+1),.14,w-.07,.05,.13,frame,29);
  });
 }
-function flatBlock(b,key,x0,z0,x1,z1,h,{tone=palette.wall,parapet=.5,base=.15}={}){
+function flatBlock(b,key,x0,z0,x1,z1,h,{tone=palette.wall,parapet=.5,base=.15,wall=true}={}){
  const x=(x0+x1)/2,z=(z0+z1)/2,w=x1-x0,d=z1-z0;
- box(b,key+'-wall',x,(h+base)/2,z,w,h-base,d,tone);
+ if(wall)box(b,key+'-wall',x,(h+base)/2,z,w,h-base,d,tone);
  box(b,key+'-roof',x,h-.08,z,w-.08,.15,d-.08,palette.roof);
  for(const side of[-1,1]){box(b,key+'-parapet-x',x+side*(w/2-.11),h+parapet/2-.12,z,.22,parapet,d,tone);box(b,key+'-parapet-z',x,h+parapet/2-.12,z+side*(d/2-.11),w,parapet,.22,tone);}
 }
@@ -32,14 +32,16 @@ function facade(b,x,z,r,width,h,floors,bays,{piers=true,first=2.0,fh=4.0,windowW
  });
 }
 function verticalLetters(b,text,x,y,z,r=0,size=1.0){for(const [i,ch]of [...text].entries())b.lettering(ch,x,y-i*size*1.22,z,size,size,r,'#858577');}
-function stairs(b,key,x,z,width,run,top,r=0,{n=24,solidRail=false}={}){
+function stairs(b,key,x,z,width,run,top,r=0,{n=24,solidRail=false,solidRailSide=null}={}){
  b.local(x,0,z,r,()=>{
   for(let i=0;i<n;i++){const y=top*(i+1)/n,zz=run/2-(i+.5)*run/n;box(b,key+'-tread',0,y/2,zz,width,y,run/n+.014,palette.stone);}
   for(const side of[-1,1]){
-   if(solidRail){
+   if(solidRail&&(solidRailSide===null||solidRailSide===side)){
     const gg=b.geo(key+'-solid-cheek-'+side,()=>{const g=new G.Geometry(),x=side*(width/2+.10),d=.17;const profile=[[run/2,0],[run/2,1.05],[-run/2,top+1.05],[-run/2,0]];
      for(const offset of[-d,d])g.quad([x+offset,profile[0][1],profile[0][0]],[x+offset,profile[1][1],profile[1][0]],[x+offset,profile[2][1],profile[2][0]],[x+offset,profile[3][1],profile[3][0]]);
-     g.quad([x-d,1.05,run/2],[x+d,1.05,run/2],[x+d,top+1.05,-run/2],[x-d,top+1.05,-run/2]);return g;});
+     g.quad([x-d,1.05,run/2],[x+d,1.05,run/2],[x+d,top+1.05,-run/2],[x-d,top+1.05,-run/2]);
+     for(const [z,h]of[[run/2,1.05],[-run/2,top+1.05]])g.quad([x-d,0,z],[x+d,0,z],[x+d,h,z],[x-d,h,z]);
+     g.quad([x-d,0,run/2],[x-d,0,-run/2],[x+d,0,-run/2],[x+d,0,run/2]);return g;});
     b.mesh(key+'-solid-cheek-'+side,gg,0,0,0,1,1,1,palette.wall,24);
    }else{
     for(const dy of[.45,.95])b.beam([side*width/2,dy,run/2],[side*width/2,top+dy,-run/2],.035,'#b6bfb7',29);
@@ -103,10 +105,81 @@ function zhihua(b,f){
  for(const p of zhihuaParts){const [x0,z0,x1,z1]=p.rect;box(b,'zhihua-plinth',(x0+x1)/2,.24,(z0+z1)/2,x1-x0+.1,.28,z1-z0+.1,'#b7b7a8');}
  return {parts:zhihuaParts.length,westFloors:5,wingFloors:4,eastHallFloors:2,independentStairs:2};
 }
+const nongForecourt={base:.12,top:.825,left:-23.6,right:3.85,front:-49.9,back:-39,rampOuter:-25.3,rampStart:-47.7,rampEnd:-39,landingEnd:-37.2};
+const nongNorthEntry={x:-14.25,w:4.2,base:nongForecourt.top,h:3.75,front:-39.78,rear:-35.8,curtainH:2.72};
+function nongNorthForecourt(b,f){
+ const C=nongForecourt,tone='#b8b7ab',height=C.top-C.base,mid=(C.base+C.top)/2,width=C.right-C.left;
+ box(b,'nong-forecourt-platform',(C.left+C.right)/2,mid,(C.front+C.back)/2,width,height,C.back-C.front,tone);
+ // Five broad risers lead to the raised entrance. Heights and run are fitted
+ // to the dated exterior photographs; this is not an accessibility survey.
+ for(let i=1;i<=5;i++){
+  const y=C.base+height*i/5,z=C.front-1.65+(i-.5)*.33;
+  box(b,'nong-forecourt-step',(C.left+C.right)/2,(C.base+y)/2,z,width,y-C.base,.33,tone);
+  box(b,'nong-forecourt-nosing',(C.left+C.right)/2,y-.012,z-.145,width,.024,.04,'#d0cec1');
+ }
+ const rw=C.left-C.rampOuter,rx=(C.left+C.rampOuter)/2;
+ box(b,'nong-ramp-upper-landing',rx,mid,(C.front+C.rampStart)/2,rw,height,C.rampStart-C.front,tone);
+ const ramp=b.geo('nong37-side-ramp',()=>{const g=new G.Geometry(),a=C.rampOuter,c=C.left,z=C.rampStart,zz=C.rampEnd;
+  g.quad([a,C.top,z],[c,C.top,z],[c,C.base,zz],[a,C.base,zz]);
+  for(const x of[a,c])g.tri([x,C.base,z],[x,C.top,z],[x,C.base,zz]);
+  g.quad([a,C.base,z],[c,C.base,z],[c,C.top,z],[a,C.top,z]);return g;});
+ b.mesh('nong37-side-ramp',ramp,0,0,0,1,1,1,tone,24);
+ box(b,'nong-ramp-bottom-landing',rx,C.base-.035,(C.rampEnd+C.landingEnd)/2,rw,.07,C.landingEnd-C.rampEnd,tone);
+ for(const x of[C.rampOuter+.06,C.left-.06]){
+  for(const dh of[.48,.94])b.beam([x,C.top+dh,C.rampStart],[x,C.base+dh,C.rampEnd],.027,'#a7b4b0',29);
+  for(let i=0;i<=6;i++){const t=i/6,y=C.top-height*t,z=C.rampStart+(C.rampEnd-C.rampStart)*t;box(b,'nong-ramp-post',x,y+.48,z,.05,.96,.05,'#a7b4b0',29);}
+ }
+ for(const dh of[.48,.94])b.beam([C.rampOuter+.06,C.top+dh,C.front],[C.rampOuter+.06,C.top+dh,C.rampStart],.027,'#a7b4b0',29);
+ box(b,'nong-ramp-corner-post',C.rampOuter+.06,C.top+.48,C.front,.05,.96,.05,'#a7b4b0',29);
+ box(b,'nong-forecourt-apron',(C.rampOuter+C.right)/2,C.base-.035,C.front-2.65,C.right-C.rampOuter,.07,2,tone);
+ // Join the lower ramp landing to the actual east edge of Nongyuan West Road.
+ const road=Y.CAMPUS?.features?.find(q=>q.properties.id==='way/595764178');
+ if(road){const line=road.geometry.coordinates,a=line[0],c=line[1],dx=c[0]-a[0],dz=c[1]-a[1],len=Math.hypot(dx,dz),half=road.properties.width/2;
+  const edgeA=[a[0]+dz/len*half,a[1]-dx/len*half],edgeC=[c[0]+dz/len*half,c[1]-dx/len*half];
+  for(const [key,z0,z1]of[['ramp-road',C.rampEnd,C.landingEnd],['apron-road',C.front-3.65,C.front-1.65]]){
+  const ends=[z0,z1].map(z=>b.world([C.rampOuter,C.base,z]));
+  const edge=ends.map(p=>{const t=Math.max(0,Math.min(1,((p[0]-edgeA[0])*dx+(p[2]-edgeA[1])*dz)/(len*len)));return[edgeA[0]+t*dx,C.base,edgeA[1]+t*dz];});
+  const local=p=>{const x=p[0]-b.origin[0],z=p[2]-b.origin[2];return[Math.cos(b.rotation)*x-Math.sin(b.rotation)*z,p[1]-b.origin[1],Math.sin(b.rotation)*x+Math.cos(b.rotation)*z];};
+  const g=new G.Geometry();g.quad(...[ends[0],ends[1],edge[1],edge[0]].map(local));b.mesh('nong37-'+key+'-connection',g,0,0,0,1,1,1,tone,24);
+  }
+ }
+ b.noPlant((C.rampOuter+C.right)/2,(C.front-3.65+C.landingEnd)/2,C.right-C.rampOuter,C.landingEnd-C.front+3.65);
+}
+function nongNorthVestibule(b){
+ const E=nongNorthEntry,tone='#465a62',glass='#748c92',half=E.w/2,inner=half-.5,depth=.78;
+ b.local(E.x,E.base,E.front,PI,()=>{
+  box(b,'nong-entry-floor',0,-.065,-1.99,E.w,.13,3.98,palette.stone);
+  box(b,'nong-entry-rear',0,E.h/2,-3.93,E.w,E.h,.05,'#333b38');
+  box(b,'nong-entry-soffit',0,E.h-.04,-depth/2,E.w,.08,depth,tone,29);
+  for(const x of[-half,half]){
+   box(b,'nong-entry-jamb',x,E.h/2,0,.09,E.h,.12,tone,29);
+   box(b,'nong-entry-return-glass',x,E.h/2,-depth/2,.025,E.h-.14,depth-.08,glass,28);
+   box(b,'nong-entry-return-foot',x,.045,-depth/2,.08,.09,depth,tone,29);
+  }
+  for(const y of[.045,E.curtainH,E.h-.045])box(b,'nong-entry-crossbar',0,y,0,E.w,.09,.12,tone,29);
+  for(const x of[-inner,inner])box(b,'nong-entry-sidelight-frame',x,E.h/2,0,.07,E.h,.12,tone,29);
+  for(const side of[-1,1])box(b,'nong-entry-sidelight',side*(half-.25),E.curtainH/2,0,.41,E.curtainH-.12,.025,glass,28);
+  for(const [a,c]of[[-half,-inner],[-inner,0],[0,inner],[inner,half]])box(b,'nong-entry-transom',(a+c)/2,(E.curtainH+E.h)/2,0,c-a-.09,E.h-E.curtainH-.10,.025,glass,28);
+  box(b,'nong-entry-transom-mullion',0,(E.curtainH+E.h)/2,.025,.065,E.h-E.curtainH,.10,tone,29);
+  // Both dated exterior sources show hanging strip curtains; concealed door
+  // leaves and handles are not reconstructed from the curtains' vertical lines.
+  const strips=b.geo('nong37-north-strip-curtain',()=>{const g=new G.Geometry(),count=30,step=inner*2/count;
+   for(let i=0;i<count;i++){const x=-inner+i*step,w=step-.009,z=-.07-(i%3)*.006,low=.055+(i%4)*.004;
+    g.quad([x,low,z],[x+w,low,z-.012],[x+w,E.curtainH-.06,z],[x,E.curtainH-.06,z]);
+   }return g;});
+  b.mesh('nong37-north-strip-curtain',strips,0,0,0,1,1,1,'#819597',28);
+ });
+}
 function nongyuan(b,f){
  const brick='#aaa394',frame='#77796e',glass='#4c6870';
+ nongNorthForecourt(b,f);
  // L-shaped dining blocks leave the southwest recess open. Northern front is recessed.
- flatBlock(b,'nong-main',-23.6,-39.0,23.55,19.65,12.15,{tone:brick,parapet:.25});
+ flatBlock(b,'nong-main',-23.6,-39.0,23.55,19.65,12.15,{tone:brick,parapet:.25,wall:false});
+ const E=nongNorthEntry,left=E.x-E.w/2,right=E.x+E.w/2,head=E.base+E.h;
+ for(const [a,c]of[[-23.6,left],[right,23.55]])box(b,'nong-main-wall',(a+c)/2,6.15,-9.675,c-a,12,58.65,brick);
+ box(b,'nong-main-wall-head',E.x,(head+12.15)/2,-9.675,E.w,12.15-head,58.65,brick);
+ box(b,'nong-main-wall-rear',E.x,(head+.15)/2,(E.rear+19.65)/2,E.w,head-.15,19.65-E.rear,brick);
+ box(b,'nong-main-entry-threshold',E.x,(E.base+.15)/2,-37.4,E.w,E.base-.15,3.2,palette.stone);
  flatBlock(b,'nong-south-wing',-7.15,19.65,23.5,50.3,12.15,{tone:brick,parapet:.25});
  // Low pitched roof masses from the design photograph, set back behind the parapets.
  for(const [key,x0,z0,x1,z1]of[['main',-22.7,-37.5,22.6,17.9],['south',-6.3,21.1,22.6,49.1]]){
@@ -122,21 +195,66 @@ function nongyuan(b,f){
  });
  // South-west recess entrance: glass replaces the blank ground and first-floor wall.
  b.local(-15.42,0,19.79,0,()=>{
-  window(b,0,3.55,.12,10.9,6.35,0,{frame,glass,vertical:6,horizontal:1});
+  // BRDR low-canopy facade: upper glazing and a lower curtained entrance.
+  // Keep the existing map placement/envelope; dimensions are photo-fitted,
+  // not surveyed. Curtains do not establish hidden door leaves or hardware.
+  window(b,0,(3.40+6.725)/2,.12,10.9,6.725-3.40,0,{frame,glass,vertical:6,horizontal:1});
+  for(const x of[-3.775,3.775])window(b,x,1.90,.12,3.35,2.60,0,{frame,glass,vertical:2,horizontal:1});
+  for(const x of[-2.10,2.10])box(b,'window-jamb',x,1.90,.25,.07,2.60,.14,frame,29);
+  box(b,'window-head',0,3.165,.25,4.20,.07,.14,frame,29);
+  const southCurtain=b.geo('nong37-south-strip-curtain',()=>{const g=new G.Geometry(),count=30,inner=4.06,step=inner/count;
+   for(let i=0;i<count;i++){const x=-inner/2+i*step,w=step-.009,z=.19-(i%3)*.006,low=.64+(i%4)*.004;
+    g.quad([x,low,z],[x+w,low,z-.012],[x+w,3.11,z],[x,3.11,z]);
+   }return g;});
+  b.mesh('nong37-south-strip-curtain',southCurtain,0,0,0,1,1,1,'#819597',28);
   box(b,'nong-south-entry-canopy',0,3.3,1.65,12.5,.20,3.5,'#aaa99d');
-  for(const x of[-5.35,5.35])box(b,'nong-south-entry-column',x,1.52,2.83,.20,3.04,.20,'#a6a99b');
+  for(const x of[-5.35,5.35])box(b,'nong-south-entry-column',x,1.60,2.83,.20,3.20,.20,'#a6a99b');
   for(let i=0;i<5;i++)window(b,-3.2+i*1.6,9.55,.1,.37,1.8,0,{frame,glass,vertical:1,horizontal:0});
-  for(let i=0;i<4;i++)box(b,'nong-south-entry-step',0,.075*(i+1),3.40-i*.29,10.5,.15*(i+1),.31,palette.stone);
+  // Extend the existing highest tread into the hard landing, without a
+  // new instance or a slope. Its .60 top meets the refitted entrance base.
+  for(let i=0;i<4;i++){
+   const front=2.685,rear=-.08,z=i===3?(front+rear)/2:3.40-i*.29,d=i===3?front-rear:.31;
+   box(b,'nong-south-entry-step',0,.075*(i+1),z,10.5,.15*(i+1),d,palette.stone);
+  }
   b.lettering('农园',0,7.45,.12,2.35,.8,0,'#696b61');
  });
  // North hall: two-storey glazing behind a deep, high canopy.
  b.local(0,0,-39.15,PI,()=>{
-  for(let i=0;i<10;i++)window(b,-21+i*4.65,4.7,.08,4.12,8.55,0,{frame,glass,vertical:2,horizontal:3});
-  box(b,'nong-north-balcony',0,5.25,1.7,45.5,.26,3.4,'#aaa89a');
-  for(let i=0;i<=18;i++)box(b,'nong-balcony-post',-22.2+i*2.47,5.88,3.34,.055,1.1,.055,'#acb5aa',29);
-  box(b,'nong-balcony-handrail',0,6.4,3.34,44.6,.045,.06,'#acb5aa',29);
+  for(let i=0;i<10;i++){
+   const x=-21+i*4.65,a=x-2.06,c=x+2.06,cutA=-right,cutC=-left;
+   if(c<=cutA||a>=cutC)window(b,x,4.7,.08,4.12,8.55,0,{frame,glass,vertical:2,horizontal:3});
+   else{
+    window(b,x,(head+8.975)/2,.08,4.12,8.975-head,0,{frame,glass,vertical:2,horizontal:1});
+    for(const [l,r]of[[a,Math.min(c,cutA)],[Math.max(a,cutC),c]])if(r-l>.15)window(b,(l+r)/2,(.425+head)/2,.08,r-l,head-.425,0,{frame,glass,vertical:1,horizontal:1});
+   }
+  }
+  // Leave the stair flight open up to its upper tread; the former continuous
+  // slab and balustrade cut across the flight before it reached the landing.
+  const stairLeft=-3.88,stairRight=-1.32;
+  for(const [a,c]of[[-22.75,stairLeft],[stairRight,22.75]])box(b,'nong-north-balcony',(a+c)/2,5.25,1.7,c-a,.26,3.4,'#aaa89a');
+  box(b,'nong-north-balcony-landing',(stairLeft+stairRight)/2,5.25,.51,stairRight-stairLeft,.26,1.02,'#aaa89a');
+  // BRDR north exterior and the 2025 reopening photo both show an opaque
+  // parapet below the low rail, only traced here from the stair to the NW tower.
+  // Top 6.10 and .24 thickness are photo-proportion fits; keep the stair notch.
+  box(b,'nong-north-solid-balustrade175',7.565,5.735,3.28,17.77,.73,.24,'#aaa89a');
+  for(let i=0;i<=18;i++){const x=-22.2+i*2.47;if(x>stairLeft-.03&&x<stairRight+.03)continue;box(b,'nong-balcony-post',x,5.88,3.34,.055,1.1,.055,'#acb5aa',29);}
+  for(const [a,c]of[[-22.3,stairLeft],[stairRight,22.3]])box(b,'nong-balcony-handrail',(a+c)/2,6.4,3.34,c-a,.045,.06,'#acb5aa',29);
  });
  box(b,'nong-north-canopy',0,11.2,-44.5,47.35,.24,10.4,'#b2b3a6');
+ box(b,'nong-canopy-joint-backing',0,11.08,-44.5,47.35,.012,10.4,'#959b94');
+ // The north exterior photographs resolve panel joints beneath the canopy.
+ // Retain its fitted envelope; shallow panels leave the backing visible in
+ // real recessed joints instead of drawing dark lines on a flat face.
+ const soffit=b.geo('nong37-canopy-soffit-panels',()=>{const g=new G.Geometry(),cols=32,rows=6,gap=.024,y=11.055,top=11.08;
+  for(let i=0;i<cols;i++)for(let j=0;j<rows;j++){
+   const a=-23.675+i*47.35/cols+gap/2,c=-23.675+(i+1)*47.35/cols-gap/2,z=-49.7+j*10.4/rows+gap/2,zz=-49.7+(j+1)*10.4/rows-gap/2;
+   g.quad([a,y,z],[c,y,z],[c,y,zz],[a,y,zz]);
+   g.quad([a,y,z],[a,y,zz],[a,top,zz],[a,top,z]);
+   g.quad([c,y,zz],[c,y,z],[c,top,z],[c,top,zz]);
+   g.quad([c,y,z],[a,y,z],[a,top,z],[c,top,z]);
+   g.quad([a,y,zz],[c,y,zz],[c,top,zz],[a,top,zz]);
+  }return g;});
+ b.mesh('nong37-canopy-soffit-panels',soffit,0,0,0,1,1,1,'#b2b3a6',24);
  for(const x of[-21,-13,-5,3,11,21]){
   // Every supporting column is continuous from the entry paving to the canopy.
   b.mesh('nong37-grounded-column',b.geo('nong37-round-column',()=>G.cylinder(16)),x,.11,x>=3?-39.65:-48.45,.23,11.0,.23,'#bdbda9',24);
@@ -153,11 +271,11 @@ function nongyuan(b,f){
  for(let i=0;i<=9;i++){const x=x0+(x1-x0)*i/9;b.beam([x,yFront+.04,zFront],[x,yBack+.04,zBack],.065,frame,29);}
  for(let i=0;i<=4;i++){const t=i/4;b.beam([x0,yFront+(yBack-yFront)*t+.05,zFront+(zBack-zFront)*t],[x1,yFront+(yBack-yFront)*t+.05,zFront+(zBack-zFront)*t],.055,frame,29);}
  for(const x of[x0,x1])b.beam([x,.22,zFront],[x,yBack,zBack],.07,frame,29);
- stairs(b,'nong37-north-stair',2.6,-44.72,2.0,9.1,5.15,PI,{n:30});
- // Ground-level north doors and their modest signage are left unobstructed.
- window(b,-7.6,2.2,-39.34,8.0,3.75,PI,{frame,glass,vertical:4,horizontal:1});
- b.lettering('北门',-7.6,4.62,-39.49,1.5,.55,PI,'#e6dcc2');
- return {northGlass:true,northColumns:6,southwestEntry:true};
+ // BRDR's clear north exterior distinguishes the opaque prism-side cheek
+ // from the open metal railing on the outer side of the flight.
+ b.local(0,nongForecourt.top,0,0,()=>stairs(b,'nong37-north-stair',2.6,-44.72,2.0,9.1,5.38-nongForecourt.top,PI,{n:30,solidRail:true,solidRailSide:-1}));
+ nongNorthVestibule(b);
+ return {northGlass:true,northColumns:6,southwestEntry:true,northVestibule:'photo-fitted',northDoorLeavesVerified:false};
 }
 
 function render(b,f){const p=f.properties;if(!['way/445012606','way/240832248','way/1091239428'].includes(p.id))return null;
@@ -173,5 +291,5 @@ function render(b,f){const p=f.properties;if(!['way/445012606','way/240832248','
   return null;
  }finally{[b.origin,b.rotation,b.id,b.anim]=old;}
 }
-Y.Districts37={render,zhihuaParts,window,stairs};
+Y.Districts37={render,zhihuaParts,window,stairs,nongNorthEntry,nongForecourt};
 })(YY);

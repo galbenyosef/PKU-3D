@@ -75,6 +75,16 @@ function render(b,f){b.id=f.properties.pickId;
   const g=new G.Geometry();g.tri([x-1.1,H.terrace+1.36,-.74],[x,H.terrace+2.20,-.74],[x+1.1,H.terrace+1.36,-.74]);mesh(name+'-white-gable',g,C.white);
   surface(name+'-gable-west-roof',[[x-1.22,H.terrace+1.32,-.89],[x,H.terrace+2.23,-.89],[x,H.terrace+2.23,1.96],[x-1.22,H.terrace+1.32,1.96]]);
   surface(name+'-gable-east-roof',[[x,H.terrace+2.23,-.89],[x+1.22,H.terrace+1.32,-.89],[x+1.22,H.terrace+1.32,1.96],[x,H.terrace+2.23,1.96]]);
+  // Close only the existing stair box to its existing roof. No extension of
+  // the box, roof, front gable, or fitted footprint is introduced here.
+  const rear=new G.Geometry(),top=H.terrace+1.40,ridge=H.terrace+2.23;
+  const edge=ridge-.91/1.22,back=1.005,front=-.645;
+  rear.quad([x-1,top,back],[x+1,top,back],[x+1,edge,back],[x-1,edge,back]);
+  rear.tri([x-1,edge,back],[x+1,edge,back],[x,ridge,back]);
+  rear.quad([x-1,top,front],[x-1,top,back],[x-1,edge,back],[x-1,edge,front]);
+  rear.quad([x+1,top,back],[x+1,top,front],[x+1,edge,front],[x+1,edge,back]);
+  mesh(name+'-rear-roof-closure',rear,C.white);
+
  });}
  b.local(O[0],0,O[1],angle,()=>{
   const ring=f.geometry.coordinates[0].slice(0,-1).map(local);mesh('exact-original-stepped-base',G.polygon(ring,H.base),C.base);mesh('fifth-floor-ceiling',G.polygon(ring,H.terrace-.08),C.white);

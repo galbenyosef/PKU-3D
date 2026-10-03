@@ -30,13 +30,18 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const ps=F.polygon
  if(south&&floor===0){const mid=doorCentre/39.585*len,w=doorWidth/39.585*len;openings.push({s:mid-w/2,e:mid+w/2,bottom:.42,top:3.01,door:true});mainDoor={a,c,len,mid,width:w};}
  openings.sort((a,b)=>a.s-b.s);let cursor=0;
  for(const q of openings){const{s,e,bottom,top}=q,mid=(s+e)/2,w=e-s;panel(cursor,s,base,base+H.floor);panel(s,e,base,bottom);panel(s,e,top,base+H.floor);
- for(const x of[s,e])b.box(x,(bottom+top)/2,-.62,.07,top-bottom,.36,'#853d34',6);for(const y of[bottom,top])b.box(mid,y,-.62,w,.07,.36,'#853d34',6);
- b.box(mid,(bottom+top)/2,-.82,w-.1,top-bottom-.1,.05,q.door?'#8e302b':'#4d6260',q.door?6:5);
- if(q.door){for(const x of[mid-w*.25,mid+w*.25])b.box(x,1.95,-.77,w*.39,1.55,.055,'#9d9c81',5);b.box(mid,1.90,-.72,.09,2.1,.09,'#84332e',6);}
- else{const divisions=Math.max(3,Math.round(w/.45));for(let k=1;k<divisions;k++)b.box(s+w*k/divisions,(bottom+top)/2,-.78,.045,top-bottom,.07,'#8b4238',6);for(const y of[bottom+(top-bottom)*.65,bottom+(top-bottom)*.83])b.box(mid,y,-.78,w,.05,.07,'#8b4238',6);}
+ for(const x of[s,e])b.box(x,(bottom+top)/2,-.62,.07,top-bottom,.36,'#853d34',south?20:6);for(const y of[bottom,top])b.box(mid,y,-.62,w,.07,.36,'#853d34',south?20:6);
+ b.box(mid,(bottom+top)/2,-.82,w-.1,top-bottom-.1,.05,q.door?'#8e302b':'#4d6260',q.door?20:5);
+ if(q.door){
+ // This building's repair photograph shows two broad central lights and
+ // narrow outer lights. Pane widths remain fitted to the existing opening.
+ for(const side of[-1,1]){b.box(mid+side*w*.145,1.95,-.77,w*.235,1.55,.055,'#9d9c81',5);b.box(mid+side*w*.395,1.95,-.77,w*.095,1.55,.055,'#9d9c81',5);}
+ b.box(mid,1.90,-.72,.09,2.1,.09,'#84332e',20);
+ }
+ else{const divisions=Math.max(3,Math.round(w/.45));for(let k=1;k<divisions;k++)b.box(s+w*k/divisions,(bottom+top)/2,-.78,.045,top-bottom,.07,'#8b4238',south?20:6);for(const y of[bottom+(top-bottom)*.65,bottom+(top-bottom)*.83])b.box(mid,y,-.78,w,.05,.07,'#8b4238',south?20:6);}
  cursor=e;}panel(cursor,len,base,base+H.floor);b.box(len/2,base+.12,-.31,len,.24,.38,'#e1dfd3',24);}
  const columns=south?[218,480,741,1146,1409,1660].map(x=>photoX(x)/39.585*len):Array.from({length:count+1},(_,k)=>Math.min(len-.1,Math.max(.1,k*stride)));
- for(const x of columns)b.box(x,H.wall/2,-.25,.33,H.wall,.40,'#a2483e',6);
+ for(const x of columns)b.box(x,H.wall/2,-.25,.33,H.wall,.40,'#a2483e',south?20:6);
  b.box(len/2,.20,-.20,len,.40,.50,'#a5a69c',24);if(!south)b.box(len/2,H.wall-.12,-.18,len,.38,.60,'#3f6b63',24);
  if(south)group('south-painted-frieze',()=>{
  // Own repair photograph: continuous blue-green painted beam, simplified by visible bay boundaries.
@@ -52,7 +57,7 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const ps=F.polygon
  for(const x of columns){b.box(x,y,.144,.36,.29,.018,'#698980',24);b.box(x,y,.163,.12,.20,.016,'#29495c',24);}
  });
  if(south){const x=doorCentre/39.585*len,w=doorWidth/39.585*len; b.box(x,3.48,-.385,w,.70,.12,'#352e2b',24);for(const xx of[x-w/2-.45,x+w/2+.45]){b.box(xx,2.85,-.16,.11,.32,.18,'#344342',24);b.box(xx,2.9,-.05,.10,.13,.11,'#d8d4bc',5);}
- b.box(x,.21,.05,w+.18,.42,1.0,'#aaa99f',24);for(let k=0;k<3;k++){const h=.14*(k+1);b.box(x,h/2,1.36-k*.40,w+.18,h,.41,'#aaa99f',24);}}
+ b.box(x,.21,-.175,w+.18,.42,1.45,'#aaa99f',24);for(let k=0;k<3;k++){const h=.14*(k+1);b.box(x,h/2,1.565-(k+.5)*(1.015/3),w+.18,h,1.015/3,'#aaa99f',24);}}
  }));}
 
  return{strategy:'building029-v46',floors:2,sourceOutline:true,roofType:'wudian',fiveRidges:true,windowRhythmFitted:true,southFacadePhotoLed:true,entranceVerified:true,heightMeasured:false};

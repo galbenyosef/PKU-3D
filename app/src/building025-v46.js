@@ -64,10 +64,10 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
  // Four entrances from the first-floor plan; the narrow outside stair is a separate element.
  b.local(O[0],0,O[1],R,()=>{for(const q of entrances)group('entrance-'+q.name,()=>{
  const w=q.width,s=q.outward;
- if(q.name==='main-north'){b.box(q.u,.375,q.v-.60,w+.4,.75,1.2,C.stone,24);for(let k=0;k<5;k++){const h=.15*(k+1);b.box(q.u,h/2,q.v-3.45+k*.5,w+.4,h,.51,C.stone,24);}}
+ if(q.name==='main-north'){b.box(q.u,.375,q.v-.60,w+.4,.75,1.2,C.stone,24);for(let k=0;k<5;k++){const h=.15*(k+1);b.box(q.u,h/2,q.v-3.705+(k+.5)*.501,w+.4,h,.501,C.stone,24);}}
  else if(q.axis===1){const extension=q.name==='northwing-west'?.92:0;/* Preserve the outer step; extend only the landing to the recessed west wall. */b.box(q.u+s*.35-s*extension/2,.15,q.v,.7+extension,.3,w+.25,C.stone,24);b.box(q.u+s*.88,.075,q.v,.38,.15,w+.25,C.stone,24);}
  });
- group('separate-narrow-stair',()=>{b.box(26.15,.375,-1.5,1.15,.75,1.5,C.stone,24);for(let k=0;k<5;k++){const h=.15*(k+1);b.box(26.15,h/2,-4.25+k*.4,1.15,h,.41,C.stone,24);}b.box(26.7,.375,-.70,1.3,.75,.85,C.stone,24);});
+ group('separate-narrow-stair',()=>{b.box(26.15,.375,-1.5,1.15,.75,1.5,C.stone,24);for(let k=0;k<5;k++){const h=.15*(k+1);b.box(26.15,h/2,-4.455+(k+.5)*.441,1.15,h,.441,C.stone,24);}/* Partition the existing L-shaped landing union without coincident top faces. */b.box(27.0375,.375,-.70,.625,.75,.85,C.stone,24);b.box(26.3875,.375,-.5125,.675,.75,.475,C.stone,24);});
  });
  return{strategy:'building025-v46',floors:6,basementFloors:2,sourceOutline:true,northwestVoid:true,continuousLRoof:true,northMainEntrance:true,separateOutsideStair:true,floorCountAsBuiltVerified:false,dimensionFitted:true};
 }

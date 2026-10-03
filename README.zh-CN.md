@@ -8,7 +8,7 @@
 
 **[在线演示](https://sldyns.github.io/PKU-3D/)** · [English](README.md) · [版本发布](https://github.com/sldyns/PKU-3D/releases) · [贡献指南](CONTRIBUTING.zh-CN.md)
 
-[![Version](https://img.shields.io/badge/version-1.2.0-8b302c)](https://github.com/sldyns/PKU-3D/releases/tag/v1.2.0)
+[![Version](https://img.shields.io/badge/version-1.3.0-8b302c)](https://github.com/sldyns/PKU-3D/releases/tag/v1.3.0)
 [![WebGL 2](https://img.shields.io/badge/rendering-WebGL%202-2f6555)](https://sldyns.github.io/PKU-3D/)
 
 </div>
@@ -81,3 +81,7 @@ npm run dev
 ## 许可
 
 软件与原创文档采用 [MIT](LICENSE)；OSM 衍生地理数据库采用 [ODbL 1.0](DATA_LICENSE.md)。第三方内容的权利归各自权利人所有，详见[许可说明](docs/LICENSING.md)。
+
+## 当前模型状态
+
+局部修补不等于全校真实性或全局性能验收。已交付范围和具名资料缺口见[模型现状](docs/development/model-status.md)，未通过指标见[性能说明](docs/development/performance.md)。

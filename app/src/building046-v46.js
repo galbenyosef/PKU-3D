@@ -1,12 +1,26 @@
 /* 45-number dormitory only. Six own floor plans, independent low southwest hall. */
 (function(Y){'use strict';
-const F=Y.Footprints,A=Y.Architecture30,previous=A.render,ID='way/272303341';
+const F=Y.Footprints,G=Y.Geo,A=Y.Architecture30,previous=A.render,ID='way/272303341';
 const O=[-394.574,451.81],R=Math.atan2(.544,12.768),CO=Math.cos(R),SI=Math.sin(R),H={floor:3.2,wall:19.2,hall:3.3};
 const C={wall:'#bdc0b7',frame:'#dce0d5',glass:'#788b88',roof:'#999e93',stone:'#acb2a6',door:'#526762'};
 const world=(u,v)=>[O[0]+u*CO+v*SI,O[1]-u*SI+v*CO],local=p=>[(p[0]-O[0])*CO-(p[1]-O[1])*SI,(p[0]-O[0])*SI+(p[1]-O[1])*CO];
 const planX=x=>12.783+(x-353)/(1842-353)*(76.971-12.783),wingY=y=>(y-397)/(790-397)*16.971;
 const entrances=[{name:'unit-west',u:planX(707),v:24.798,width:2.4,sill:.3},{name:'unit-east',u:planX(1490),v:24.789,width:2.4,sill:.3},{name:'southwest-hall',u:6.22,v:24.802,width:3.8,sill:.45}];
 const stairBays=[[659,755],[1442,1539]].map(([s,e])=>[planX(s),planX(e)]);
+// Bounded display-fit paving to this building's own unchanged south road.
+// Its material/extent are not a survey of the present entrance forecourt.
+function entranceApproach(front,road){
+ if(!road||road.properties.id!=='way/628032108'||road.geometry.type!=='LineString'||!(road.properties.width>0))return null;
+ const ribbon=G.ribbon(road.geometry.coordinates,road.properties.width,.12).v;let best=null;
+ for(let i=0;i<ribbon.length;i+=48)for(const [j,k]of[[0,8],[40,16]]){
+  const a=[ribbon[i+j],ribbon[i+j+2]],c=[ribbon[i+k],ribbon[i+k+2]],dx=c[0]-a[0],dz=c[1]-a[1],len2=dx*dx+dz*dz;if(len2<1e-8)continue;
+  const ts=front.map(p=>((p[0]-a[0])*dx+(p[1]-a[1])*dz)/len2);if(ts.some(t=>t<0||t>1))continue;
+  const edge=ts.map(t=>[a[0]+t*dx,a[1]+t*dz]),dist=front.map((p,n)=>Math.hypot(p[0]-edge[n][0],p[1]-edge[n][1]));
+  // Only project forward from the south-facing step, never to a remote road.
+  if(dist.some(d=>!Number.isFinite(d)||d<.01||d>5)||edge.some((p,n)=>local(p)[1]<=local(front[n])[1]))continue;
+  const score=dist[0]+dist[1];if(!best||score<best.score)best={front,edge,score};
+ }return best;
+}
 function render(b,f,add){const id=f.properties.pickId;b.id=id;
  function group(name,fn){const old=b.e.add;b.e.add=function(k,...args){return old.call(this,'046-'+name+'-'+k,...args);};try{fn();}finally{b.e.add=old;}}
  const cells=xs=>xs.slice(1).map((e,i)=>[xs[i],e]);
@@ -28,6 +42,9 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
      for(const xx of [q.s+.04,x,q.e-.04])b.box(xx,y,-depth+.04,.045,h,.06,C.frame,6);
      for(const yy of [bottom+.035,top-.035])b.box(x,yy,-depth+.04,w,.05,.06,C.frame,6);
      if(!q.door)b.box(x,base+1.93,-depth+.05,w,.035,.06,C.frame,6);
+     // First-floor unit doors in the own plan lead onto south landings.
+     // Support their recessed pane rather than ending the floor at the wall plane.
+     if(q.door&&floor===0&&name==='south')group('unit-threshold',()=>b.box(x,.15,-.15,w,.3,.40,C.stone,24));
      cursor=q.e;
     }
     panel(cursor,len,base,base+H.floor);b.box(len/2,base+H.floor-.06,.025,len,.12,.15,C.frame,24);
@@ -66,8 +83,18 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
    b.box(door.u,1.7,v1-.25,door.width,2.5,.05,C.door,5);
    for(const x of [s,door.u,e])b.box(x,1.7,v1-.2,.05,2.5,.08,C.frame,6);
    for(const y of [.45,2.95])b.box(door.u,y,v1-.2,door.width,.05,.08,C.frame,6);
+   // The independent low hall has its own recessed doorway, not a copied
+   // six-storey unit portal. Return its jambs/header to the existing glass.
+   group('hall-reveal',()=>{
+    for(const x of [s,e])b.box(x,1.7,v1-.12,.07,2.5,.32,C.frame,24);
+    b.box(door.u,2.95,v1-.12,door.width,.07,.32,C.frame,24);
+    b.box(door.u,.225,v1-.15,door.width,.45,.40,C.stone,24);
+   });
   });
-  for(const q of entrances)group('entrance-'+q.name,()=>{const d=q.name==='southwest-hall'?1.5:.8;b.box(q.u,q.sill/2,q.v+d/2-.02,q.width+.3,q.sill,d+.06,C.stone,24);const n=Math.round(q.sill/.15);for(let k=0;k<n;k++){const h=.15*(n-k);b.box(q.u,h/2,q.v+d+.18+k*.36,q.width+.3,h,.37,C.stone,24);}});
+  for(const q of entrances)group('entrance-'+q.name,()=>{const d=q.name==='southwest-hall'?1.5:.8;b.box(q.u,q.sill/2,q.v+d/2-.02,q.width+.3,q.sill,d+.06,C.stone,24);const n=Math.round(q.sill/.15);for(let k=0;k<n;k++){const h=.15*(n-k);b.box(q.u,h/2,q.v+d+.18+k*.36,q.width+.3,h,.37,C.stone,24);}
+   const toe=q.v+d+.18+(n-1)*.36+.37/2,front=[q.u-(q.width+.3)/2,q.u+(q.width+.3)/2].map(u=>{const p=b.world([u,0,toe]);return[p[0],p[2]];}),approach=entranceApproach(front,Y.CAMPUS?.features.find(f=>f.properties.id==='way/628032108'));
+   if(approach){const g=new G.Geometry();g.quad(...[front[0],approach.edge[0],approach.edge[1],front[1]].map(p=>[p[0],.12,p[1]]));add('046-'+q.name+'-fitted-apron',g,C.stone,7,id);}
+  });
  });
  // Two stair heads project north in all six plans; no ground entrance is added beneath them.
  for(const [s,e] of stairBays){const v=10.48;facade(world(e,v),world(s,v),'north-stair',()=>[{s:.65,e:e-s-.65}]);
@@ -76,5 +103,5 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
  return{strategy:'building046-v46',floors:6,estimatedHeight:true,sourceOutline:true,lowSouthwestHall:true,southUnitEntrances:2,groundPlanEntrances:3,westWingBalconies:true,northStairProjections:2,fullFacadeVerified:false};
 }
 A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};
-Y.Building046={id:ID,render,world,local,heights:H,entrances,stairBays};
+Y.Building046={id:ID,render,world,local,heights:H,entrances,stairBays,entranceApproach};
 })(YY);

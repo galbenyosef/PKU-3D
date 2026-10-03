@@ -19,13 +19,36 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const ps=F.polygon
  for(const side of[-1,1]){const g=new G.Geometry();for(let u=x0+.3;u<x1-.1;u+=.43){const inset=Math.min(half,u-x0-.06,x1-u-.06);if(inset<=0)continue;const from=side<0?z0:z1,to=side<0?z0+inset:z1-inset;for(let k=0;k<16;k++){const a=from+(to-from)*k/16,c=from+(to-from)*(k+1)/16;for(const tri of endCaps){let p=tri;for(const[axis,value,greater]of[[0,u-.025,true],[0,u+.025,false],[1,Math.min(a,c),true],[1,Math.max(a,c),false]])if(p.length)p=cut(p,axis,value,greater);for(let j=1;j<p.length-1;j++)g.tri(...[p[0],p[j],p[j+1]].map(q=>vertex(q[0],profile(world(...q))+.03,q[1])));}}}add('028-roof-end-tile-ribs-'+(side<0?'north':'south'),g,'#889188',25,id);}
 
  const ring=F.polygons(f.geometry)[0][0],positive=F.area(ring)>0;
- for(let i=1;i<ring.length;i++){let a=ring[i-1],c=ring[i];if(positive)[a,c]=[c,a];const dx=c[0]-a[0],dz=c[1]-a[1],len=Math.hypot(dx,dz),count=len>25?9:4,stride=len/count;
+ for(let i=1;i<ring.length;i++){let a=ring[i-1],c=ring[i];if(positive)[a,c]=[c,a];const dx=c[0]-a[0],dz=c[1]-a[1],len=Math.hypot(dx,dz),count=len>25?9:4,stride=len/count,west=len>25&&(local(a)[0]+local(c)[0])/2<x0+.2;
  b.local(a[0],0,a[1],Math.atan2(-dz,dx),()=>group('facade-'+i,()=>{const panel=(s,e,lo,hi)=>{if(e>s&&hi>lo)b.box((s+e)/2,(lo+hi)/2,-.47,e-s,hi-lo,.12,'#d4d2c3',24);};
- for(let floor=0;floor<2;floor++){const base=H.floor*floor,bottom=base+.88,top=base+3.15;let cursor=0;for(let k=0;k<count;k++){const mid=(k+.5)*stride,w=Math.min(2.45,stride*.61),s=mid-w/2,e=mid+w/2;panel(cursor,s,base,base+H.floor);panel(s,e,base,bottom);panel(s,e,top,base+H.floor);for(const x of[s,e])b.box(x,(bottom+top)/2,-.62,.07,top-bottom,.36,'#744d40',6);for(const y of[bottom,top])b.box(mid,y,-.62,w,.07,.36,'#744d40',6);b.box(mid,(bottom+top)/2,-.82,w-.1,top-bottom-.1,.05,'#4d6260',5);for(let q=1;q<4;q++)b.box(s+w*q/4,(bottom+top)/2,-.78,.045,top-bottom,.07,'#855344',6);b.box(mid,bottom+(top-bottom)*.64,-.78,w,.05,.07,'#855344',6);cursor=e;}panel(cursor,len,base,base+H.floor);b.box(len/2,base+.12,-.285,len,.24,.38,'#deddd0',24);}
- for(let k=0;k<=count;k++)b.box(Math.min(len-.10,Math.max(.1,k*stride)),H.wall/2,-.29,.20,H.wall,.34,'#e1dfce',24);
+ for(let floor=0;floor<2;floor++){const base=H.floor*floor,bottom=base+.88,top=base+3.15;let cursor=0;for(let k=0;k<count;k++){const mid=(k+.5)*stride,w=Math.min(2.45,stride*.61),s=mid-w/2,e=mid+w/2;
+ if(west&&floor===0&&k===Math.floor(count/2)){
+  // 2023 west-facing photograph: central red timber pair, glazed lattice
+  // upper panels and solid lower panels. All dimensions remain fitted.
+  const sill=.90,doorTop=3.30,transom=2.85,kick=1.72;
+  panel(cursor,s,0,H.floor);panel(s,e,0,sill);panel(s,e,doorTop,H.floor);
+  for(const xx of[s,e])b.box(xx,(sill+doorTop)/2,-.62,.09,doorTop-sill,.36,'#683c30',20);
+  b.box(mid,doorTop,-.62,w,.09,.36,'#683c30',20);
+  b.box(mid,(transom+doorTop)/2,-.82,w-.10,doorTop-transom-.08,.06,'#4d6260',5);
+  for(const side of[-1,1]){
+   const x=mid+side*w/4,leaf=w/2-.08;
+   b.box(x,(sill+kick)/2,-.79,leaf,kick-sill,.10,'#743d2e',20);
+   b.box(x,(kick+transom)/2,-.82,leaf,transom-kick-.06,.06,'#4d6260',5);
+   for(const y of[kick,transom])b.box(x,y,-.75,leaf,.065,.08,'#743d2e',20);
+   for(const frac of[-.25,0,.25])b.box(x+frac*leaf,(kick+transom)/2,-.74,.028,transom-kick,.065,'#743d2e',20);
+   for(const t of[.25,.5,.75])b.box(x,kick+(transom-kick)*t,-.74,leaf,.028,.065,'#743d2e',20);
+  }
+  for(const xx of[s+.045,mid,e-.045])b.box(xx,(sill+doorTop)/2,-.73,.075,doorTop-sill,.10,'#743d2e',20);
+  for(let t=1;t<8;t++)b.box(s+w*t/8,(transom+doorTop)/2,-.74,.025,doorTop-transom,.07,'#743d2e',20);
+  b.box(mid,.45,0,w+.5,.90,1.8,'#a8aaa0',24);
+  for(let j=0;j<6;j++){const h=.15*(j+1);b.box(mid,h/2,2.7-(j+.5)*.30,w+.5,h,.30,'#a8aaa0',24);}
+  cursor=e;continue;
+ }
+ panel(cursor,s,base,base+H.floor);panel(s,e,base,bottom);panel(s,e,top,base+H.floor);for(const x of[s,e])b.box(x,(bottom+top)/2,-.62,.07,top-bottom,.36,'#744d40',6);for(const y of[bottom,top])b.box(mid,y,-.62,w,.07,.36,'#744d40',6);b.box(mid,(bottom+top)/2,-.82,w-.1,top-bottom-.1,.05,'#4d6260',5);for(let q=1;q<4;q++)b.box(s+w*q/4,(bottom+top)/2,-.78,.045,top-bottom,.07,'#855344',6);b.box(mid,bottom+(top-bottom)*.64,-.78,w,.05,.07,'#855344',6);cursor=e;}panel(cursor,len,base,base+H.floor);b.box(len/2,base+.12,-.285,len,.24,.38,'#deddd0',24);}
+ for(let k=0;k<=count;k++)b.box(Math.min(len-.10,Math.max(.1,k*stride)),H.wall/2,-.29,west?.30:.20,H.wall,.34,west?'#743d2e':'#e1dfce',west?20:24);
  b.box(len/2,H.wall-.10,-.22,len,.26,.56,'#6b4a3f',6);b.box(len/2,H.wall+.12,-.12,len,.22,.48,'#44564d',24);
  }));}
- return{strategy:'building028-v46',floors:2,sourceOutline:true,roofType:'wudian',fiveRidges:true,windowRhythmFitted:true,entranceVerified:false,heightMeasured:false};
+ return{strategy:'building028-v46',floors:2,sourceOutline:true,roofType:'wudian',fiveRidges:true,windowRhythmFitted:true,entranceVerified:true,entranceDimensionsFitted:true,heightMeasured:false};
 }
 A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};Y.Building028={id:ID,render,world,local,heights:H};
 })(YY);

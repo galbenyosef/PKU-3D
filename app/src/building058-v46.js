@@ -71,8 +71,19 @@ function render(b,f){b.id=f.properties.pickId;
     for(let fl=0;fl<3;fl++){const lo=[H.base,H.second,H.third][fl],hi=[H.second,H.third,H.wall][fl],bottom=[1.30,5.35,8.94][fl],top=[3.95,7.57,11.17][fl];let cursor=-width/2;
      for(let k=0;k<count;k++){const q=positions[k],door=front&&k===7&&fl<2,w=door&&fl===0?3.10:q.w,a=q.x-w/2,c=q.x+w/2,low=door?lo:bottom,high=door?Math.min(top,lo+3.06):top,mid=(low+high)/2;
       wall(cursor,a,lo,hi);wall(a,c,lo,low);wall(a,c,high,hi);
-      group('window-'+fl,()=>{b.box(q.x,mid,-.17,w-.12,high-low-.12,.045,C.glass,5);for(const x of[a,c])b.box(x,mid,-.025,.085,high-low,.20,C.red,24);for(const y of[low,high])b.box(q.x,y,-.025,w,.085,.20,C.red,24);const trans=high-.55;b.box(q.x,trans,-.01,w-.1,.075,.14,C.red,24);
-       const xs=door||w<2?[q.x]:[q.x-w*.25,q.x+w*.25];for(const x of xs)b.box(x,(low+trans)/2,-.015,.073,trans-low,.12,C.red,24);b.box(q.x,(trans+high)/2,-.015,.065,high-trans,.12,C.red,24);if(door){for(const x of[q.x-.14,q.x+.14])b.box(x,low+1.22,.09,.028,.45,.05,C.metal,9);}else b.box(q.x,low-.075,.07,w+.22,.15,.33,C.stone,24);
+      group('window-'+fl,()=>{if(door&&fl===0)group('photo-entrance-infill',()=>{
+        // Own college photograph: narrow fixed sidelights around a glazed pair,
+        // with a two-light transom. Closed pose; exact dimensions remain fitted.
+        const trans=high-.55,edges=[a,a+w*.14,q.x,c-w*.14,c];
+        for(let j=0;j<4;j++){const left=edges[j],right=edges[j+1],cx=(left+right)/2;
+         b.box(cx,(low+.12+trans)/2,-.17,right-left-.045,trans-low-.12,.045,C.glass,5);
+         b.box(cx,low+.06,-.02,right-left,.16,.14,C.red,24);
+        }
+        for(const x of edges.slice(1,-1))b.box(x,(low+trans)/2,-.015,.080,trans-low,.12,C.red,24);
+        for(const [left,right]of[[a,q.x],[q.x,c]])b.box((left+right)/2,(trans+high)/2,-.17,right-left-.045,high-trans,.045,C.glass,5);
+        b.box(q.x,low-.035,-.02,w+.08,.07,.38,C.stone,24);
+       });else b.box(q.x,mid,-.17,w-.12,high-low-.12,.045,C.glass,5);for(const x of[a,c])b.box(x,mid,-.025,.085,high-low,.20,C.red,24);for(const y of[low,high])b.box(q.x,y,-.025,w,.085,.20,C.red,24);const trans=high-.55;b.box(q.x,trans,-.01,w-.1,.075,.14,C.red,24);
+       const xs=door&&fl===0?[]:door||w<2?[q.x]:[q.x-w*.25,q.x+w*.25];for(const x of xs)b.box(x,(low+trans)/2,-.015,.073,trans-low,.12,C.red,24);b.box(q.x,(trans+high)/2,-.015,.065,high-trans,.12,C.red,24);if(door){for(const x of[q.x-.14,q.x+.14])b.box(x,low+1.22,.09,.028,.45,.05,C.metal,9);}else b.box(q.x,low-.075,.07,w+.22,.15,.33,C.stone,24);
       });
       if(fl>0&&!door)group('single-rounded-panel',()=>{const yy=bottom-.85;b.box(q.x,yy,.025,w+.20,1.41,.13,C.panel,24);b.mesh('panel-rim-'+w,b.geo('058-panel-rim-'+w,()=>rounded(w+.01,1.22,.19)),q.x,yy,.105,1,1,1,C.shadow,24);b.mesh('panel-inset-'+w,b.geo('058-panel-inset-'+w,()=>rounded(w-.09,1.13,.17)),q.x,yy,.113,1,1,1,C.panel,24);});
       cursor=c;

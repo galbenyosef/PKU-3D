@@ -62,11 +62,17 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
    b.box(len/2,H.wall+.04,.035,len,.16,.18,C.frame,24);
   }));
  }
- // Landings meet the exact door sill; adjacent short steps overlap rather than leaving seams.
+ // This building's first-floor plan shows exterior short flights at its named exits.
+ // Keep the fitted sill heights and outer extents; partition the solids without
+ // the former coplanar full-height first tread, and bridge to recessed door glass.
  b.local(O[0],0,O[1],R,()=>{for(const q of entrances)group('entrance-'+q.name,()=>{
  const w=q.width,s=q.outward,n=Math.round(q.sill/.15),depth=q.name==='main-north'?1.15:.72;
- if(q.axis===0){b.box(q.u,q.sill/2,q.v+s*(depth/2-.03),w+.3,q.sill,depth+.08,C.stone,24);for(let k=0;k<n;k++){const h=.15*(n-k);b.box(q.u,h/2,q.v+s*(depth+.19+k*.38),w+.3,h,.39,C.stone,24);}}
- else{b.box(q.u+s*(depth/2-.03),q.sill/2,q.v,depth+.08,q.sill,w+.3,C.stone,24);for(let k=0;k<n;k++){const h=.15*(n-k);b.box(q.u+s*(depth+.19+k*.38),h/2,q.v,.39,h,w+.3,C.stone,24);}}
+ const block=(start,end,h)=>{const mid=(start+end)/2,d=end-start;
+  if(q.axis===0)b.box(q.u,h/2,q.v+s*mid,w+.3,h,d,C.stone,24);
+  else b.box(q.u+s*mid,h/2,q.v,d,h,w+.3,C.stone,24);
+ };
+ block(-.38,depth+.38,q.sill);
+ for(let k=1;k<n;k++)block(depth+k*.38,depth+(k+1)*.38+(k===n-1?.005:0),.15*(n-k));
  } );});
  // Official 2026 text locates a basement service access southeast but gives no surveyed door/stair form.
  // Keep it separate in metadata; do not invent a second ground-floor door or a basement stair beneath shared terrain.

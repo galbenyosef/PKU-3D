@@ -74,6 +74,20 @@ function render(b,f){
  function porch(){
   const front=D+3.15,w=7.7,half=3.25;
   group('porch-base',()=>{b.box(ENTRY,H.base/2,D+1.55,w,H.base,3.3,C.stone,10);for(let i=0;i<4;i++)b.box(ENTRY,(i+1)*.18/2,D+4.3-i*.32,6.9,(i+1)*.18,.34,C.stone,10);});
+  // Own 2022/2023 photographs show sloping stone stair cheeks, not
+  // additional walkable ramps. Keep the existing 6.9m stair width clear.
+  group('porch-stair-cheeks',()=>{for(const side of[-1,1]){
+   const a=ENTRY+side*3.45,c=ENTRY+side*3.85,lo=Math.min(a,c),hi=Math.max(a,c),back=D+3.10,shoulder=D+3.51,toe=D+4.72,g=new G.Geometry(),face=(...p)=>g.quad(...p.reverse());
+   // The own front photograph shows the side stone continuing past the last
+   // riser. Keep a level seat beside the top tread, then follow all four noses.
+   face([lo,H.base,back],[hi,H.base,back],[hi,H.base,shoulder],[lo,H.base,shoulder]);
+   face([lo,H.base,shoulder],[hi,H.base,shoulder],[hi,.04,toe],[lo,.04,toe]);
+   for(const p of[[[lo,0,back],[lo,H.base,back],[lo,H.base,shoulder],[lo,.04,toe],[lo,0,toe]],[[hi,H.base,back],[hi,0,back],[hi,0,toe],[hi,.04,toe],[hi,H.base,shoulder]]])for(let i=1;i<p.length-1;i++)g.tri(p[0],p[i+1],p[i]);
+   face([lo,0,back],[hi,0,back],[hi,H.base,back],[lo,H.base,back]);
+   face([lo,.04,toe],[hi,.04,toe],[hi,0,toe],[lo,0,toe]);
+   g.quad([lo,0,back],[hi,0,back],[hi,0,toe],[lo,0,toe]);
+   mesh('stair-cheek-'+(side<0?'left':'right'),g,C.stone,24);
+  }});
   group('porch-column',()=>{for(const x of[ENTRY-half,ENTRY+half]){b.cyl(x,H.base,front,.255,4.15,C.red,12,1,6);b.cyl(x,H.base-.02,front,.32,.16,C.stone,12,1,24);}});
   group('porch-door',()=>{
    b.box(ENTRY,2.30,D-.08,3.60,3.15,.045,C.dark,24);

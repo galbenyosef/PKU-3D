@@ -44,6 +44,28 @@ function render(b,f,add){b.id=f.properties.pickId;
   });
   group('front-glazing',()=>{for(const [x,w]of[[3.55,3.2],[8.18,3.25]])window(x,2.45,FRONT+.13,w,1.80);
    b.box(ENTRY,2.10,FRONT+.035,2.82,2.52,.05,C.glass,5);for(const x of[ENTRY-1.41,ENTRY,ENTRY+1.41])b.box(x,2.10,FRONT+.10,.08,2.60,.13,C.dark,24);for(const y of[.84,2.91,3.39])b.box(ENTRY,y,FRONT+.10,2.88,.08,.13,C.dark,24);for(const x of[ENTRY-.13,ENTRY+.13])b.box(x,1.75,FRONT+.20,.045,.47,.045,C.iron,9);
+   // Own entrance close-up: paired pale hanging sheets with dark viewing panels.
+   // Panel sizes and folds are fitted; the glazed doorway remains behind them.
+   group('entry-curtain',()=>{const lo=.89,hi=2.88,vl=1.48,vh=2.30,vw=.62;
+    for(const side of[-1,1]){const cx=ENTRY+side*.70;
+     const xs=[-.65,-.55,-.43,-.31,-.18,0,.18,.31,.43,.55,.65],ys=[lo,1.08,1.28,vl,1.70,1.94,vh,2.49,2.68,hi];
+     const filled=(i,j)=>i>=0&&i<xs.length-1&&j>=0&&j<ys.length-1&&!(xs[i]>=-.31&&xs[i+1]<=.31&&ys[j]>=vl&&ys[j+1]<=vh);
+     const point=(i,j,back=false)=>{const x=xs[i],y=ys[j],hang=(hi-y)/(hi-lo),wave=(.010+.018*hang)*Math.sin(x*19+y*1.6+side*.7)+.007*hang*Math.sin(y*9+x*6);
+      return[cx+x,y,FRONT+.16+wave-(back?.018:0)];};
+     const sheet=new G.Geometry();
+     for(let i=0;i<xs.length-1;i++)for(let j=0;j<ys.length-1;j++)if(filled(i,j)){
+      const ij=[[i,j],[i+1,j],[i+1,j+1],[i,j+1]],front=ij.map(([x,y])=>point(x,y)),back=ij.map(([x,y])=>point(x,y,true));
+      sheet.quad(...front);sheet.quad(back[3],back[2],back[1],back[0]);
+      for(const [edge,ni,nj] of[[0,i,j-1],[1,i+1,j],[2,i,j+1],[3,i-1,j]])if(!filled(ni,nj)){const next=(edge+1)%4;sheet.quad(front[edge],back[edge],back[next],front[next]);}
+     }
+     mesh('curtain-sheet-'+side,sheet,'#aaa99c');
+     b.box(cx,(vl+vh)/2,FRONT+.135,vw,vh-vl,.022,C.glass,5);
+     // Dark sewn viewing-panel borders follow the cloth perimeter, not rigid raised ribs.
+     const rim=new G.Geometry(),edge=(i,j,ii,jj)=>{const p=point(i,j),q=point(ii,jj),dx=q[0]-p[0],dy=q[1]-p[1],length=Math.hypot(dx,dy),nx=-dy/length*.012,ny=dx/length*.012;
+      rim.quad([p[0]-nx,p[1]-ny,p[2]+.003],[q[0]-nx,q[1]-ny,q[2]+.003],[q[0]+nx,q[1]+ny,q[2]+.003],[p[0]+nx,p[1]+ny,p[2]+.003]);};
+     for(let j=3;j<6;j++){edge(3,j,3,j+1);edge(7,j,7,j+1);}for(let i=3;i<7;i++){edge(i,3,i+1,3);edge(i,6,i+1,6);}mesh('curtain-sewn-rim-'+side,rim,C.dark);
+    }
+   });
    const x=19.62;b.box(x,2.41,FRONT+.10,4.14,2.21,.26,C.cream,24);b.box(x,2.41,FRONT+.27,3.88,1.98,.05,'#a1bf9f',24);
    paintSign('display-window',c=>{c.fillStyle='#a9c7b0';c.fillRect(0,0,512,128);for(const [x,y,r,col]of[[115,96,69,'#e3c9a2'],[239,50,37,'#d38855'],[393,73,56,'#d5b577']]){c.fillStyle=col;c.beginPath();c.ellipse(x,y,r,r*.72,0,0,Math.PI*2);c.fill();}c.fillStyle='#ab694f';for(const x of[98,130]){c.beginPath();c.arc(x,70,5,0,Math.PI*2);c.fill();}},x,2.41,FRONT+.31,3.88,1.98);
    b.box(x,1.04,FRONT+.13,4.20,.44,.42,C.stone,24);
@@ -56,7 +78,13 @@ function render(b,f,add){b.id=f.properties.pickId;
    for(const side of[-1,1]){const g=new G.Geometry();g.quad([ENTRY+side*.48,3.86,FRONT+.20],[ENTRY+side*2.45,3.52,FRONT+.20],[ENTRY+side*2.45,3.52,FRONT+1.48],[ENTRY+side*.48,3.86,FRONT+1.48]);g.quad([ENTRY+side*.48,3.84,FRONT+1.48],[ENTRY+side*2.45,3.50,FRONT+1.48],[ENTRY+side*2.45,3.50,FRONT+.20],[ENTRY+side*.48,3.84,FRONT+.20]);mesh('canopy-cream-soffit-'+side,g,C.cream);}
    mesh('small-front-pediment',profile([[ENTRY-2.20,4.61],[ENTRY,5.12],[ENTRY+2.20,4.61]],FRONT-.10,FRONT+.19),C.dark);letters('shop-gold-name','松 林 快 餐',ENTRY,4.56,FRONT+.30,6.82,.95);
   });
-  group('entry-steps',()=>{b.box(ENTRY,H.base/2,FRONT+.74,4.84,H.base,1.62,C.stone,24);for(let k=0;k<6;k++){const h=.14*(6-k);b.box(ENTRY,h/2,FRONT+1.67+k*.31,4.84,h,.32,C.stone,24);}for(const side of[-1,1]){b.box(ENTRY+side*2.60,.66,FRONT+1.78,.28,1.10,2.35,C.cream,24);post(ENTRY+side*2.60,FRONT+2.82,1.02);}});
+  group('entry-steps',()=>{
+   // Forecourt paving is .15 m high; retain six fitted rises above that surface.
+   // The first former tread is merged into the landing, with no coplanar overlap.
+   const start=-.07,landingEnd=1.825;b.box(ENTRY,H.base/2,FRONT+(start+landingEnd)/2,4.84,H.base,landingEnd-start,C.stone,24);
+   for(let k=1;k<6;k++){const a=1.515+k*.31,c=k===5?3.38:1.515+(k+1)*.31,h=.15+(H.base-.15)*(6-k)/6;b.box(ENTRY,h/2,FRONT+(a+c)/2,4.84,h,c-a,C.stone,24);}
+   for(const side of[-1,1]){b.box(ENTRY+side*2.60,.66,FRONT+1.78,.28,1.10,2.35,C.cream,24);post(ENTRY+side*2.60,FRONT+2.82,1.02);}
+  });
   // Two independent, thin blue pitched shelters, with no opaque walls below them.
   sheds.forEach((rect,index)=>group('blue-shed-'+index,()=>b.local(rect.x0,0,rect.z1,Math.PI/2,()=>{const s={x0:0,x1:rect.z1-rect.z0,z0:0,z1:rect.x1-rect.x0},mid=s.x1/2,narrow=s.x1/4.40,g=new G.Geometry();for(const side of[-1,1]){const x=side<0?s.x0:s.x1;g.quad([x,SH.eave,s.z0],[x,SH.eave,s.z1],[mid,SH.ridge,s.z1],[mid,SH.ridge,s.z0]);g.quad([mid,SH.ridge-.035,s.z0],[mid,SH.ridge-.035,s.z1],[x,SH.eave-.035,s.z1],[x,SH.eave-.035,s.z0]);}mesh('blue-roof-'+index,g,C.blue,24);
    for(const z of[s.z0,(s.z0+s.z1)/2,s.z1]){for(const x of[s.x0,s.x1]){b.beam([x,.15,z],[x,SH.eave,z],.038,C.iron,9);b.box(x,.25,z,.13,.23,.13,C.iron,9);}curve([[s.x0,SH.eave,z],[mid,SH.ridge,z],[s.x1,SH.eave,z]],.037);b.beam([s.x0,SH.eave,z],[s.x1,SH.eave,z],.03,C.iron,9);}

@@ -118,6 +118,15 @@ function render(b,f){
   box('east-lobby-canopy',-336.20,3.86,south(-336.2)+1.08,13.42,.34,2.34,C.canopy);
   box('east-lobby-platform',-335.25,.40,south(-335.25)+1.15,10.66,.30,2.60,C.base);
   for(let j=0;j<4;j++)box('east-lobby-south-step',-335.25,.065*(4-j),south(-335.25)+2.57+j*.31,10.66,.13*(4-j),.35,C.wall);
+  // The own 2013 entrance view shows a solid east stair cheek with a sloping
+  // top. Fit it to the existing landing/upper step; retain all original steps.
+  {const x0=-329.97,x1=-329.64,z0=south(-335.25)-.11,z1=south(-335.25)+2.65,
+    a=[x0,0,z0],b0=[x1,0,z0],c=[x1,0,z1],d=[x0,0,z1],
+    A=[x0,.92,z0],B=[x1,.92,z0],C0=[x1,.80,z1],D=[x0,.80,z1],g=new G.Geometry();
+   g.quad(a,b0,c,d).quad(A,D,C0,B).quad(a,A,B,b0).quad(d,c,C0,D).quad(a,d,D,A).quad(b0,B,C0,c);
+   mesh('east-lobby-solid-stair-cheek',g,C.base);
+  }
+
   // The east end has no giant glazed facade; the identified A-seat wall is
   // predominantly solid, with a small northern column of ordinary windows.
   for(const y of[1.93,5.30,8.52])for(const z of[-441.65,-445.0])box('east-end-opening',-329.485,y,z,.075,1.52,1.12,C.glass,28);

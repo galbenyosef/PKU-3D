@@ -67,6 +67,39 @@ function gable(b,side){b.local(side*P.W/2,0,0,side*Math.PI/2,()=>{
  // Round red attic vent is observed in the east gable original.
  const disc=new G.Geometry();for(let j=0;j<24;j++){const a=j/24*Math.PI*2,c=(j+1)/24*Math.PI*2;disc.tri([0,11.70,.025],[.24*Math.cos(a),11.70+.16*Math.sin(a),.025],[.24*Math.cos(c),11.70+.16*Math.sin(c),.025]);}b.mesh('south22-attic-vent',disc,0,0,0,1,1,1,C.red,6);
  });}
+// South doorway only: preserve the original ground ring and all other faces.
+function southDoorWall(ground){
+ const original=Y.Footprints.walls(ground,.5,H.eave),g=new G.Geometry(),r=P.wallRing,cs=Math.cos(P.faceSkew),sn=Math.sin(P.faceSkew),u=p=>cs*(p[0]-P.entryX)-sn*(p[1]-P.entryZ);
+ // The first two ring segments share the independently registered entry node.
+ g.v.push(...original.v.slice(2*6*8));
+ for(let i=0;i<2;i++){const a=r[i],c=r[i+1],ua=u(a),uc=u(c),cuts=[ua,...[-1.45,1.45].filter(x=>x>ua&&x<uc),uc],at=(x,y)=>{const t=(x-ua)/(uc-ua);return[a[0]+(c[0]-a[0])*t,y,a[1]+(c[1]-a[1])*t];},panel=(a,c,lo,hi)=>g.quad(at(a,lo),at(c,lo),at(c,hi),at(a,hi));
+  for(let j=1;j<cuts.length;j++){const lo=cuts[j-1],hi=cuts[j],mid=(lo+hi)/2;if(mid>-1.45&&mid<1.45){panel(lo,hi,.5,.6);panel(lo,hi,3.25,H.eave);}else panel(lo,hi,.5,H.eave);}
+ }
+ return g;
+}
+function southDoor(b){
+ const box=(x,y,z,w,h,d,c=C.red,mat=6)=>b.box(x,y,z,w,h,d,c,mat);
+ const pane=(x0,x1,y0,y1)=>{box((x0+x1)/2,(y0+y1)/2,.13,x1-x0,y1-y0,.04,C.glass,5);};
+ // Paired leaves, narrow glazed sidelights and a wide upper light are visible
+ // in the institute's own 2023 doorway photo. Absolute sizes remain fitted.
+ for(const x of[-1.41,-1.04,1.04,1.41])box(x,1.925,.10,.08,2.65,.16);
+ box(0,1.625,.10,.08,2.05,.16);
+ for(const y of[.64,2.65,3.21])box(0,y,.10,2.9,.08,.16);
+ pane(-1.37,-1.08,1.43,2.61);pane(1.08,1.37,1.43,2.61);
+ pane(-1,-.04,1.43,2.61);pane(.04,1,1.43,2.61);
+ pane(-1,1,2.69,3.17);pane(-1.37,-1.08,2.69,3.17);pane(1.08,1.37,2.69,3.17);
+ for(const [x0,x1]of[[-1.37,-1.08],[-1,-.04],[.04,1],[1.08,1.37]]){
+  // Bounded inset timber panels; no solid plate behind any glazing.
+  for(const [lo,hi]of[[.68,1.05],[1.09,1.39]])box((x0+x1)/2,(lo+hi)/2,.075,x1-x0,hi-lo,.10);
+  for(const y of[1.07,1.41])box((x0+x1)/2,y,.105,x1-x0,.04,.16);
+  for(const y of[1.84,2.24])box((x0+x1)/2,y,.158,x1-x0,.025,.025);
+ }
+ // The short neutral reveal joins the frame to the source wall, not a room fit.
+ for(const x of[-1.45,1.45])box(x,1.925,-.02,.025,2.65,.26,C.brick,30);
+ box(0,3.25,-.02,2.9,.025,.26,C.brick,30);
+ box(.09,1.51,.22,.035,.18,.05,'#303533',29);box(.17,1.56,.235,.18,.035,.045,'#303533',29);
+ box(.87,2.68,.22,.19,.055,.07,'#b8c0bb',29);b.beam([.91,2.71,.22],[.98,2.79,.18],.012,'#b8c0bb',29);
+}
 function render(b,f){b.id=f.properties.pickId;
  // Preserve the two existing atlas allocations so later campus labels keep
  // their exact UVs. The old floating facade lettering is not drawn again.
@@ -74,19 +107,26 @@ function render(b,f){b.id=f.properties.pickId;
  b.local(P.centre[0],0,P.centre[1],P.rotation,()=>{
  const ground={type:'Polygon',coordinates:[P.wallRing]};
  b.mesh('south22-ground-plinth-walls',Y.Footprints.walls(ground,0,.6),0,0,0,1,1,1,C.stone,10);b.mesh('south22-ground-plinth-top',Y.Footprints.surface(ground,.6),0,0,0,1,1,1,C.stone,10);
- b.mesh('south22-original-ground-walls',Y.Footprints.walls(ground,.5,H.eave),0,0,0,1,1,1,C.brick,30);b.mesh('south22-wall-top',Y.Footprints.surface(ground,H.eave),0,0,0,1,1,1,C.brick,30);
+ b.mesh('south22-original-ground-walls',southDoorWall(ground),0,0,0,1,1,1,C.brick,30);b.mesh('south22-wall-top',Y.Footprints.surface(ground,H.eave),0,0,0,1,1,1,C.brick,30);
  for(const side of[-1,1])b.local(0,0,side*P.D/2,side<0?Math.PI-P.faceSkew:P.faceSkew,()=>{
-  for(const y of[.85,3.64,6.84,9.94])b.box(0,y,.10,P.W,.19,.22,C.stone,10);
+  for(const y of[.85,3.64,6.84,9.94]){
+   if(side>0&&y===.85){const center=P.entryX*Math.cos(P.faceSkew)-(P.entryZ-P.D/2)*Math.sin(P.faceSkew);for(const[a,c]of[[-P.W/2,center-1.49],[center+1.49,P.W/2]])b.box((a+c)/2,y,.10,c-a,.19,.22,C.stone,10);}
+   else b.box(0,y,.10,P.W,.19,.22,C.stone,10);
+  }
   for(let k=-6;k<=6;k++)for(let f=0;f<3;f++){if(side>0&&k===0&&f===0)continue;window(b,k*3.58,1.88+H.floor*f,.105,1.85,1.95);}
-  for(const k of[-6.5,-4.5,-2.5,-.5,.5,2.5,4.5,6.5])b.box(k*3.58,5.23,.20,.29,9.63,.27,C.stone,10);
+  for(const k of[-6.5,-4.5,-2.5,-.5,.5,2.5,4.5,6.5]){
+   const x=k*3.58,doorCenter=P.entryX*Math.cos(P.faceSkew)-(P.entryZ-P.D/2)*Math.sin(P.faceSkew);
+   // The inherited regular pier at the left leaf is absent in the named door
+   // photo. Trim only its doorway-height intersection, preserving both ends.
+   if(side>0&&Math.abs(x-doorCenter)<1.45+.145){for(const[lo,hi]of[[.415,.6],[3.25,10.045]])b.box(x,(lo+hi)/2,.20,.29,hi-lo,.27,C.stone,10);}
+   else b.box(x,5.23,.20,.29,9.63,.27,C.stone,10);
+  }
  });
  roof(b,0,0,P.roofW,P.roofD,H.eave,H.ridge-H.eave,'main');
  for(const side of[-1,1]){gable(b,side);const x=side*(P.roofW/2-.15);for(const[a,c]of[[[x,12.95,0],[x-side*.10,13.16,0]],[[x-side*.10,13.16,0],[x-side*.42,13.25,0]],[[x-side*.42,13.25,0],[x-side*.63,13.13,0]]])b.beam(a,c,.13,C.tile,2);}
  // South door belongs to the courtyard; the gable arched door is distinct.
  b.local(P.entryX,0,P.entryZ+.13,P.faceSkew,()=>{
-  b.box(0,1.85,.10,2.9,2.8,.16,C.red,6);b.box(0,2.10,.20,2.65,2.0,.05,C.glass,5);
-  for(const x of[-1.04,0,1.04])b.box(x,1.87,.25,.09,2.66,.08,C.red,6);
-  b.box(0,2.98,.25,2.85,.11,.08,C.red,6);b.box(0,.71,.25,2.83,.09,.08,C.red,6);
+  southDoor(b);
   for(const x of[-1.75,1.75])b.box(x,1.87,.37,.38,3.0,.73,C.brick,30);
   roof(b,0,.58,4.4,1.45,3.5,.55,'south-entry');
   for(let j=0;j<3;j++)b.box(0,.08+j*.12,1.28-j*.31,4.12,.16,.64,C.stone,10);

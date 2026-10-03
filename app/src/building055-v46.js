@@ -37,6 +37,9 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
       panel(cursor,a,lo,hi);panel(a,c,lo,q.lo);panel(a,c,q.hi,hi);
       const frame=q.door&&side===1?C.dark:C.frame;
       group('opening-'+fl,()=>{b.box(q.x,y,-.13,q.w-.12,h-.12,.04,C.glass,5);for(const u of[a,c])b.box(u,y,0,q.bank?.14:.085,h,.24,frame,24);for(const v of[q.lo,q.hi])b.box(q.x,v,0,q.w,.085,.24,frame,24);
+       // The 2018 photograph with the 43 number plaque shows a narrow white
+       // transom above the bank door leaves, distinct from their mid rails.
+       if(q.bank)group('bank-transom',()=>b.box(q.x,q.hi-.24,-.06,q.w-.08,.075,.10,C.frame,24));
        const cols=q.bank?8:q.door?4:2;for(let i=1;i<cols;i++)b.box(a+q.w*i/cols,y,-.06,q.bank?.12:.065,h-.08,.10,frame,24);b.box(q.x,q.door?1.82:q.hi-.62,-.06,q.w-.08,.065,.10,frame,24);
        if(!q.door){b.box(q.x,q.lo-.06,.10,q.w+.22,.12,.38,C.white,24);if(fl>0&&(side%2||Math.abs(q.x)>7.8))b.box(q.x,lo+.34,.015,q.w+.40,.70,.22,C.white,24);}
       });cursor=c;
@@ -46,6 +49,9 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
     }
     b.box(0,TOP+.05,.10,width+.25,.18,.50,C.white,24);b.box(0,EAVE-.05,.19,width+.54,.12,.74,C.dark,24);
     if(side===0)group('north-bank-2018',()=>{b.box(0,4.27,.34,11.15,1.50,.36,C.white,24);b.box(0,3.65,.535,10.55,.05,.045,'#a83935',24);textSign('icbc-2018','ICBC　中国工商银行',0,4.30,.535,10.40,1.03);
+     // The pictured bank forecourt is continuous from the door to its steps.
+     // Fill the original .41 m gap beyond the plinth without moving a stair.
+     group('bank-landing-bridge',()=>b.box(0,BASE/2,.16,10.6,BASE,.64,C.stone,24));
      for(let k=0;k<3;k++){const h=BASE-k*.24;b.box(0,h/2,.64+k*.34,10.6,h,.36,C.stone,24);}b.sphere(0,6.15,.20,.32,.24,.07,C.white,24,0,true);textSign('number43','43',0,6.16,.29,.50,.35);
     });
     if(side===2)group('south-entry-position-fitted',()=>{for(let k=0;k<4;k++){const h=BASE-k*.18;b.box(0,h/2,.33+k*.34,4.1,h,.35,C.stone,24);}});

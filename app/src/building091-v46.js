@@ -85,6 +85,20 @@ function render(b,f){
  function porch(){
   const front=D+3.25,w=8.4,half=3.45;
   group('porch-base',()=>{b.box(ENTRY,H.base/2,D+1.65,w,H.base,3.5,C.stone,10);for(let i=0;i<4;i++)b.box(ENTRY,(i+1)*.18/2,D+4.5-i*.32,7.0,(i+1)*.18,.34,C.stone,10);});
+  // Department entrance photos show solid sloping stone cheeks flanking the
+  // four retained treads. Dimensions are fitted to those treads, not surveyed.
+  // One canonical closed wedge is translated twice; the cache stores one mesh.
+  const cheek=new G.Geometry(),profile=[[3.37,.02],[4.67,.02],[4.67,.18],[3.71,.72],[3.37,.72]];
+  for(let i=0;i<profile.length;i++){
+   const a=profile[i],c=profile[(i+1)%profile.length];
+   cheek.quad([-.225,a[1],a[0]],[.225,a[1],a[0]],[.225,c[1],c[0]],[-.225,c[1],c[0]]);
+  }
+  for(let i=1;i<profile.length-1;i++){
+   const a=profile[0],c=profile[i],d=profile[i+1];
+   cheek.tri([-.225,a[1],a[0]],[-.225,c[1],c[0]],[-.225,d[1],d[0]]);
+   cheek.tri([.225,a[1],a[0]],[.225,d[1],d[0]],[.225,c[1],c[0]]);
+  }
+  for(const side of[-1,1])b.mesh('091-stair-cheek',cheek,ENTRY+side*3.725,0,D,1,1,1,C.stone,10);
   group('porch-column',()=>{for(const x of[ENTRY-half,ENTRY+half]){b.cyl(x,H.base,front,.285,1.35,'#878972',12,1,6);b.cyl(x,H.base+1.35,front,.285,2.89,C.red,12,1,6);b.cyl(x,H.base-.02,front,.32,.12,C.stone,12,1,24);}});
   group('porch-door',()=>{
    // The outer red lattice leaves stand open; glazing is at the inner vestibule.

@@ -114,6 +114,22 @@ function render(b,f){
      else b.box(x,(s.eave+6.95)/2,.025,.28,s.eave-6.95,.17,C.brick,30);
     }
    });
+   // No.19's documented south plinth is rendered cement scored in rectangles.
+   // Keep the source wall and leave the entire porch/door attachment unmarked.
+   // Joint pitch and width are photo fits, not surveyed masonry dimensions.
+   if(s.number===19&&name==='long1')group(name+'-plinth-joints',()=>{
+    const joint=G.plane(),gap=.012,lo=.055,mid=.46,hi=.855,clear=2.30;
+    const spans=[[.02,entryX-clear],[entryX+clear,w-.02]];
+    const line=(x,y,width,height)=>b.mesh('unit-joint',joint,x,y,.006,width,height,1,'#96998d',24);
+    for(const [a,c]of spans)if(c>a){
+     line((a+c)/2,mid,c-a,gap);
+     const pitch=w/(count*2);
+     for(let x=pitch;x<w;x+=pitch)if(x-gap/2>=a&&x+gap/2<=c){
+      line(x,(lo+mid-gap/2)/2,gap,mid-gap/2-lo);
+      line(x,(mid+gap/2+hi)/2,gap,hi-mid-gap/2);
+     }
+    }
+   });
    group(name+'-openings',()=>{for(const h of holes){
     const cy=(h.lo+h.hi)/2,hh=h.hi-h.lo;
     b.box(h.x,cy,-.13,h.w,hh,.025,h.door?C.dark:C.glass,h.door?5:28);
@@ -149,20 +165,45 @@ function render(b,f){
     b.mesh('porch-tiles',cap,0,0,0,1,1,1,C.roof,2);
     for(let k=0;k<=18;k++)for(let j=0;j<8;j++){const u=-2.22+k*4.44/18;b.beam(cp(u,j/8),cp(u,(j+1)/8),.035,C.tile,2);}
     for(let j=0;j<4;j++)b.box(x,.075+j*.12,2.91-j*.31,4.30,.15,.66,C.stone,24);
-    b.box(x,.38,1.35,4.30,.22,2.6,C.stone,24);
+    // Keep the rear landing edge; stop before the third existing tread.
+    b.box(x,.38,1.015,4.30,.22,1.93,C.stone,24);
     // No.20's photographed porch has solid sloping stone stair cheeks.
     // Keep all doorway positions and the shared straight galleries fixed.
     if(s.number===20){
      const cheek=new G.Geometry();
+     // Fitted to the retained tread noses, not surveyed dimensions. The rear
+     // meets the .49 platform, rises to the .51 top tread, then covers every
+     // lower nose before reaching the ground beyond the lowest step.
+     const profile=[[1.94,.49],[2.31,.51],[3.55,.08]];
      for(const side of[-1,1]){
-      const x0=x+side*2.15,x1=x+side*2.53,z0=1.94,z1=3.25;
-      const a=[x0,.49,z0],c=[x1,.49,z0],d=[x1,.08,z1],e=[x0,.08,z1];
-      const quad=(...points)=>cheek.quad(...(side>0?points.reverse():points));
-      quad(a,c,d,e);quad(e,d,[x1,0,z1],[x0,0,z1]);
-      quad(a,e,[x0,0,z1],[x0,0,z0]);
-      quad(d,c,[x1,0,z0],[x1,0,z1]);
+      const xl=x+(side<0?-2.53:2.15),xr=xl+.38;
+      for(let j=1;j<profile.length;j++){
+       const [za,ya]=profile[j-1],[zb,yb]=profile[j];
+       cheek.quad([xl,ya,za],[xl,yb,zb],[xr,yb,zb],[xr,ya,za]);
+       cheek.quad([xl,0,za],[xr,0,za],[xr,0,zb],[xl,0,zb]);
+       cheek.quad([xl,0,za],[xl,0,zb],[xl,yb,zb],[xl,ya,za]);
+       cheek.quad([xr,0,zb],[xr,0,za],[xr,ya,za],[xr,yb,zb]);
+      }
+      const [za,ya]=profile[0],[zb,yb]=profile[profile.length-1];
+      cheek.quad([xr,0,za],[xl,0,za],[xl,ya,za],[xr,ya,za]);
+      cheek.quad([xl,0,zb],[xr,0,zb],[xr,yb,zb],[xl,yb,zb]);
      }
      b.mesh('porch-stone-cheeks',cheek,0,0,0,1,1,1,C.stone,24);
+    }
+    // No.21's own 2021 north-door photograph shows solid stone stair
+    // cheeks. A closed local mesh is instanced twice; no shared world-space
+    // mesh key, and no change to No.20 or the gallery construction.
+    if(s.number===21){
+     const cheek=b.geo('heren21-stair-cheek',()=>{
+      const g=new G.Geometry(),profile=[[0,1.65],[0,3.24],[.18,3.24],[.65,1.94],[.65,1.65]];
+      const p=(side,i)=>[side*.19,profile[i][0],profile[i][1]];
+      for(const side of[-1,1])for(let i=1;i<profile.length-1;i++){
+       const tri=[p(side,0),p(side,i),p(side,i+1)];g.tri(...(side>0?tri.reverse():tri));
+      }
+      for(let i=0;i<profile.length;i++){const j=(i+1)%profile.length;g.quad(p(-1,i),p(1,i),p(1,j),p(-1,j));}
+      return g;
+     });
+     for(const side of[-1,1])b.mesh('porch-stone-cheek21',cheek,x+side*2.34,0,0,1,1,1,C.stone,24);
     }
     // Small circular number plate is photographed. Geometry avoids adding
     // three new text-atlas slots and changing unrelated objects' texture UVs.

@@ -14,7 +14,9 @@ function render(b,f){b.id=f.properties.pickId;const poly=f.geometry.coordinates[
   group(name+'-stone-bands',()=>{for(const yy of[.44,.92]){const door=holes.find(q=>q.door);if(door){const a=door.x-door.w/2,c=door.x+door.w/2;b.box(a/2,yy,.035,a,.1,.08,C.stone,24);b.box((c+width)/2,yy,.035,width-c,.1,.08,C.stone,24);}else b.box(width/2,yy,.035,width,.1,.08,C.stone,24);}});
   if(!decorate)return;
   group('east-four-window-bays',()=>{for(const q of holes.filter(q=>!q.door)){const h=q.hi-q.lo,y=(q.lo+q.hi)/2;b.box(q.x,y,-.1,q.w,h,.04,C.glass,5);for(let j=0;j<=4;j++)b.box(q.x-q.w/2+q.w*j/4,y,.02,.065,h+.06,.18,C.red,6);for(const yy of[q.lo,1.28,3.43,3.91,q.hi])b.box(q.x,yy,.035,q.w+.07,.07,.19,C.red,6);for(let j=0;j<4;j++){const x=q.x-q.w/2+q.w*(j+.5)/4;b.box(x,4.19,.04,q.w/4-.08,.045,.13,C.red,6);}}});
-  const q=holes.find(q=>q.door);group('east-central-recess',()=>{b.box(q.x,2.32,-1.16,q.w,4.24,.12,C.dark,5);for(const dx of[-q.w/2,0,q.w/2])b.box(q.x+dx,2.32,-1.08,.1,4.25,.15,C.red,6);for(const dx of[-q.w/2,q.w/2])b.box(q.x+dx,2.46,-.64,.15,4.5,1.28,C.brick,30);b.box(q.x,H.base+.06,-.58,q.w,.12,1.16,C.stone,24);b.box(q.x,.15,.32,q.w+.28,.30,.62,C.stone,24);});
+  const q=holes.find(q=>q.door);group('east-central-recess',()=>{b.box(q.x,2.32,-1.16,q.w,4.24,.12,C.dark,5);for(const dx of[-q.w/2,0,q.w/2])b.box(q.x+dx,2.32,-1.08,.1,4.25,.15,C.red,6);for(const dx of[-q.w/2,q.w/2])b.box(q.x+dx,2.46,-.64,.15,4.5,1.28,C.brick,30);b.box(q.x,H.base+.06,-.58,q.w,.12,1.16,C.stone,24);b.box(q.x,.15,.30,q.w+.28,.30,.66,C.stone,24);});
+  // Close the observed central recess above the existing rear frame; depth remains fitted.
+  group('east-recess-soffit',()=>b.box(q.x,4.50,-.64,q.w+.15,.12,1.28,C.brick,30));
   group('east-red-columns-and-frieze',()=>{for(let j=0;j<=5;j++){const x=.44+(width-.88)*j/5;b.cyl(x,.92,.07,.11,3.72,C.red,10,1,6);b.box(x,4.63,.09,.28,.22,.25,C.green,6);b.box(x,4.71,.115,.16,.06,.27,C.gold,6);}b.box(width/2,4.72,.055,width-.6,.36,.23,C.red,6);b.box(width/2,4.94,.12,width+.16,.14,.31,C.red,6);});
  });}
  b.local(O[0],0,O[1],R,()=>{

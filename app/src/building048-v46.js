@@ -18,7 +18,25 @@ for(const upper of[false,true]){const label=upper?'upper-pointed':'lower-annular
 b.local(O[0],0,O[1],R,()=>b.local(CX,0,CZ,0,()=>{
  group('stone-plinth',()=>{b.box(0,.275,0,13.6,.55,14.0,C.stone,24);});
  for(const upper of[false,true]){const hx=upper?5.8:6.6,hz=upper?6:6.8,base=upper?5.95:.55,top=upper?8.45:4.25;for(let side=0;side<4;side++){const width=side%2?hz*2:hx*2,ox=side===1?hx:side===3?-hx:0,oz=side===0?-hz:side===2?hz:0,rot=[Math.PI,Math.PI/2,0,-Math.PI/2][side];b.local(ox,0,oz,rot,()=>group((upper?'upper':'lower')+'-face-'+side,()=>{
- const positions=upper?[-3.55,0,3.55]:[-4.7,-2.35,0,2.35,4.7],holeWidth=upper?2.3:1.80,doorSide=!upper&&side===3,holes=positions.map(x=>({x,w:doorSide&&x===0?2.05:holeWidth,lo:doorSide&&x===0?base:base+.65,hi:top-.33,door:doorSide&&x===0}));let cursor=-width/2;const panel=(s,e,lo,hi)=>{if(e>s&&hi>lo)b.box((s+e)/2,(lo+hi)/2,-.045,e-s,hi-lo,.09,C.wall,24);};for(const q of holes){const s=q.x-q.w/2,e=q.x+q.w/2;panel(cursor,s,base,top);panel(s,e,base,q.lo);panel(s,e,q.hi,top);const cy=(q.lo+q.hi)/2,h=q.hi-q.lo;for(const x of[s,e])b.box(x,cy,-.08,.10,h,.22,C.red,24);for(const y of[q.lo,q.hi])b.box(q.x,y,-.08,q.w,.10,.22,C.red,24);b.box(q.x,cy,-.22,q.w-.12,h-.1,.05,C.glass,5);for(let x=s+.25;x<e;x+=.28)b.box(x,cy,-.175,.038,h-.10,.055,C.red,24);for(let y=q.lo+.22;y<q.hi;y+=.34)b.box(q.x,y,-.175,q.w-.10,.038,.055,C.red,24);b.box(q.x,cy,-.14,.085,h,.08,C.red,24);if(q.door){b.box(q.x,q.lo+.36,-.14,q.w-.13,.65,.09,C.red,24);}cursor=e;}panel(cursor,width/2,base,top);
+ const positions=upper?[-3.55,0,3.55]:[-4.7,-2.35,0,2.35,4.7],holeWidth=upper?2.3:1.80,doorSide=!upper&&side===3,holes=positions.map(x=>({x,w:doorSide&&x===0?2.05:holeWidth,lo:doorSide&&x===0?base:base+.65,hi:top-.33,door:doorSide&&x===0}));let cursor=-width/2;const panel=(s,e,lo,hi)=>{if(e>s&&hi>lo)b.box((s+e)/2,(lo+hi)/2,-.045,e-s,hi-lo,.09,C.wall,24);};for(const q of holes){const s=q.x-q.w/2,e=q.x+q.w/2;panel(cursor,s,base,top);panel(s,e,base,q.lo);panel(s,e,q.hi,top);const cy=(q.lo+q.hi)/2,h=q.hi-q.lo;for(const x of[s,e])b.box(x,cy,-.08,.10,h,.22,C.red,24);for(const y of[q.lo,q.hi])b.box(q.x,y,-.08,q.w,.10,.22,C.red,24);if(q.door)group('photo-door-leaves',()=>{
+ // North Pavilion's own gallery: four red leaves, diamond lights, solid lower panels,
+ // and a separate glazed transom. Direction and all dimensions remain fitted.
+ const bottom=q.lo+.72,lightTop=q.hi-.82,rail=.09,leaf=q.w/4;
+ for(let i=0;i<4;i++){const left=s+i*leaf,right=left+leaf,c=(left+right)/2,innerLeft=left+.065,innerRight=right-.065;
+ b.box(c,(bottom+lightTop)/2,-.22,leaf-.09,lightTop-bottom,.05,C.glass,5);
+ b.box(c,(lightTop+q.hi)/2,-.22,leaf-.09,q.hi-lightTop-.08,.05,C.glass,5);
+ b.box(c,(q.lo+bottom)/2,-.18,leaf-.10,bottom-q.lo-.08,.08,C.wood,24);
+ if(i<3)b.box(right,cy,-.13,.11,h,.12,C.red,24);
+ for(const y of[bottom,lightTop])b.box(c,y,-.12,leaf,rail,.14,C.red,24);
+ // Raised rectangular lower panel is framed; lattice terminates at its own light.
+ b.box(c,(q.lo+bottom)/2,-.12,leaf-.20,bottom-q.lo-.22,.05,C.red,24);
+ const low=bottom+.055,high=lightTop-.055,pitch=.24;
+ for(const slope of[-1,1])for(let intercept=low-(innerRight-innerLeft);intercept<high+(innerRight-innerLeft);intercept+=pitch){
+ let a=innerLeft,z=innerRight; if(slope===1){a=Math.max(a,innerLeft+low-intercept);z=Math.min(z,innerLeft+high-intercept);}else{a=Math.max(a,innerLeft+intercept-high);z=Math.min(z,innerLeft+intercept-low);}
+ if(z>a+.025)b.beam([a,intercept+slope*(a-innerLeft),-.155],[z,intercept+slope*(z-innerLeft),-.155],.018,C.red,24);
+ }
+ }
+});else{b.box(q.x,cy,-.22,q.w-.12,h-.1,.05,C.glass,5);for(let x=s+.25;x<e;x+=.28)b.box(x,cy,-.175,.038,h-.10,.055,C.red,24);for(let y=q.lo+.22;y<q.hi;y+=.34)b.box(q.x,y,-.175,q.w-.10,.038,.055,C.red,24);b.box(q.x,cy,-.14,.085,h,.08,C.red,24);}cursor=e;}panel(cursor,width/2,base,top);
  for(const x of upper?[-5.55,-2.0,2.0,5.55]:[-6.35,-3.52,-1.17,1.17,3.52,6.35]){if(Math.abs(x)>width/2-.15)continue;b.cyl(x,base, .13,.15,top-base,C.red,12,1,24);}
  // Only a thin perimeter support band bridges the wall/beam to the actual local roof surface.
  group('roof-wall-contact',()=>{const mesh=new G.Geometry(),co=Math.cos(b.rotation),si=Math.sin(b.rotation),toFace=p=>{const w=vertex(...p),dx=w[0]-b.origin[0],dz=w[2]-b.origin[2];return[dx*co-dz*si,w[1],dx*si+dz*co];};

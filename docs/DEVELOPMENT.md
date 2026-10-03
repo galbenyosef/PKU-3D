@@ -35,7 +35,9 @@ The renderer retains some numbered internal module names to preserve cache compa
 
 For interface and documentation changes, use `npm run build`. After changing buildings, vegetation or other scene inputs, use `npm run build:scene` to regenerate the cache. Check affected buildings and interactions in the browser.
 
-`npm test` checks decoding, instance transfer, visibility and draw reuse. Visual review and performance comparisons remain separate checks. See [Performance](development/performance.md).
+`npm test` runs the explicit portable suite in `app/tests/suite.json`, covering decoding, instance transfer, visibility, draw reuse and selected model repairs. See [test scope and historical checks](development/testing.md). Visual review and performance comparisons remain separate checks; see [Performance](development/performance.md).
+
+Directional building views fit the eight envelope corners using the current yaw, elevation, perspective and visible space beside or above the detail panel. Point-mapped gates use their declared display extent. Keep the camera offset and framing calculation consistent; a universal mobile distance multiplier cannot fit both long side elevations and roof views. Mapped envelopes may omit projecting sculptures or boundary walls, so inspect those separately rather than claiming the envelope is a surveyed model boundary.
 
 ## Rendering
 
@@ -51,6 +53,18 @@ Contact shading reconstructs view-space positions from the actual asymmetric pro
 
 The seven-millisecond upload budget carries across decoded chunks, including index buffers, avoiding redundant chunk-end animation frames. Texture and scene loading start together; both settle before readiness or failure cleanup. Startup shares identical shader stages within one compilation batch and releases the temporary shaders afterward. Instance visibility metadata is prepared as decoded chunks arrive; final readiness still validates every mesh buffer. Context restoration creates all resources again.
 
+After resolving multisample color and depth into the post-processing textures, the renderer invalidates only the transient multisample attachments. The resolved textures, sample count, contact shading and reflection targets remain intact; the next scene pass clears depth and redraws the sky. This follows the [WebGL 2 framebuffer invalidation contract](https://registry.khronos.org/webgl/specs/2.0/#3.7.4).
+
+The reflection pass also invalidates its depth renderbuffer after drawing. Reflection color stays valid for later sampling, while depth is cleared before every reflection redraw. Never invalidate the shadow depth texture or the resolved scene depth before its post-processing consumer.
+
+Main and reflection passes draw the far-depth sky after opaque geometry and people, but before transparent panes. The unchanged `LEQUAL` depth test rejects sky samples already covered by opaque surfaces. Keep the sky depth writes disabled and the transparent ordering intact, including empty or entirely transparent scenes. `state.skyAfterOpaque = false` retains the former ordering for same-camera pixel comparisons; it does not change sky quality.
+
+Reflection visibility uses the water sampling scissor as a conservative culling frustum, with an additional one-texel guard. Only the CPU culling planes change: raster projection, mesh data, materials and detail thresholds remain unchanged. The scissor participates in the reflection visibility cache key and is cleared after the reflection pass. Missing bounds retain the full frustum. `state.reflectionFrustum = false` retains full-frustum submission for same-camera comparisons; the scissor itself has a separate diagnostic switch.
+
+Prepared caches keep vertex, 16-bit index and 32-bit index streams in separate chunk groups so lossless byte shuffling remains aligned. Mesh and instance ordering stays intact. Unchanged glyph drawing inputs reuse a checksum-verified atlas during subsequent bakes.
+
+Prepared-scene decoding interleaves instance-bearing chunks with mesh-only chunks, starting larger instance chunks early so CPU visibility preparation can overlap subsequent decoding and uploads. The manifest still creates buckets in their original order; decoded records are assigned by key, without reordering their bytes. Keep two workers, one pending decode per worker, checksum verification, local-file fallbacks and the existing seven-millisecond upload yield budget.
+
 Visible instance records are gathered in consecutive spans using typed-array copies. A group skips per-instance checks only when its conservative bounds and minimum and maximum detail sizes prove every record passes or fails the unchanged thresholds; isolation, vegetation hiding and route filtering retain individual checks. Ambiguous groups use the existing tests. Gaps terminate a copy span, and buffer growth preserves earlier records and pending spans.
 
 ## Release
@@ -62,3 +76,18 @@ Run `npm run deploy` to build and push the generated website to `gh-pages`. GitH
 ## Local reference material
 
 Development photographs, videos and research records are excluded from Git and release packages. In a maintainer workspace that already has these files, `npm run dev:references` serves the local source; add `?dev=1` to display building references. This mode is restricted to local hosts and is unavailable on GitHub Pages.
+反射通道可根据可见水面在反射投影中的保守包围范围设置 scissor，避免绘制不会被水面采样的区域。预建网格只增加静态水面的局部包围盒元数据，顶点、实例与压缩块保持原样。边界包含最大波纹采样偏移和双线性过滤余量；穿过视点平面、混合材质、动画水面或缺少边界元数据时回退到完整反射。反射尺寸、更新频率、阴影和抗锯齿保持不变，`state.reflectionScissor=false` 可用于同视角对照。
+
+## Model status and audits
+
+See [model status and reference gaps](development/model-status.md) for the delivered scope, named unresolved details and deferred objects. Partial repairs are not whole-building acceptance. Chronological research notes and machine-specific performance records remain in the local evidence archive.
+
+Run `npm run audit:entrances` to compare actual baked building dispatch with the architecture inventory. It checks the scene source hash and rejects stale caches or duplicate IDs. Renderer presence does not establish entrance fidelity; photographic registration and visual inspection remain separate requirements.
+
+For a source adapter that scales an existing entrance below its low-geometry cutoff, `retainLowKeys` can preserve explicitly named original threshold or stair records. It bypasses only that height filter: footprint bounds, clipping, transforms and all other records keep their usual path. Scope the key list to the affected source call; never disable filtering or clipping for an entire campus group to recover two entrance parts.
+
+A building may declare `backObservation46` for a registered rear entrance, using the same validated target, bounds, yaw and elevation as `frontObservation46`. Only the rear button uses it; front, side, roof and isolated whole-building views retain their own framing. Invalid or incomplete metadata falls back to the ordinary full-building rear view. Check the approach, surrounding occlusion and actual mobile panel when adding an entrance target.
+
+Consecutive subdivisions of one original fence segment may reuse an identical endpoint post. Reuse requires the same geometry object and key, contiguous endpoints, and bit-identical complete Float32 instance records. Different paths, corners, materials, metadata and transforms remain separate. This is scene-generation deduplication; it does not change visibility thresholds, fence openings or runtime draw ordering.
+
+Static shared pages retain independent logical meshes and merge only contiguous visible opaque geometry with identical instance bytes and shader routes. Changed geometry or unsupported layouts fall back to ordinary uploads and draws. The portable regression is `app/tests/shared-pages208.test.cjs`; its small historical fixture must not be automatically updated after a failure. `app/tools/update-shared-pages208-fixture.cjs` defaults to a read-only check; reviewed fixture updates use `--write`. Runtime Engine changes use the cached build and still require rendered, offline, context recovery and unchanged performance checks.

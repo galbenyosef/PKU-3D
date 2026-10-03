@@ -96,12 +96,24 @@ function render(b,f){b.id=f.properties.pickId;
    for(const zz of[c.n,c.s]){b.box(m,2.26,zz,w,3.32,.22,C.brick,30);b.box(m,4.005,zz,w,.18,.25,C.stone,24);b.box(m,6.18,zz,w,4.18,.22,C.brick,30);}
    b.box(m,H.terrace-.15,z,w,.30,d,C.stone,24);
    if(c.name==='east')group('terrace-provisional-east',()=>{
+    // 2024 terrace photographs show chamfered stone coping and stepped
+    // baluster heads/feet. The terrace location and dimensions remain fitted.
+    const copingKey='terrace-bevel-coping-'+(w+.08),copingMesh=b.geo('057-'+copingKey,()=>{
+     // Coordinates are origin-local so keyed mesh reuse preserves both placements.
+     const length=w+.08,half=.19,g=new G.Geometry(),profile=[[-half,-.08],[half,-.08],[half,.025],[.12,.08],[-.12,.08],[-half,.025]],ring=x=>profile.map(([z,h])=>[x,h,z]),a=ring(-length/2),c=ring(length/2);
+     for(let k=0;k<profile.length;k++){const j=(k+1)%profile.length;g.quad(a[k],c[k],c[j],a[j]);}
+     for(let k=1;k<profile.length-1;k++){g.tri(a[0],a[k],a[k+1]);g.tri(c[0],c[k+1],c[k]);}
+     return g;
+    });
+    const coping=zz=>b.mesh(copingKey,copingMesh,m,H.terrace+1.06,zz,1,1,1,C.stone,24);
     b.box(m,H.terrace+.015,z,w-.08,.035,d-.08,'#b4b5ab',24);
     for(let zz=c.n+.48;zz<c.s;zz+=.64)b.box(m,H.terrace+.037,zz,w-.08,.008,.012,'#919b94',24);
     // Two visible railing types are fitted to opposite ends of one terrace, not asserted as two separate balconies.
-    b.box(m,H.terrace+.53,c.n+.10,w,.96,.24,C.panel,24);b.box(m,H.terrace+1.07,c.n+.10,w+.08,.16,.38,C.stone,24);
-    b.box(m,H.terrace+.13,c.s-.10,w,.22,.25,C.stone,24);b.box(m,H.terrace+1.06,c.s-.10,w+.08,.16,.38,C.stone,24);
-    for(let k=0;k<5;k++){const x=c.a+.17+k*(w-.34)/4;b.box(x,H.terrace+.61,c.s-.10,.20,.83,.23,C.stone,24);}
+    b.box(m,H.terrace+.53,c.n+.10,w,.96,.24,C.panel,24);coping(c.n+.10);
+    b.box(m,H.terrace+.13,c.s-.10,w,.22,.25,C.stone,24);coping(c.s-.10);
+    for(let k=0;k<5;k++){const x=c.a+.17+k*(w-.34)/4;b.box(x,H.terrace+.61,c.s-.10,.20,.83,.23,C.stone,24);group('baluster-collars',()=>{b.box(x,H.terrace+.29,c.s-.10,.30,.12,.29,C.stone,24);b.box(x,H.terrace+.935,c.s-.10,.30,.09,.29,C.stone,24);});}
+    // Dark skirting visible on the inner face of the solid parapet.
+    group('parapet-skirting',()=>b.box(m,H.terrace+.095,c.n+.235,w-.08,.15,.035,'#39474c',24));
     // Loose furniture communicates the photographed use without filling the walking strip next to the door.
     for(const zz of[c.n+3.35,c.s-3.30]){b.cyl(m,H.terrace,zz,.035,.73,'#4b5e58',12,1,9);b.cyl(m,H.terrace+.73,zz,.57,.055,'#4f625b',32,1,9);for(const shift of[-1,1]){const zc=zz+shift*.90;b.box(m,H.terrace+.44,zc,.47,.05,.46,'#53675e',24);for(const xx of[m-.19,m+.19])for(const off of[-.17,.17])b.box(xx,H.terrace+.23,zc+off,.027,.43,.027,'#4b5e58',9);for(const yy of[.67,.89])b.box(m,H.terrace+yy,zc+shift*.22,.48,.11,.035,'#53675e',24);}}
    });else{for(const zz of[c.n,c.s])b.box(m,H.terrace+.16,zz,w,.31,.23,C.stone,24);}

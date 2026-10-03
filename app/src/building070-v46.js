@@ -94,9 +94,23 @@ function render(b,f){b.id=f.properties.pickId;
   for(const dx of[-.15,.15])b.box(x+dx,2.14,z+.03,.026,.38,.035,C.metal,9);
   for(const side of[-1,1])for(let yy=1.42;yy<8.15;yy+=.74)b.box(x+side*4.13,yy,z+.747,1.31,.012,.013,C.joint,24);
   for(let xx=x-4.8;xx<x+4.8;xx+=1.36)b.box(xx,8.04,z+.747,.012,.77,.013,C.joint,24);
+  // The photographed short stair continues through the stone doorway. Bridge
+  // the recessed glass plane to the landing; the footprint floor is much lower.
+  group('threshold-return',()=>b.box(x,H.landing/2,z-.13,6.38,H.landing,.26,C.stone,21));
+  // The 2022 photo resolves block joints on the small inner stone portal too.
+  // Joint pitch follows the existing fitted stone course, not a surveyed bond.
+  group('inner-portal-joints',()=>{
+   for(const dx of[-1.80,1.80])for(let yy=1.42;yy<4.60;yy+=.74)b.box(x+dx,yy,z+.602,.375,.012,.012,C.joint,24);
+   for(const dx of[-.66,.66])b.box(x+dx,4.85,z+.602,.012,.44,.012,C.joint,24);
+  });
   b.box(x,H.landing/2,z+.66,10.3,H.landing,1.32,C.stone,21);
   for(let i=0;i<4;i++){const h=(4-i)*.165;b.box(x,h/2,z+1.32+(i+.5)*.36,10.5,h,.36,C.stone,21);}
-  for(const side of[-1,1]){const xx=x+side*5.35;for(let i=0;i<4;i++)b.cyl(xx,Math.max(0,H.landing-i*.18),z+.70+i*.68,.037,.94,C.metal,8,1,9);b.beam([xx,1.56,z+.70],[xx,.99,z+2.74],.043,C.metal,9);b.beam([xx,1.13,z+.70],[xx,.56,z+2.74],.025,C.metal,9);}
+  // Contact repair only: retain the fitted rail profile and existing stone steps.
+  // Inset the rail axes onto the narrowest platform. The last two post centres
+  // move 3cm along the retained bars so their complete octagonal feet clear risers.
+  // This does not establish the photographed count or layout of hidden railings.
+  const postZ=[.70,1.38,2.09,2.71],postBase=[.66,.66,.33,.165];
+  for(const side of[-1,1]){const xx=x+side*5.08;for(let i=0;i<4;i++){const top=Math.max(0,H.landing-i*.18)+.94;b.cyl(xx,postBase[i],z+postZ[i],.037,top-postBase[i],C.metal,8,1,9);}b.beam([xx,1.56,z+.70],[xx,.99,z+2.74],.043,C.metal,9);b.beam([xx,1.13,z+.70],[xx,.56,z+2.74],.025,C.metal,9);}
  });}
  b.local(O[0],0,O[1],R,()=>{
   mesh('footprint-floor',F.surface({type:'Polygon',coordinates:[f.geometry.coordinates[0].map(local)]},.045),C.stone,21);

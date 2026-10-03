@@ -30,23 +30,36 @@ function render(b,f){
    if(blank||len<1.3){b.box(len/2,(base+top)/2,-.18,len,h,.36,C.brick,13);return;}
    const curtainRows=Math.max(1,Math.round(h/2.4)),levels=curtain?Array.from({length:curtainRows+1},(_,i)=>base+h*i/curtainRows):[];
    if(!curtain){levels.push(base);for(let y=4.3;y<top-.01;y+=3.9)if(y>base+.01)levels.push(y);levels.push(top);}
-   const rows=levels.length-1;
+   const rows=levels.length-1,closures=new Map();
+   // Fill only the narrow intervals outside pane apertures. Existing glass,
+   // frames, piers and louvres remain untouched; no backing covers a pane.
+   function closeBoundary(x,y,z,w,h,d,col,mat){if(w<=0||h<=0)return;const key=col+'-'+mat;let g=closures.get(key);if(!g){g=new G.Geometry();closures.set(key,g);}const box=b.geo('box',G.box);for(let i=0;i<box.v.length;i+=8)g.v.push(x+box.v[i]*w,y+box.v[i+1]*h,z+box.v[i+2]*d,...box.v.slice(i+3,i+8));}
+
    // No solid backing slab: the panes occupy actual apertures between the piers.
    for(let i=0;i<n;i++){
     const mid=(i+.5)*bw,ww=bw*(curtain?.96:.76),left=mid-ww/2,right=mid+ww/2;
-    if(!curtain){b.box(i*bw+bw*.12,(base+top)/2,-.18,bw*.24,h,.36,C.brick,13);}
+    if(!curtain){b.box(i*bw+bw*.12,(base+top)/2,-.18,bw*.24,h,.36,C.brick,13);
+     closeBoundary((right+(i+1)*bw)/2,(base+top)/2,-.18,(i+1)*bw-right,h,.36,C.brick,13);
+    }else for(const [a,c]of[[i*bw,left],[right,(i+1)*bw]])closeBoundary((a+c)/2,(base+top)/2,.015,c-a,h,.15,C.frame,9);
     for(let fl=0;fl<rows;fl++){
      const y=levels[fl],fh=levels[fl+1]-y,lo=y+(curtain?.08:.12),hi=y+fh-(curtain?.08:.34),hh=hi-lo;
      group('glass',()=>b.box(mid,(lo+hi)/2,-.065,ww,hh,.045,C.glass,5));
      for(const xx of [left,right,...(curtain?[]:[mid+ww*.12])])b.box(xx,(lo+hi)/2,.015,.065,hh+.12,.15,C.frame,9);
      for(const yy of [lo,hi,...(curtain?[]:[hi-.62])])b.box(mid,yy,.02,ww+.06,.065,.17,C.frame,9);
-     if(!curtain){b.box(mid,y+fh-.15,-.07,ww,.30,.29,fl===rows-1?C.pale:C.pale,24);}
+     if(!curtain){b.box(mid,y+fh-.15,-.07,ww,.30,.29,fl===rows-1?C.pale:C.pale,24);
+      closeBoundary(mid,(y+lo)/2,-.07,ww,lo-y,.29,C.pale,24);
+      closeBoundary(mid,(hi+y+fh-.30)/2,-.07,ww,y+fh-.30-hi,.29,C.pale,24);
+     }else{
+      if(i===0){closeBoundary(len/2,(y+lo)/2,.02,len,lo-y,.17,C.frame,9);
+      closeBoundary(len/2,(hi+y+fh)/2,.02,len,y+fh-hi,.17,C.frame,9);}
+     }
      if(!curtain&&rust&&bw>3.0)group('louvre',()=>{
       const lw=bw*.19,x=(i+1)*bw-lw/2;
       for(let j=0;j<14;j++)b.box(x,lo+.12+j*(hh-.24)/13,.065,lw,.05,.19,C.rust,6);
      });
     }
    }
+   for(const [key,g]of closures){const split=key.lastIndexOf('-');mesh(name+'-aperture-boundary-'+key,g,key.slice(0,split),Number(key.slice(split+1)));}
    b.box(len/2,top+.17,-.02,len,.34,.44,C.pale,24);
    if(!curtain){
     // Roof-level open rectangular screen, visible above the tall glazed bays.
@@ -57,9 +70,44 @@ function render(b,f){
     group('entrance',()=>{
      b.box(x,3.0,.3,5.3,4.6,.06,C.glass,5);for(const xx of[x-2.7,x,x+2.7])b.box(xx,3.0,.38,.14,4.8,.16,C.frame,9);
      b.box(x,5.54,2.9,11.6,.28,6.3,C.dark,24);
-     for(const xx of[x-4.4,x+4.4])b.box(xx,2.8,5.2,.65,5.4,.68,C.brick,13);
-     for(let i=0;i<25;i++)b.box(x-5.55+i*.46,5.36,2.9,.12,.18,6.1,C.pale,24);
-     for(let j=0;j<3;j++)b.box(x,.12+j*.18,5.7-j*.35,8.8,.18,1.5-j*.35,C.stone,10);
+     // Existing ground is y=.01. A thin paving skin ends at .025; this is a
+     // modelling contact condition, not a measured hotel threshold elevation.
+     // Keep both column tops at5.5 while their feet meet the paving.
+     group('ground-contact295',()=>{
+      b.box(x,.015,3.6,13.6,.02,7.2,C.stone,10);
+      for(const xx of[x-4.4,x+4.4])b.box(xx,(5.5+.02)/2,5.2,.65,5.5-.02,.68,C.brick,13);
+     });
+     // Own 2024 porch underside: diagonal slat fields meet structural beams,
+     // rather than a single continuous comb. Field dimensions are fitted.
+     group('diagonal-soffit',()=>{
+      for(const sx of[-1,1])for(const sz of[-1,1]){
+       const xmin=sx<0?-5.55:.13,xmax=sx<0?-.13:5.55,zmin=sz<0?-.15:3.03,zmax=sz<0?2.77:5.95,m=sx*sz*.62;
+       const starts=[zmin-m*xmin,zmin-m*xmax,zmax-m*xmin,zmax-m*xmax],lo=Math.min(...starts),hi=Math.max(...starts);
+       for(let intercept=lo+.20;intercept<hi;intercept+=.43){
+        let a=xmin,c=xmax;const za=(zmin-intercept)/m,zc=(zmax-intercept)/m;
+        a=Math.max(a,Math.min(za,zc));c=Math.min(c,Math.max(za,zc));
+        if(c-a<.10)continue;const z0=m*a+intercept,z1=m*c+intercept,len=Math.hypot(c-a,z1-z0);
+        b.local(x+(a+c)/2,0,(z0+z1)/2,-Math.atan2(z1-z0,c-a),()=>b.box(0,5.36,0,len,.18,.12,C.pale,24));
+       }
+      }
+      b.box(x,5.31,2.9,11.4,.28,.26,C.dark,24);
+      b.box(x,5.31,2.9,.26,.28,6.1,C.dark,24);
+     });
+     // The visible central stone screen has its own landscape base. It is
+     // not a flight across the approach. Width~.71 of the column span is a
+     // single-photo fit across different depths, never a surveyed dimension.
+     group('landscape295',()=>{
+      const darkStone='#5d5952';
+      b.box(x,.135,6.4,9.2,.22,.8,darkStone,24);
+      b.box(x,.895,6.4,6.25,1.30,.22,C.pale,24);
+      for(const side of[-1,1]){
+       const pc=x+side*3.82;
+       // Open shallow planting cavity, not a solid pedestal or stair landing.
+       b.box(pc,.285,6.4,1.45,.08,.8,darkStone,24);
+       for(const dx of[-.685,.685])b.box(pc+dx,.49,6.4,.08,.33,.8,darkStone,24);
+       for(const dz of[-.36,.36])b.box(pc,.49,6.4+dz,1.29,.33,.08,darkStone,24);
+      }
+     });
     });
    }
   }));
@@ -102,7 +150,7 @@ function render(b,f){
   mesh('garden-path',G.ribbon(path,1.75,floor+.08), '#b4a58b',10);
   const pond=[[35,80],[42,77],[48,69],[48,60],[46,52],[44,45],[48,39],[55,35],[58,32]];
   mesh('garden-pool-edge',G.ribbon(pond,4.2,floor+.16),'#9c9a86',10);mesh('garden-pool',G.ribbon(pond,3.5,floor+.19),'#58776b',4);
-  group('garden-stones',()=>{for(let i=0;i<pond.length;i++){const q=pond[i];for(const sign of[-1,1])b.sphere(q[0]+sign*2.15,floor+.3,q[1],.72,.42,1.0,C.stone,8,.18,true);}});
+  group('garden-stones',()=>{for(let i=0;i<pond.length;i++){const q=pond[i];for(const sign of[-1,1])b.sphere(q[0]+sign*2.15,floor+.3,q[1],.72,.42,1.0,C.stone,10,.18,true);}});
   // The shared tree helper resets world transforms and advances a global random
   // stream. These local trees keep the court transform and their own fixed form.
   group('garden-trees',()=>{for(const [x,z,h]of[[57,42,7.2],[67,36,8],[83,52,7.4],[87,70,8.2],[55,62,6.8],[57,82,7.4],[70,89,7.8],[78,79,6.6]])b.local(x,floor,z,0,()=>{

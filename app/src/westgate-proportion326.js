@@ -1,0 +1,9 @@
+/* West Gate plaque photo-fit. Bake planar correction into a separate geometry;
+ * retain the orthogonal instance matrix expected by Engine's normal shader. */
+(function(Y){'use strict';const previous=Y.Architecture30.render,cache=new WeakMap(),keys=new Set(['board','gold-frame',...[16,32,48,64,80,96,112,128,143,159,175,191,207,223,239,255].map(a=>'glyph-'+a)].map(k=>'v30-westgate-plaque164-'+k));
+function fitted(g,h,v,c,s){let variants=cache.get(g);if(!variants){variants=new Map();cache.set(g,variants);}const token=[h,v,c,s].join('|');if(variants.has(token))return variants.get(token);const out=new Y.Geo.Geometry();for(let i=0;i<g.v.length;i+=8){const q=g.v,x=q[i],y=c*q[i+1]+s*q[i+2],z=-s*q[i+1]+c*q[i+2],nx=q[i+3]/h,ny=(c*q[i+4]+s*q[i+5])/v,nz=-s*q[i+4]+c*q[i+5];out.vertex([h*x,c*v*y-s*z,s*v*y+c*z],Y.M.norm([nx,c*ny-s*nz,s*ny+c*nz]),q.slice(i+6,i+8));}if(g.detailWidth!=null)out.detailWidth=g.detailWidth;variants.set(token,out);return out;}
+Y.Architecture30.render=function(b,f,...args){if(f.properties.pickId!==54||f.properties.id!=='way/226703926')return previous.call(this,b,f,...args);const own=Object.getOwnPropertyDescriptor(b.e,'add'),emit=b.e.add;
+b.e.add=function(key,g,m,...rest){if(keys.has(key)){const a=Y.WestgatePlaque164.leanDegrees*Math.PI/180,c=Math.cos(a),s=Math.sin(a),u=Math.hypot(m[0],m[1],m[2]),v=Math.hypot(c*m[4]+s*m[8],c*m[5]+s*m[9],c*m[6]+s*m[10]),horizontal=3.30/4.44,vertical=horizontal*u/v;g=fitted(g,horizontal,vertical,c,s);}return emit.call(this,key,g,m,...rest);};
+try{return previous.call(this,b,f,...args);}finally{if(own)Object.defineProperty(b.e,'add',own);else delete b.e.add;}};
+Y.WestgateProportion326={sourceEquivalentWidth:3.30,nativeBoardWidth:4.44,nativeBoardHeight:1.4,measured:false,fit:'frontal photo proportion; preserve native glyph aspect and current world tilt'};
+})(YY);

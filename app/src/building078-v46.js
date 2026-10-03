@@ -44,6 +44,10 @@ function render(b,f,add){
     // Narrow rounded-rectangle motifs in the photographed second-floor rail.
     const pts=[[x-w/2,lo+.09,.025],[x-w/2+.06,lo,.025],[x+w/2-.06,lo,.025],[x+w/2,lo+.09,.025],[x+w/2,hi-.09,.025],[x+w/2-.06,hi,.025],[x-w/2+.06,hi,.025],[x-w/2,hi-.09,.025]];
     for(let j=0;j<pts.length;j++)b.beam(pts[j],pts[(j+1)%pts.length],.014,C.band,9);
+    // In the identified photo the ornamental railing is a connected assembly.
+    // Existing rings stopped short of both horizontal rails and floated.
+    // These small fitted ties join the motif centres without changing any ring.
+    group('motif-rail-ties',()=>{b.beam([x,floor+.31,.025],[x,lo,.025],.014,C.band,9);b.beam([x,hi,.025],[x,floor+1.13,.025],.014,C.band,9);});
    }
   });}else{
    group('balcony-'+index+'-infill',()=>b.box(q.x,floor+.28,-.025,q.w,.56,.22,C.wall,24));

@@ -39,11 +39,23 @@ function render(b,f,add){
  // Visible eastern face of the upper western roof. The line joins existing
  // vertices 3 and 6; its survey position is still an explicit limitation.
  const a=r[3],c=r[6],step=new G.Geometry();
- step.quad([c[0],HEIGHTS.east,c[1]],[a[0],HEIGHTS.east,a[1]],[a[0],HEIGHTS.west+.825,a[1]],[c[0],HEIGHTS.west+.825,c[1]]);
- add('108-roof-step-face',step,'#e7e9e1',24,id);
- // The native 4K view resolves one paired window in this roof-step face.
- // Position and size are photo fits, separate from the provisional facade grid.
  const len=Math.hypot(c[0]-a[0],c[1]-a[1]),nx=(c[1]-a[1])/len,nz=-(c[0]-a[0])/len;
+ // The observed pair already has a fitted frame. Cut the wall behind that
+ // existing glazing; retain its dimensions/position rather than add another bay.
+ const u0=len*.58-.75,u1=len*.58+.75,y0=8.05,y1=9.65,depth=.18;
+ const point=(u,y,v=0)=>[a[0]+(c[0]-a[0])*u/len+nx*v,y,a[1]+(c[1]-a[1])*u/len+nz*v];
+ const panel=(lo,hi,bottom,top)=>step.quad(point(hi,bottom),point(lo,bottom),point(lo,top),point(hi,top));
+ panel(0,u0,HEIGHTS.east,HEIGHTS.west+.825);panel(u1,len,HEIGHTS.east,HEIGHTS.west+.825);
+ panel(u0,u1,HEIGHTS.east,y0);panel(u0,u1,y1,HEIGHTS.west+.825);
+ add('108-roof-step-face',step,'#e7e9e1',24,id);
+ // Short neutral reveals express thickness only; room layout remains unknown.
+ const reveal=new G.Geometry();
+ reveal.quad(point(u0,y0),point(u0,y0,-depth),point(u1,y0,-depth),point(u1,y0));
+ reveal.quad(point(u1,y1),point(u1,y1,-depth),point(u0,y1,-depth),point(u0,y1));
+ reveal.quad(point(u0,y0),point(u0,y1),point(u0,y1,-depth),point(u0,y0,-depth));
+ reveal.quad(point(u1,y1),point(u1,y0),point(u1,y0,-depth),point(u1,y1,-depth));
+ add('108-step-window-reveal',reveal,'#e7e9e1',24,id);
+ // Position and size remain photo fits, separate from the provisional facade grid.
  b.local(a[0]+(c[0]-a[0])*.58+nx*.055,8.85,a[1]+(c[1]-a[1])*.58+nz*.055,Math.atan2(nx,nz),()=>{
   b.v16box('108-step-window-glass',0,0,0,1.5,1.6,.10,'#52766c',28);
   for(const x of[-.77,0,.77])b.v16box('108-step-window-vertical',x,0,.06,.065,1.68,.12,'#c4d0c5',29);

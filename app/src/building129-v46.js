@@ -13,7 +13,18 @@ function render(b,f){b.id=f.properties.pickId;const p=f.geometry.coordinates[0].
   const at=(a,side)=>q(a[0],v+side*dv,a[1]);
   for(let i=0;i<flat.v.length;i+=24){const a=[flat.v[i],flat.v[i+2]],b=[flat.v[i+8],flat.v[i+10]],c=[flat.v[i+16],flat.v[i+18]];g.tri(at(a,-1),at(b,-1),at(c,-1));g.tri(at(c,1),at(b,1),at(a,1));}
   for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length];g.quad(at(a,1),at(b,1),at(b,-1),at(a,-1));}
-  mesh('painted-plate-'+plateIndex++,g,C.frame,38);
+  const index=plateIndex++;
+  mesh('painted-plate-'+index,g,C.frame,38);
+  // The existing main plates begin at0.12m; retained courtyard ground is0.02m.
+  // Continue only their existing lower section, without a separate pedestal.
+  if(poly.length===6&&poly[0][1]===.12){
+   const foot=new G.Geometry(),lo=.016,hi=.124,um=(poly[0][0]+poly[1][0])/2,
+    half=(poly[1][0]-poly[0][0])/2,topHalf=half+((poly[2][0]-um)-half)*(hi-.12)/(1.35-.12),
+    ring=[[um-half,-1],[um+half,-1],[um+half,1],[um-half,1]],
+    lower=ring.map(([u,s])=>q(u,v+s*dv,lo)),seam=ring.map(([u,s])=>q(u,v+s*dv,.12)),upper=ring.map(([u,s])=>q(um+Math.sign(u-um)*topHalf,v+s*dv,hi)),center=q(um,v,(lo+hi)/2);
+   for(const [a,z]of[[lower,seam],[seam,upper]])for(let i=0;i<4;i++){const j=(i+1)%4,ps=[a[i],a[j],z[j],z[i]],n=Y.M.cross(Y.M.sub(ps[1],ps[0]),Y.M.sub(ps[2],ps[0])),mid=ps[0].map((_,k)=>ps.reduce((s,p)=>s+p[k],0)/4);if(n.reduce((s,a,k)=>s+a*(mid[k]-center[k]),0)<0)ps.reverse();foot.quad(...ps);}
+   mesh('post-ground-continuation-'+index,foot,C.frame,38);
+  }
  }
  const roofs=[];for(let k=0;k<2;k++){const u0=k/2,u1=(k+1)/2,skin=new G.Geometry(),bottom=new G.Geometry(),edge=new G.Geometry();
   for(let i=0;i<30;i++){const t0=i/30,t1=(i+1)/30,u=u0+(u1-u0)*t0,w=u0+(u1-u0)*t1;const a=q(u,0,height(t0)),c=q(w,0,height(t1)),d=q(w,1,height(t1)),e=q(u,1,height(t0));skin.quad(e,d,c,a);bottom.quad(a.map((x,i)=>i===1?x-.055:x),c.map((x,i)=>i===1?x-.055:x),d.map((x,i)=>i===1?x-.055:x),e.map((x,i)=>i===1?x-.055:x));

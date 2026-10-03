@@ -44,6 +44,9 @@ function archedDoor(b){
  for(const x of[-.91,.91])b.box(x,1.3,.065,.16,2.3,.14,C.stone,10);
  for(const s of[-1,1])b.box(s*.43,1.67,.11,.69,.91,.035,C.glass,5);
  b.box(0,1.38,.14,.085,2.0,.06,C.red,6);b.box(0,2.23,.14,1.7,.075,.06,C.red,6);
+ // The own east photograph shows stone support below the arch. Close only
+ // the existing .36 m door foot; obscured external step counts stay unresolved.
+ b.mesh('south24-east-entry-threshold',G.box(),0,.175,0,2.08,.37,.40,C.stone,10);
 }
 function gable(b,side){b.local(side*P.W/2,0,0,side*Math.PI/2,()=>{
  for(const x of[-2.20,0,2.20]){window(b,x,5.05,.09,x===0?1.85:1.38,2.05);window(b,x,8.18,.09,x===0?1.85:1.38,x===0?2.65:2.05);}

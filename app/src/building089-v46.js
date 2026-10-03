@@ -41,6 +41,27 @@ function render(b,f){
   for(const s of[-1,1]){for(let i=0;i<24;i++)for(let j=0;j<14;j++)patch(surface,x0+span*i/24,x0+span*(i+1)/24,j/14,(j+1)/14,s);
    for(let x=x0+.035;x<x1-.07;x+=.235)for(let j=0;j<14;j++)for(let k=0;k<3;k++)patch(tiles,x+k*.025,Math.min(x+(k+1)*.025,x1),j/14,(j+1)/14,s,.018+Math.sin((k+.5)*Math.PI/3)*.035);
   }tiles.detailWidth=.025;mesh('roof-'+name+'-surface',surface,C.roof,2);mesh('roof-'+name+'-tiles',tiles,C.tile,2);
+  // Close the model-local gap between the retained upturned roof boundary
+  // and its horizontal fascia. Follow existing samples and fitted materials;
+  // this does not establish real-world eave dimensions or entrance details.
+  for(const side of[-1,1]){
+   const closure=new G.Geometry();
+   for(let i=0;i<24;i++){
+    const a=point(x0+span*i/24,0,side),c=point(x0+span*(i+1)/24,0,side);
+    const q=[[a[0],eave,a[2]],[c[0],eave,c[2]],c,a];
+    if(side<0)q.reverse();closure.quad(...q);
+   }
+   // Engine.add uploads Float32 positions: near the flat middle, distinct
+   // double heights collapse. Remove only triangles with zero cached area.
+   const kept=[];
+   for(let i=0;i<closure.v.length;i+=24){
+    const a=closure.v.slice(i,i+3).map(Math.fround),c=closure.v.slice(i+8,i+11).map(Math.fround),d=closure.v.slice(i+16,i+19).map(Math.fround),
+      u=c.map((v,j)=>v-a[j]),v=d.map((n,j)=>n-a[j]),cross=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]];
+    if(cross.some(n=>n!==0))kept.push(...closure.v.slice(i,i+24));
+   }
+   closure.v=kept;
+   mesh('roof-eave-closure-'+name+'-'+(side<0?'north':'south'),closure,main?C.stone:C.wood,main?24:6);
+  }
   const gables=new G.Geometry();for(const x of[x0+.40,x1-.40])for(const s of[-1,1])for(let i=0;i<14;i++){
    const a=point(x,i/14,s),q=point(x,(i+1)/14,s),p=[[x,eave,a[2]],a,q,[x,eave,q[2]]];if((x>x0+span/2)===(s>0))p.reverse();gables.quad(...p);
   }mesh('roof-'+name+'-gable',gables,main?C.brick:C.wood,main?30:6);
@@ -66,6 +87,13 @@ function render(b,f){
    const holes=counts[i]?bays(width,counts[i]):([1,5,7,11].includes(i)?[{x:width*.51,w:1.72,lo:4.73,hi:6.35,panes:2}]:[]);
    face(names[i],a,c,holes,width=>{
     if(counts[i])group(names[i]+'-red-piers',()=>{for(let j=0;j<=counts[i];j++)b.box(width*j/counts[i],4.10,.06,.20,6.81,.18,C.red,6);});
+    // The photographed southern court wing has dark red headers between
+    // its upper piers. Fitted dimensions keep the existing window tops clear;
+    // do not extrapolate this detail onto the unverified hidden elevations.
+    if(names[i]==='south-long')group('south-long-upper-lintels',()=>{
+     const step=width/5;
+     for(let j=0;j<5;j++)b.box(step*(j+.5),7.265,.055,step-.20,.41,.14,C.wood,6);
+    });
    });
   }
   roof('north-bar',-.48,W+.50,6.445,7.10,H.eave,H.ridge-H.eave,true);

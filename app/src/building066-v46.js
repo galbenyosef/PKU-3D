@@ -65,7 +65,19 @@ function render(b,f){b.id=f.properties.pickId;
   b.box(x,hi-.24,-.024,w-.13,.31,.018,C.glass,5);
   b.box(x,hi-.45,.008,w,.065,.085,C.red,6);
   b.box(x,(hi+lo)/2,.008,.065,hi-lo,.09,C.red,6);
-  for(const dx of[-.11,.11])b.box(x+dx,1.40,.078,.035,.27,.047,'#a6aba0',9);
+  // Own 2020 close view shows short horizontal lever handles, not tall pulls.
+  // Keep the adjacent provisional door untouched; its current hardware is unknown.
+  if(q.service){for(const dx of[-.11,.11])b.box(x+dx,1.40,.078,.035,.27,.047,'#a6aba0',9);}
+  else{
+   group('main-hardware',()=>{for(const dx of[-.11,.11]){
+    b.box(x+dx,1.40,.052,.055,.17,.022,C.dark,9);
+    b.box(x+dx,1.40,.078,.14,.035,.047,'#a6aba0',9);
+   }});
+   // Pale jamb depth and the narrow red transom border are legible in the
+   // same close view. Their exact dimensions remain fitted to this aperture.
+   group('main-reveals',()=>{for(const dx of[-w/2-.025,w/2+.025])b.box(x+dx,(lo+hi)/2,-.052,.05,hi-lo,.24,C.base,24);b.box(x,hi+.025,-.052,w+.10,.05,.24,C.base,24);});
+   group('main-transom-border',()=>{const tw=w-.26,th=.21,cy=hi-.24;for(const xx of[x-tw/2,x+tw/2])b.box(xx,cy,.002,.023,th,.024,C.red,6);for(const yy of[cy-th/2,cy+th/2])b.box(x,yy,.002,tw,.023,.024,C.red,6);});
+  }
   b.box(x,.08,.71,q.service?2.3:3.2,.16,1.8,C.base,21);
   b.box(x,.04,1.68,q.service?2.5:3.4,.08,.32,C.stone,21);
  });}

@@ -98,11 +98,20 @@ function render(b,f){b.id=f.properties.pickId;
    for(const u of[-w/2,-1.04,0,1.04,w/2])b.box(x+u,(lo+hi)/2,z-.015,.082,hi-lo+.10,.23,C.frame,6);
    for(const y of[lo+.025,hi])b.box(x,y,z-.012,w+.10,.08,.24,C.frame,6);
    for(const u of[-.12,.12]){b.box(x+u,2.73,z+.13,.026,.37,.035,C.metal,9);b.box(x+u,2.63,z+.07,.026,.028,.15,C.metal,9);b.box(x+u,2.88,z+.07,.026,.028,.15,C.metal,9);}
+   // Two small overhead closers are visible on the photographed moving leaves.
+   // Fitted simple metal housings/arms; no brand or mechanism is inferred.
+   group('door-closers',()=>{for(const side of[-1,1]){
+    const u=x+side*.66;b.box(u,hi-.10,z+.125,.24,.055,.055,C.metal,9);
+    b.beam([u,hi-.10,z+.16],[u-side*.17,hi-.035,z+.225],.013,C.metal,9);
+    b.beam([u-side*.17,hi-.035,z+.225],[u-side*.30,hi+.015,z+.10],.013,C.metal,9);
+   }});
    for(const u of[-w/2-.19,w/2+.19])b.box(x+u,2.96,z+.075,.23,2.91,.18,C.white,24);
    b.box(x,4.42,z+.075,w+.61,.23,.18,C.white,24);b.box(x,4.84,z+.065,5.40,.22,.12,C.red,6);
    b.box(x-w/2-.95,3.76,z+.095,.58,.42,.075,C.gold,9);
    b.box(x-w/2-.50,3.13,z+.08,.07,.12,.04,C.gold,9);
-   b.box(x,H.landing/2,z+.40,ENTRY.stairWidth+.15,H.landing,1.02,C.stone,21);
+   // Continuous landing in the school photograph: keep the back edge at -.11,
+   // and meet the top tread exactly at +1 rather than leaving a .09m slot.
+   b.box(x,H.landing/2,z+.445,ENTRY.stairWidth+.15,H.landing,1.11,C.stone,21);
    for(let i=0;i<ENTRY.steps;i++){
     const high=(ENTRY.steps-i)*.18,zz=z+1+(i+.5)*ENTRY.tread,width=ENTRY.stairWidth+i*.07;
     b.box(x,high/2,zz,width,high,ENTRY.tread,C.stone,21);

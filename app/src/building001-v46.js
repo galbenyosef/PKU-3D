@@ -32,9 +32,34 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
  if(floor===0){const [s,e]=range(entrance.u,entrance.width);for(let j=opens.length-1;j>=0;j--)if(opens[j].e>s-.12&&opens[j].s<e+.12)opens.splice(j,1);opens.push({s,e,bottom:.12,top:3.08,depth:entrance.depth,door:true});}}
  opens.sort((a,c)=>a.s-c.s);let cursor=0;
  for(const q of opens.filter(q=>q.s>.05&&q.e<len-.05&&q.top>q.bottom)){panel(cursor,q.s,lv.lo,lv.hi);panel(q.s,q.e,lv.lo,q.bottom);panel(q.s,q.e,q.top,lv.hi);const x=(q.s+q.e)/2,y=(q.bottom+q.top)/2,w=q.e-q.s,h=q.top-q.bottom,d=q.depth;
- for(const xx of [q.s,q.e])b.box(xx,y,-d/2,.065,h,d,C.frame,24);for(const yy of [q.bottom,q.top])b.box(x,yy,-d/2,w,.065,d,C.frame,24);b.box(x,y,-d,w-.09,h-.06,.045,q.door?C.door:C.glass,5);
- const cols=q.door?6:north&&floor===1?3:q.curtain?2:1;for(let k=1;k<cols;k++)b.box(q.s+w*k/cols,y,-d+.04,.045,h,.075,C.frame,6);
- if(q.door)b.box(x,.9,-d+.045,w,.045,.075,C.frame,6);else if((north&&floor===1)||q.curtain)for(let k=1;k<3;k++)b.box(x,q.bottom+h*k/3,-d+.04,w,.045,.075,C.frame,6);
+ for(const xx of [q.s,q.e])b.box(xx,y,-d/2,.065,h,d,C.frame,24);for(const yy of [q.bottom,q.top])b.box(x,yy,-d/2,w,.065,d,C.frame,24);
+ if(q.door){
+  // Historical ICQM route photograph: two four-part glazed banks around the
+  // central pier, each with a separate row of transom lights. Dimensions fitted.
+  const pier=.64,transom=2.53,frameColor='#3e4c51';
+  for(const [side,a,c]of[['left',q.s,x-pier/2],['right',x+pier/2,q.e]])group('entrance-door-bank-'+side,()=>{
+   const step=(c-a)/4;
+   for(let k=0;k<4;k++){
+    const centre=a+(k+.5)*step;
+    b.box(centre,(q.bottom+transom)/2,-d,step-.085,transom-q.bottom-.085,.05,C.door,5);
+    b.box(centre,(transom+q.top)/2,-d,step-.085,q.top-transom-.075,.05,C.glass,5);
+    b.box(centre,1.00,-d+.06,step-.04,.065,.085,frameColor,29);
+   }
+   for(let k=0;k<=4;k++)b.box(a+k*step,y,-d+.045,.065,h,.11,frameColor,29);
+   for(const yy of[q.bottom,transom,q.top])b.box((a+c)/2,yy,-d+.045,c-a,.075,.11,frameColor,29);
+   // Central paired leaves have pulls and outer hinge axes; side panes stay fixed.
+   for(const side of[-1,1]){
+    const hx=(a+c)/2+side*.11;
+    b.beam([hx,1.13,-d+.16],[hx,1.55,-d+.16],.019,'#b4bec0',29);
+    for(const yy of[1.13,1.55])b.beam([hx,yy,-d+.075],[hx,yy,-d+.16],.016,'#b4bec0',29);
+    const hinge=side<0?a+step:c-step;for(const yy of[.46,2.13])b.cyl(hinge,yy,-d+.10,.033,.14,'#89989d',12,1,29);
+   }
+  });
+ }else{
+  b.box(x,y,-d,w-.09,h-.06,.045,C.glass,5);
+  const cols=north&&floor===1?3:q.curtain?2:1;for(let k=1;k<cols;k++)b.box(q.s+w*k/cols,y,-d+.04,.045,h,.075,C.frame,6);
+  if((north&&floor===1)||q.curtain)for(let k=1;k<3;k++)b.box(x,q.bottom+h*k/3,-d+.04,w,.045,.075,C.frame,6);
+ }
  cursor=q.e;}
  panel(cursor,len,lv.lo,lv.hi);
  }
@@ -48,5 +73,7 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
  return{strategy:'building001-v46',floors:6,sourceOutline:true,courtyardOpen:true,ringRoofFaces:8,northApproachSupported:true,entrancePositionFitted:true,fourWingEqualHeightVerified:false,dimensionFitted:true};
 }
 A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};
+// North approach in the official route sheet is the entrance-facing view.
+const feature=Y.CAMPUS?.features.find(f=>f.properties.id===ID);if(feature){feature.properties.frontAngle46=Math.PI+R;feature.properties.frontElevation46=.55;}
 Y.Building001={id:ID,render,world,local,pieces,heights:H,entrance};
 })(YY);

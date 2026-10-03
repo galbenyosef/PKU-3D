@@ -5,11 +5,32 @@ const world=(u,v)=>[O[0]+u*CO+v*SI,O[1]-u*SI+v*CO],local=p=>[(p[0]-O[0])*CO-(p[1
 function clip(p,a,k,greater){const out=[];for(let i=0;i<p.length;i++){const s=p[i],e=p[(i+1)%p.length],si=greater?s[a]>=k:s[a]<=k,ei=greater?e[a]>=k:e[a]<=k;if(si)out.push(s);if(si!==ei){const t=(k-s[a])/(e[a]-s[a]);out.push(s.map((x,j)=>x+t*(e[j]-x)));}}return out;}
 function pieces(f,box){const out=[];for(const pg of F.polygons(f.geometry))for(const tri of F.capTriangles(pg)){let p=tri.map(local);for(const [a,k,g] of [[0,box[0],true],[0,box[2],false],[1,box[1],true],[1,box[3],false]])if(p.length)p=clip(p,a,k,g);if(p.length>=3&&Math.abs(F.area([...p,p[0]]))>1e-8)out.push(p);}return out;}
 
+// The generic facade skips short edges before drawing its roof trim. Continue
+// the same fitted profile around this building's mapped stepped returns;
+// satellite evidence supports the perimeter, not an inferred entrance.
+function shortReturns(b,f){let count=0;
+ for(const pg of F.polygons(f.geometry))for(let ri=0;ri<pg.length;ri++){
+  const ring=pg[ri],sgn=(F.area(ring)>0?1:-1)*(ri?-1:1);
+  for(let i=1;i<ring.length;i++){
+   const a=ring[i-1],c=ring[i],dx=c[0]-a[0],dz=c[1]-a[1],len=Math.hypot(dx,dz);
+   if(len<1e-8||len>=3.4)continue;
+   const r=Math.atan2(dz/len*sgn,-dx/len*sgn);
+   b.local((a[0]+c[0])/2,0,(a[1]+c[1])/2,r,()=>{
+    const box=(part,y,z,w,h,d,color)=>b.mesh('033-return-'+part,b.geo('box',G.box),0,y,z,w,h,d,color,24);
+    box('cornice',H.body-.18,.01,len,.24,.30,'#c7cbbf');
+    box('parapet',H.body+.35,-.16,len,.75,.29,'#b1b8ac');
+    box('coping',H.body+.76,-.16,len+.06,.13,.42,'#cbd0c2');
+   });count++;
+  }
+ }return count;
+}
+
 
 function render(b,f,add){const id=f.properties.pickId;b.id=id;
  // Preserve the existing simple five-level window facade; an absence of photos is not a blank-wall claim.
  const proxy={...f,properties:{...f.properties,height:H.body,floors:5,roofTreatment:'flat',architecture:{...f.properties.architecture,strategy:'footprint',style:'dorm'}}};
  A.footprint(b,proxy,(k,...args)=>{if(!k.startsWith('v30-flat-roof-'))add(k,...args);},{height:H.body,floors:5,roof:'flat',style:'dorm',key:'033-unverified-facade'});
+ shortReturns(b,f);
  for(const q of[{name:'west-dark-step',box:[-.1,-3,16,19],height:H.body-.28,color:'#737d73'},{name:'main-light-flat',box:[16,-3,66,19],height:H.body,color:'#a5ab99'}]){const g=new G.Geometry();for(const p of pieces(f,q.box))for(let k=1;k<p.length-1;k++)g.tri(...[p[0],p[k],p[k+1]].map(p=>{const w=world(...p);return[w[0],q.height,w[1]];}));add('033-flat-roof-'+q.name,g,q.color,24,id);}
  const a=world(16,.405),c=world(16,18.075),riser=new G.Geometry();riser.quad([a[0],H.body-.28,a[1]],[c[0],H.body-.28,c[1]],[c[0],H.body,c[1]],[a[0],H.body,a[1]]);add('033-west-roof-step-riser',riser,'#919b8d',24,id);
  return{strategy:'building033-v46',floors:5,totalHeight:16.8,roof:'flat',sourceOutline:true,facadePlaceholder:true,facadeVerified:false,entranceVerified:false,restaurantCanopyCopied:false};

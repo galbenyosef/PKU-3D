@@ -25,6 +25,20 @@ A.render=function(b,f,add){
   const g=new Y.Geo.Geometry();for(let j=1;j<points.length-1;j++)g.tri(points[0],points[j],points[j+1]);
   add('075-roof-'+i,g,color,material,f.properties.pickId);
  });
+ // The retained generic cornice projects 0.16m, but the replacement roof
+ // stopped at the wall line, exposing a narrow ledge at each edge. Close that
+ // junction using the existing trim's outer face and top, with mitered corners.
+ // This is a construction-fit closure, not evidence for new entrance details.
+ const outer=p.map((v,i)=>{
+  const u=planes[(i+3)%4],w=planes[i],det=u[0]*w[1]-w[0]*u[1];
+  const a=-u[2]-.16,c=-w[2]-.16;
+  return[(a*w[1]-c*u[1])/det,eave-.06,(u[0]*c-w[0]*a)/det];
+ });
+ for(let i=0;i<4;i++){
+  const j=(i+1)%4,g=new Y.Geo.Geometry();
+  g.quad(q[i],outer[i],outer[j],q[j]);
+  add('075-eave-closure-'+i,g,color,material,f.properties.pickId);
+ }
  return {...result,strategy:'building075-v46',roof:'hip-planar-edge-intersections'};
 };
 })(YY);

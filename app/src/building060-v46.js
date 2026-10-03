@@ -24,7 +24,24 @@ function render(b,f){b.id=f.properties.pickId;
    wall(-width/2,width/2,lo,bottom-.04,C.band);wall(-width/2,width/2,top+.04,hi,C.band);
    for(const u of positions){const a=u-ww/2,c=u+ww/2;wall(cursor,a,bottom-.04,top+.04,C.brick,30);
     group('window-'+fl,()=>{b.box(u,(bottom+top)/2,-.125,ww-.11,top-bottom-.11,.032,C.glass,5);for(const q of[a,c])b.box(q,(bottom+top)/2,-.017,.067,top-bottom,.18,C.frame,9);for(const y of[bottom,top])b.box(u,y,-.017,ww,.067,.18,C.frame,9);const trans=top-.51;b.box(u,trans,-.005,ww-.08,.052,.13,C.frame,9);b.box(u-.17,(bottom+trans)/2,-.005,.055,trans-bottom,.13,C.frame,9);b.box(u,(trans+top)/2,-.005,.052,top-trans,.13,C.frame,9);b.box(u,bottom-.09,.065,ww+.18,.12,.34,C.edge,24);
-     if(fl===0){for(let k=0;k<=12;k++)b.box(a+.04+k*(ww-.08)/12,(bottom+top)/2,.11,.023,top-bottom,.027,C.metal,9);for(const y of[bottom+.07,top-.07])b.box(u,y,.115,ww,.028,.038,C.metal,9);}
+     if(fl===0){
+      // Only the partly photographed north courtyard face supports the
+      // projecting security cage; other unseen faces keep their fitted bars.
+      const cage=name==='north-courtyard',depth=cage?.24:.11;
+      for(let k=0;k<=12;k++)b.box(a+.04+k*(ww-.08)/12,(bottom+top)/2,depth,.023,top-bottom,.027,C.metal,9);
+      for(const y of[bottom+.07,top-.07])b.box(u,y,depth+.005,ww,.028,.038,C.metal,9);
+      if(cage)group('grille-returns',()=>{
+       // Shallow return rails tie the front grille into its wall attachments.
+       // Count/depth are fitted; no entrance is inferred from barred windows.
+       for(const x of[a+.04,c-.04]){
+        b.box(x,(bottom+top)/2,depth,.028,top-bottom,.035,C.metal,9);
+        for(const y of[bottom+.07,top-.07]){
+         b.box(x,y,(depth+.025)/2,.029,.029,depth-.025,C.metal,9);
+         b.box(x,y,.018,.085,.085,.04,C.metal,9);
+        }
+       }
+      });
+     }
     });cursor=c;
    }wall(cursor,width/2,bottom-.04,top+.04,C.brick,30);
    b.box(0,lo+.07,.018,width,.14,.28,C.edge,24);

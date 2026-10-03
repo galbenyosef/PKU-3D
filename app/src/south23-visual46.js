@@ -50,7 +50,17 @@ function entry(b){
  for(let x=-w/2+.10;x<w/2;x+=.24){const a=yy(x);tiles.quad([x-.024,a+.03,1.12],[x+.024,a+.03,1.12],[x+.024,a+.49,-.12],[x-.024,a+.49,-.12]);}
  b.mesh('south23-east-entry-curved-canopy',top,0,0,0,1,1,1,C.roof,2);b.mesh('south23-east-entry-fascia',fascia,0,0,0,1,1,1,C.red,6);tiles.detailWidth=.048;b.mesh('south23-entry-tile-rows',tiles,0,0,0,1,1,1,C.tile,2);
  for(let x=-w/2+.10;x<w/2;x+=.26)b.box(x,yy(x)-.09,.73,.07,.12,.70,C.green,6);
- for(let j=0;j<3;j++)b.box(0,.08+j*.12,1.20-j*.32,4.10,.16,.65,C.stone,10);
+ // Own entrance photo: solid three-step stone flight, continuous landing,
+ // and sloping stone cheeks. Dimensions retain the existing fitted treads.
+ for(let j=0;j<3;j++){const top=.16+j*.12;b.box(0,top/2,1.20-j*.32,4.10,top,.65,C.stone,10);}
+ b.box(0,.20,.0575,4.74,.40,.355,C.stone,10); // wall (-.12) to last tread (.235)
+ b.box(0,.435,.065,2.70,.07,.37,C.stone,10); // landing to existing door bottom .47
+ // A closed local trapezoid is reused by both sides through transforms.
+ const cheek=new G.Geometry(),a=[-.16,0,.235],c=[.16,0,.235],d=[.16,0,1.525],e=[-.16,0,1.525],
+  A=[-.16,.40,.235],B=[.16,.40,.235],D=[.16,.16,1.525],E=[-.16,.16,1.525];
+ cheek.quad(A,B,c,a);cheek.quad(d,D,E,e);cheek.quad(e,E,A,a);
+ cheek.quad(B,D,d,c);cheek.quad(E,D,B,A);cheek.quad(c,d,e,a);
+ for(const x of[-2.21,2.21])b.mesh('south23-entry-stone-cheek',cheek,x,0,0,1,1,1,C.stone,10);
 }
 
 function render(b,f){

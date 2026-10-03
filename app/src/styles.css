@@ -122,3 +122,8 @@ dialog::backdrop{background:#273b355d}
 .controls-shortcuts dd{color:#64745e}
 .controls-shortcuts kbd{display:inline-block;min-width:21px;padding:1px 5px;border:1px solid #ccd5c3;border-bottom-width:2px;border-radius:4px;background:#fffef9;text-align:center;font:11px/1.5 ui-monospace,monospace}
 @media(max-width:650px){#map-footer{gap:8px}#controls-open{font-size:10px;min-height:30px;padding:3px 5px}#controls-help{padding:25px 18px}.mouse-controls{gap:7px}.controls-shortcuts{grid-template-columns:1fr 1fr;gap:11px 8px;font-size:11px}.controls-shortcuts kbd{min-width:19px;padding:1px 4px}}
+
+/* Keep the mobile catalog header below the isolation banner. */
+@media(max-width:650px){
+  #app:not(.catalog-hidden):has(#isolation-banner:not([hidden])) #catalog{top:180px}
+}

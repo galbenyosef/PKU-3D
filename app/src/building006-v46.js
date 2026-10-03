@@ -5,6 +5,21 @@ const R=Math.atan2(1.632,46.955),CO=Math.cos(R),SI=Math.sin(R),O=[354.793,68];
 const C={brick:'#777a76',glass:'#94adb4',frame:'#d2d9d3',beam:'#e1e2d7',roof:'#626a69',red:'#8c5756',metal:'#b9c4c3'};
 const H={wall:15.2,gallery:18.5,eave:18.9,ridge:25};
 const world=(u,v)=>[O[0]+u*CO+v*SI,O[1]-u*SI+v*CO],local=p=>[(p[0]-O[0])*CO-(p[1]-O[1])*SI,(p[0]-O[0])*SI+(p[1]-O[1])*CO];
+function entranceApproach(road){
+ if(!road||road.geometry.type!=='LineString')return null;
+ const line=road.geometry.coordinates,half=road.properties.width/2;
+ // Use the same vertex tangents as the mapped ribbon: an isolated segment
+ // normal would leave a wedge where Science Road bends at its neighbours.
+ const edge=line.map((p,i)=>{const a=line[Math.max(0,i-1)],c=line[Math.min(line.length-1,i+1)],dx=c[0]-a[0],dz=c[1]-a[1],len=Math.hypot(dx,dz);return[p[0]+dz/len*half,p[1]-dx/len*half];});
+ const front=[world(3.6,61.403),world(24.4,61.403)],mid=world(14,61.403);
+ let best=null;
+ for(let i=1;i<edge.length;i++){const a=edge[i-1],c=edge[i],dx=c[0]-a[0],dz=c[1]-a[1],len2=dx*dx+dz*dz;
+  if(!len2)continue;
+  const project=p=>{const t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dz)/len2));return[a[0]+t*dx,a[1]+t*dz];},q=project(mid),distance=Math.hypot(q[0]-mid[0],q[1]-mid[1]);
+  if(!best||distance<best.distance)best={distance,roadEdge:front.map(project),front};
+ }
+ return best;
+}
 function clip(p,a,k,greater){const out=[];for(let i=0;i<p.length;i++){const s=p[i],e=p[(i+1)%p.length],si=greater?s[a]>=k:s[a]<=k,ei=greater?e[a]>=k:e[a]<=k;if(si)out.push(s);if(si!==ei){const t=(k-s[a])/(e[a]-s[a]);out.push(s.map((x,j)=>x+t*(e[j]-x)));}}return out;}
 function pieces(f,box){const out=[];for(const pg of F.polygons(f.geometry))for(const tri of F.capTriangles(pg)){let p=tri.map(local);for(const [a,k,g] of [[0,box[0],true],[0,box[2],false],[1,box[1],true],[1,box[3],false]])if(p.length)p=clip(p,a,k,g);if(p.length>=3&&Math.abs(F.area([...p,p[0]]))>1e-8)out.push(p);}return out;}
 function render(b,f,add){const id=f.properties.pickId;b.id=id;
@@ -17,7 +32,7 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
  block('four-storey-source',[-3,-3,68,62],7.8,H.wall);
  block('entrance-west-solid',[-3,-3,4,62],0,7.8);
  block('entrance-east-solid',[24,-3,68,62],0,7.8);
- block('entrance-recess-back',[4,-3,24,54.8],0,7.8);
+ block('entrance-recess-back',[4,-3,24,52.8],0,7.8);
  // Fifth-floor accommodation is inset; the outer strip is a real open gallery.
  block('north-fifth',[2.7,3,62,27.7],H.wall,H.gallery);
  block('west-fifth',[2.7,27.7,9.7,50.1],H.wall,H.gallery);
@@ -40,7 +55,13 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
     // second, unsupported group across the lettering near the south corner.
     if(east&&x<8){if(j>1&&k===1)for(const sx of [-.95,0,.95])for(const yy of [-.48,.48])win(x+sx,1.8+j*3.8+yy,.45,.43);continue;}
     win(x,1.8+j*3.8,Math.min(2.65,step-.5),1.75);
-   }if(ri===0){const yy=3.8*(j+1)-.2;if(south&&yy<7.8){for(const [lo,hi] of solidSegments)b.box((lo+hi)/2,yy,.14,hi-lo,.12,.44,C.frame,24);}else b.box(len/2,yy,.14,len-.2,.12,.44,C.frame,24);}}
+   }if(ri===0){const yy=3.8*(j+1)-.2;if(south&&yy<7.8){for(const [lo,hi] of solidSegments){
+     // Two complete south sunshades: photo-fit section, with the right tip in
+     // the gap before the last window bay. Do not repeat around other faces.
+     const last=.65+(n-.5)*step,tip=last-step/2;
+     const a=Math.max(lo,cut[1]),c=Math.min(hi,tip);
+     if(c>a)b.mesh('006-south-shelf176',b.geo('box',G.box),(a+c)/2,yy,.43,c-a,.20,1.0,C.frame,24);
+    }}else b.box(len/2,yy,.14,len-.2,.12,.44,C.frame,24);}}
    // Narrow horizontal joints keep the material distinct from plain concrete.
    for(let j=1;j<30;j++){if(south&&j*.5<7.8){for(const [lo,hi] of solidSegments)b.box((lo+hi)/2,j*.5,.012,hi-lo,.011,.017,'#858782',24);}else b.box(len/2,j*.50,.012,len-.05,.011,.017,'#858782',24);}
    if(east&&b.lettering)b.lettering('金光生命科学大楼',3.5,12.8,.26,6.1,.55,0,'#e4e8df');
@@ -97,12 +118,76 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
  frame(.8,60.3,0,()=>{b.box(17.4,18.68,-2.45,34.8,.26,4.9,C.beam,24);b.box(17.4,18.94,.04,34.8,.13,.16,C.red,24);for(let x=.6;x<34.8;x+=2.0)b.box(x,18.18,-2.4,.24,.75,4.9,C.beam,24);});
  frame(53.3,58.4,Math.PI/2,()=>{b.box(24.2,18.68,-2.65,48.4,.26,5.3,C.beam,24);b.box(24.2,18.94,.04,48.4,.13,.16,C.red,24);for(let x=.6;x<48.4;x+=2.0)b.box(x,18.18,-2.65,.24,.75,5.3,C.beam,24);});
  frame(50.6,18.256,0,()=>{for(const yy of [15.55,15.95,16.35])b.box(7.55,yy,.12,15.1,.06,.075,C.frame,29);for(let i=0;i<4;i++)b.box(.2+i*4.9,16.85,-.12,.43,3.3,.48,C.brick,24);b.box(7.55,18.67,-1.7,15.1,.24,3.5,C.beam,24);for(let i=0;i<8;i++)b.box(.6+i*1.9,18.18,-1.7,.24,.75,3.5,C.beam,24);});
- // Offset two-storey silver entrance. Minimal threshold: photographs do not establish grand stairs.
- frame(14.0,58.403,0,()=>{b.box(0,3.5,-3.30,19.8,6.9,.13,C.glass,28);for(let i=0;i<=6;i++)b.box(-10+i*3.33,3.65,2.15,.55,7.3,.6,C.metal,24);b.box(0,7.25,1.2,20.8,1.0,3.0,C.metal,24);for(let i=0;i<9;i++)b.box(0,5.5+i*.14,1.35,20.2,.055,2.8,C.frame,29);for(let i=0;i<7;i++)b.box(-9.6+i*3.2,3.4,-3.18,.07,6.7,.08,C.frame,29);b.box(0,3.4,-3.18,19.8,.07,.08,C.frame,29);for(const x of [-1.6,0,1.6])b.box(x,1.55,-3.12,.065,3.1,.08,C.frame,29);b.box(0,3.1,-3.12,3.2,.065,.08,C.frame,29);for(const x of [-.18,.18])b.box(x,1.35,-3.10,.05,.55,.06,C.frame,29);b.box(0,.06,1.3,20.8,.12,3.4,C.frame,10);if(b.lettering)b.lettering('生命科学学院',0,7.35,2.74,9.0,.63,0,'#5e5841');});
+ // Separate the projecting western vestibule from the rear glazed entrances.
+ // Official front and 2025 drill photographs establish this layered arrangement;
+ // offsets, pane widths and concealed leaf hardware remain fitted.
+ frame(14.0,58.403,0,()=>{
+  const glass='#819b9e',metal='#b9c4c3',back=-3.3;
+  function panel(x,y,z,w,h,d=.045){b.box(x,y,z,w,h,d,glass,28);}
+  function bar(x,y,z,w,h,d=.09){b.box(x,y,z,w,h,d,metal,29);}
+  function door(x,z,w=2.5){
+   for(const side of [-1,1]){
+    const cx=x+side*w/4,leaf=w/2;
+    panel(cx,1.57,z,leaf-.08,2.82);
+    // Leave a real meeting gap instead of drawing two coincident centre stiles.
+    for(const dx of [-leaf/2+.03,leaf/2-.03])bar(cx+dx,1.57,z+.035,.045,2.9);
+    bar(cx,.18,z+.035,leaf-.06,.12);bar(cx,2.99,z+.035,leaf-.06,.08);
+    const hx=x+side*.14;
+    b.beam([hx,1.12,z+.12],[hx,1.68,z+.12],.016,metal,29);
+    for(const y of [1.18,1.62])b.beam([hx,y,z+.02],[hx,y,z+.12],.012,metal,29);
+   }
+  }
+  const rearDoors=[[.41,2.91],[3.75,6.25]],doorBays=[[-6.1,-3.6],...rearDoors],cuts=[-9.9,...doorBays.flat(),9.9];
+  // Separate lower fixed panes leave genuine door apertures; no single glass
+  // sheet passes behind the reconstructed leaves.
+  for(let i=1;i<cuts.length;i++){
+   const a=cuts[i-1],c=cuts[i],isDoor=doorBays.some(q=>q[0]===a&&q[1]===c);
+   if(!isDoor){panel((a+c)/2,1.57,back,c-a,2.9);for(const y of [.8,1.55,2.3])bar((a+c)/2,y,back+.06,c-a,.045);}
+  }
+  panel(0,5.015,back,19.8,3.99);
+  for(let i=0;i<=12;i++){
+   const x=-9.9+i*1.65,inDoor=doorBays.some(([a,c])=>x>a&&x<c);
+   bar(x,inDoor?5.015:3.525,back+.06,.045,inDoor?3.99:6.97);
+  }
+  for(const y of [3.02,3.8,4.6,5.4,6.2,7.01])bar(0,y,back+.06,19.8,.045);
+  for(const [a,c]of rearDoors)door((a+c)/2,back+.06,c-a);
+  // A shallow rectangular glass enclosure is visible to the left of the rear
+  // entrances. This is not labelled as a revolving door or an as-built plan.
+  const left=-7.5,right=-.9,front=.35,top=4.85,entry=-4.85,entryW=2.5;
+  for(const [a,c]of [[left,entry-entryW/2],[entry+entryW/2,right]]){
+   panel((a+c)/2,1.57,front,c-a,2.9);
+   for(const y of [.8,1.55,2.3])bar((a+c)/2,y,front+.035,c-a,.045);
+  }
+  panel((left+right)/2,3.955,front,right-left,1.79);
+  for(const x of [left,entry-entryW/2,entry+entryW/2,right])bar(x,2.485,front,.065,4.73);
+  for(const y of [3.06,3.95,top])bar((left+right)/2,y,front,right-left,.065);
+  for(const x of [left,right]){
+   panel(x,2.485,(front+back)/2,.045,4.73,front-back);
+   for(const y of [.8,1.55,2.3,3.06,3.95,top])bar(x,y,(front+back)/2,.065,.045,front-back);
+  }
+  bar((left+right)/2,top+.04,(front+back)/2,right-left,.08,front-back);
+  door(entry,front);
+  for(let i=0;i<=6;i++){
+   const x=-10+i*3.33;b.box(x,3.65,2.15,.55,7.3,.6,C.metal,24);
+   for(const y of [2.45,4.9])b.box(x,y,2.454,.55,.022,.014,'#86928f',29);
+  }
+  b.box(0,7.25,1.2,20.8,1.0,3.0,C.metal,24);
+  for(let i=0;i<9;i++)b.box(0,5.5+i*.14,1.35,20.2,.055,2.8,C.frame,29);
+  b.box(0,.06,-1.3,20.8,.12,8.6,C.frame,10);b.noPlant(0,-1.3,20.8,8.6);
+  if(b.lettering)b.lettering('生命科学学院',0,7.35,2.74,9.0,.63,0,'#5e5841');
+ });
  // Narrow louvred strip on the photographed south face, beside the gable section.
+ const approach=entranceApproach(Y.CAMPUS?.features.find(q=>q.properties.id==='way/33457409'));
+ if(approach){
+  const outline=[approach.front[0],approach.front[1],approach.roadEdge[1],approach.roadEdge[0]];
+  add('006-south-entry-approach',F.surface({type:'Polygon',coordinates:[[...outline,outline[0]]]},.12),'#c1c2b8',7,id);
+  const xs=outline.map(p=>p[0]),zs=outline.map(p=>p[1]),lo=[Math.min(...xs),Math.min(...zs)],hi=[Math.max(...xs),Math.max(...zs)];
+  b.noPlant((lo[0]+hi[0])/2,(lo[1]+hi[1])/2,hi[0]-lo[0],hi[1]-lo[1]);
+ }
+ // Forecourt limits are fitted; the original road and source footprint stay fixed.
  frame(34.8,58.403,0,()=>{for(let j=0;j<4;j++){b.box(0,1.9+j*3.8,.2,.8,2.5,.16,'#59625f',24);for(let i=0;i<12;i++)b.box(0,.75+j*3.8+i*.20,.33,1.05,.055,.17,C.frame,29);}});
  return {strategy:'building006-v46',floors:6,sourceOutline:true,openFifthGallery:true,heightFitted:true,orientationInferred:true};
 }
 A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};
-Y.Building006={id:ID,render,world,local,pieces,heights:H};
+Y.Building006={id:ID,render,world,local,pieces,heights:H,entranceApproach};
 })(YY);

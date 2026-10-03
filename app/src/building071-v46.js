@@ -96,7 +96,19 @@ function render(b,f){b.id=f.properties.pickId;
   for(const dx of[-3.43,3.43])b.box(ENTRY+dx,3.72,z+.19,.72,.19,.49,C.stone,24);
   // Deep dark four-part glazed doorway set back behind the two brick returns.
   const front=D+.11,width=5.98,edges=[-width/2,-1.51,0,1.51,width/2];
-  for(let i=1;i<edges.length;i++)b.box(ENTRY+(edges[i-1]+edges[i])/2,2.28,front-.11,edges[i]-edges[i-1]-.07,3.06,.036,C.glass,5);
+  // Official banner: the dark four-part doorway has a separate glazed head;
+  // panes stop at the horizontal frame rather than passing through it.
+  group('doorway-glazing',()=>{
+   for(let i=1;i<edges.length;i++)for(const [lo,hi]of[[H.landing+.045,3.43-.045],[3.43+.045,3.88-.045]]){
+    b.box(ENTRY+(edges[i-1]+edges[i])/2,(lo+hi)/2,front-.11,edges[i]-edges[i-1]-.085,hi-lo,.036,C.glass,5);
+   }
+  });
+  // The photographed portico has a light underside behind its grey brick
+  // fascia. Keep it inside the existing returns; dimensions remain fitted.
+  group('soffit-lining',()=>{
+   b.box(ENTRY,4.092,D+1.50,6.14,.055,3.10,C.white,24);
+   b.box(ENTRY,3.99,D+.025,6.14,.23,.09,C.white,24);
+  });
   for(const dx of edges)b.box(ENTRY+dx,2.29,front,.075,3.20,.22,C.dark,9);
   for(const y of[H.landing,3.43,3.88])b.box(ENTRY,y,front,width+.07,.075,.22,C.dark,9);
   for(const dx of[-.19,.19])b.box(ENTRY+dx,2.19,front+.135,.027,.43,.035,C.metal,9);

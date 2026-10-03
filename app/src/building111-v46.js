@@ -18,16 +18,19 @@ function render(b,f){
  b.id=f.properties.pickId;const ring=f.geometry.coordinates[0].slice(0,-1),mesh=(key,g,c,mat=24)=>b.mesh('111-'+key,g,0,0,0,1,1,1,c,mat);
  const group=(name,fn)=>{const old=b.e.add;b.e.add=function(k,...q){return old.call(this,'111-'+name+'-'+k,...q);};try{fn();}finally{b.e.add=old;}};
  mesh('base',G.polygon(ring,H.base),C.stone);mesh('ceiling',G.polygon(ring,H.eave-.12),C.wall);
- function win(q){let cy=(q.lo+q.hi)/2,h=q.hi-q.lo; b.box(q.x,cy,-.09,q.w,h,.035,C.dark,5);
+ function win(q,connectLattice=false){let cy=(q.lo+q.hi)/2,h=q.hi-q.lo; b.box(q.x,cy,-.09,q.w,h,.035,C.dark,5);
   for(const x of[q.x-q.w/2,q.x,q.x+q.w/2])b.box(x,cy,.016,.075,h+.10,.16,C.wood,6);
   for(const yy of[q.lo,q.lo+.35,q.hi-.30,q.hi])b.box(q.x,yy,.026,q.w+.09,.065,.17,C.wood,6);
-  for(const x of[q.x-q.w*.34,q.x-q.w*.16,q.x+q.w*.16,q.x+q.w*.34])b.box(x,cy+.10,.044,.025,h-.72,.038,C.wood,6);
+  // Keep the fitted south lattice joined to its existing inner transoms.
+  const latticeLo=q.lo+.35,latticeHi=q.hi-.30;
+  for(const x of[q.x-q.w*.34,q.x-q.w*.16,q.x+q.w*.16,q.x+q.w*.34])b.box(x,connectLattice?(latticeLo+latticeHi)/2:cy+.10,.044,.025,connectLattice?latticeHi-latticeLo:h-.72,.038,C.wood,6);
   b.box(q.x,q.lo-.09,.018,q.w+.20,.10,.21,C.stone,24);
  }
  function face(name,a,c,holes){const width=Math.hypot(c[0]-a[0],c[1]-a[1]),r=-Math.atan2(c[1]-a[1],c[0]-a[0]);b.local(a[0],0,a[1],r,()=>{
-  const levels=[H.base,H.eave,...holes.flatMap(q=>[q.lo,q.hi])].sort((a,b)=>a-b).filter((v,i,a)=>i===0||v-a[i-1]>1e-8);
-  group(name+'-wall',()=>{for(let i=1;i<levels.length;i++){const lo=levels[i-1],hi=levels[i],cuts=holes.filter(q=>q.lo<=lo+1e-8&&q.hi>=hi-1e-8).sort((a,b)=>a.x-b.x);let cursor=0;const part=(s,e)=>{if(e>s+1e-7)b.box((s+e)/2,(lo+hi)/2,-.14,e-s,hi-lo,.28,hi<1.0?C.stone:C.wall,24);};for(const q of cuts){part(cursor,q.x-q.w/2);cursor=q.x+q.w/2;}part(cursor,width);}});
-  group(name+'-windows',()=>holes.forEach(win));
+  // Extend the existing wall foot below mapped ground; keep the floor and all upper geometry.
+  const levels=[-.01,H.eave,...holes.flatMap(q=>[q.lo,q.hi])].sort((a,b)=>a-b).filter((v,i,a)=>i===0||v-a[i-1]>1e-8);
+  group(name+'-wall',()=>{for(let i=1;i<levels.length;i++){const lo=levels[i-1],hi=levels[i],cuts=holes.filter(q=>q.lo<=lo+1e-8&&q.hi>=hi-1e-8).sort((a,b)=>a.x-b.x);let cursor=0;const part=(s,e)=>{if(e>s+1e-7)b.box((s+e)/2,(lo+hi)/2,-.14,e-s,hi-lo,.28,(hi<1.0||(name==='south'&&hi<=Math.min(...holes.map(q=>q.lo))+1e-8))?C.stone:C.wall,24);};for(const q of cuts){part(cursor,q.x-q.w/2);cursor=q.x+q.w/2;}part(cursor,width);}});
+  group(name+'-windows',()=>holes.forEach(q=>win(q,name==='south')));
   if(name==='south'||name==='north'){group(name+'-trim',()=>{b.box(width/2,.73,.02,width,.10,.12,C.stone,24);b.box(width/2,3.61,.02,width,.075,.11,C.stone,24);b.box(width/2,6.80,.025,width,.32,.15,C.red,6);});}
  });}
  const southWidth=Math.hypot(SE[0]-SW[0],SE[1]-SW[1]),northWidth=Math.hypot(NE[0]-NW[0],NE[1]-NW[1]);

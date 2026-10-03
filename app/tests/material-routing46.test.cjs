@@ -17,3 +17,17 @@ test('non-leaf and mixed-material geometry always retains the general shader',()
   assert.equal(classify([[1,0,0],[0,1,0],[0,0,1]],material),false);
  }
 });
+
+test('first opaque draw and subsequent material switches use the actual bound program',()=>{
+ for(const pass of [0,3])for(const ceramic of [true,false])for(const materials of [[18,null,24],[25,18,25,45,24],[45,18,25,24]]){
+  const engine=Object.create(c.YY.Engine.prototype),draws=[];let bound;
+  for(const name of ['main','ceramic','foliage','glass'])engine[name]={p:name};
+  engine.state={specializedCeramic:ceramic,skyAfterOpaque:false};engine.stats={};engine.shadowTarget={tex:{}};engine.reflectTarget={tex:{}};
+  engine.gl={useProgram(p){bound=p;},bindVertexArray(){},drawArraysInstanced(){draws.push(bound);}};
+  engine.stateUniforms=function(p){this.gl.useProgram(p.p);};engine.sampler=()=>{};
+  const drawItems=materials.map(mat=>({b:{uniformMaterial:mat,foliageIsotropic:mat===45,vertexCount:3,resource:{}},record:{count:1,vao:{}},ranges:null}));
+  engine.visibleScene=()=>({drawItems,drawClearStart:drawItems.length,submitted:materials.length,triangles:materials.length,culled:0});
+  engine.draw(engine.main,[],[],pass);
+  assert.deepEqual(draws,materials.map(mat=>mat===25&&ceramic?'ceramic':mat===45?'foliage':'main'));
+ }
+});

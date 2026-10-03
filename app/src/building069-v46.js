@@ -88,7 +88,10 @@ function render(b,f){b.id=f.properties.pickId;
   for(const y of[H.landing,3.12,3.55])b.box(CX,y,EF-.01,width+.07,.068,.25,C.frame,9);
   for(const x of[-2.04,-.94,.16,1.26])b.box(CX+x,2.12,EF+.16,.028,.37,.05,C.metal,9);
   b.box(CX,3.70,EF+.16,EW+.18,.20,.61,C.cream,21);
-  b.box(CX,H.landing/2,EF+.46,8.7,H.landing,.94,C.stone,21);
+  // Own entrance photo shows a continuous stone platform under the recessed doors.
+  // Keep the front stair join at EF+.93; reach behind the full glazing thickness.
+  const landingBack=EF-.24,landingFront=EF+.93;
+  b.box(CX,H.landing/2,(landingBack+landingFront)/2,8.7,H.landing,landingFront-landingBack,C.stone,21);
   for(let i=0;i<8;i++){const high=(8-i)*.145,z=EF+.93+(i+.5)*.34;
    b.box(CX,high/2,z,8.2+i*.035,high,.34,C.stone,21);
    b.box(CX,high+.006,z+.148,8.2+i*.035,.012,.035,'#92998f',21);

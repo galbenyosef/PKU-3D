@@ -38,14 +38,20 @@ function steppedWing(b){
  const tiers=Array.from({length:5},(_,i)=>({front:first+(end-first)*i/4,height:18-3.4*i}));
  const clip=(lo,hi)=>A.clipGeometry(base,[-1000,lo,1000,hi]),height=z=>tiers.find(t=>z<=t.front+1e-7)?.height||tiers[4].height;
  const mesh=(key,g,col,mat=24)=>b.mesh('science2-'+key,g,0,0,0,1,1,1,col,mat);
- const body=new G.Geometry();
+ const body=new G.Geometry(),entryX=(left+right)/2,entryHalf=3.25,entryTop=3.95,entryBack=end-1.25;
+ // South doorway location remains the inherited fit; only its visible type is revised.
  // One continuous outer shell: no buried full-height box walls at tier joins.
  for(let i=1;i<outer.length;i++){
   const a=outer[i-1],q=outer[i],cuts=[0,1];
   if(Math.abs(q[1]-a[1])>1e-8)for(const t of tiers){const u=(t.front-a[1])/(q[1]-a[1]);if(u>1e-7&&u<1-1e-7)cuts.push(u);}
   cuts.sort((a,b)=>a-b);
   for(let j=1;j<cuts.length;j++){const p0=a.map((v,k)=>v+(q[k]-v)*cuts[j-1]),p1=a.map((v,k)=>v+(q[k]-v)*cuts[j]),h=height((p0[1]+p1[1])/2);
-   body.quad([p1[0],0,p1[1]],[p0[0],0,p0[1]],[p0[0],h,p0[1]],[p1[0],h,p1[1]]);
+   if(Math.min(p0[1],p1[1])>end-.20&&Math.abs(p1[0]-p0[0])>1){
+    const ts=[0,1];for(const x of[entryX-entryHalf,entryX+entryHalf]){const u=(x-p0[0])/(p1[0]-p0[0]);if(u>0&&u<1)ts.push(u);}ts.sort((a,b)=>a-b);
+    for(let k=1;k<ts.length;k++){const aa=p0.map((v,n)=>v+(p1[n]-v)*ts[k-1]),bb=p0.map((v,n)=>v+(p1[n]-v)*ts[k]),inside=Math.abs((aa[0]+bb[0])/2-entryX)<entryHalf-1e-6,lo=inside?entryTop:0;
+     body.quad([bb[0],lo,bb[1]],[aa[0],lo,aa[1]],[aa[0],h,aa[1]],[bb[0],h,bb[1]]);
+    }
+   }else body.quad([p1[0],0,p1[1]],[p0[0],0,p0[1]],[p0[0],h,p0[1]],[p1[0],h,p1[1]]);
   }
  }
  function section(z){const xs=[];for(let i=1;i<outer.length;i++){const a=outer[i-1],p=outer[i];if(Math.abs(p[1]-a[1])<1e-8)continue;const t=(z-a[1])/(p[1]-a[1]);if(t>=-1e-7&&t<=1+1e-7)xs.push(a[0]+(p[0]-a[0])*t);}return[Math.min(...xs),Math.max(...xs)];}
@@ -79,8 +85,34 @@ function steppedWing(b){
   }
  }
  const doorX=(left+right)/2,doorZ=end+.055;
- b.box(doorX,1.72,doorZ,5.8,3.05,.16,'#405655',28);b.box(doorX,4.1,doorZ+.34,7,.25,.82,'#aebbb2',29);
- b.lettering('理科二号楼',doorX,3.74,doorZ,8,.48,0,'#4b514a');
+ // 2022 EECS south-door photograph: four bronze-framed leaves, fixed side
+ // lights, continuous transom and a recessed coffered soffit. Dimensions and
+ // recess depth are display fits; the photograph does not prove this wing.
+ // No inferred handles, plaque text or exact stair count is added.
+ const ebox=(name,x,y,z,w,h,d,c,mat=24)=>b.s19box('science2-entry299-'+name,doorX+x,y,z,w,h,d,c,mat);
+ const sill=.195,top=3.65,split=2.80,bronze='#786143',glass='#91aaa4',front=end+.52;
+ // Finite jambs and porch floor/roof join the cut shell; the outer side walls
+ // retain their original form. Floor elevation follows the inherited door sill.
+ for(const side of[-1,1])ebox('jamb',side*3.35,entryTop/2,(front+entryBack)/2,.20,entryTop,front-entryBack,'#e5e5dc');
+ ebox('floor',0,sill/2,(front+entryBack)/2,6.7,sill,front-entryBack,'#959c98',24);
+ ebox('soffit',0,3.94,(front+entryBack)/2,6.7,.20,front-entryBack,'#e7e8df');
+ for(let i=0;i<=6;i++)ebox('coffer-long',-3.15+i*1.05,3.785,(front+entryBack)/2,.10,.11,front-entryBack,'#d9ddd4');
+ for(let i=0;i<=2;i++)ebox('coffer-cross',0,3.785,entryBack+i*(front-entryBack)/2,6.4,.11,.10,'#d9ddd4');
+ // Six lower glazed bays: wide fixed sidelights and four equal middle leaves.
+ const edges=[-2.9,-1.6,-.8,0,.8,1.6,2.9],rail=.065;
+ for(let i=0;i<6;i++){const l=edges[i],r=edges[i+1],w=r-l;
+  ebox(i===0||i===5?'fixed-glass':'leaf-glass',(l+r)/2,(sill+split)/2,entryBack,w-rail,split-sill-rail,.035,glass,5);
+  ebox('transom-glass',(l+r)/2,(split+top)/2,entryBack,w-rail,top-split-rail,.035,glass,5);
+ }
+ for(const x of edges)ebox('bronze-vertical',x,(sill+top)/2,entryBack+.025,rail,top-sill,.09,bronze,29);
+ for(const y of[sill+rail/2,split,top-rail/2])ebox('bronze-horizontal',0,y,entryBack+.025,5.865,rail,.09,bronze,29);
+ // Rear side/header infill meets the recessed door frame; it does not cover glass.
+ for(const side of[-1,1])ebox('rear-side',side*3.085,(sill+entryTop)/2,entryBack,.37,entryTop-sill,.12,'#e5e5dc');
+ ebox('rear-header',0,(top+entryTop)/2,entryBack,5.865,entryTop-top,.12,'#e5e5dc');
+ // Preserve this inherited label's atlas slot and Canvas operation order, but
+ // discard its unsupported floating sign geometry. Restore even on failure.
+ const entryAdd=b.e.add;b.e.add=function(){};
+ try{b.lettering('理科二号楼',doorX,3.74,doorZ,8,.48,0,'#4b514a');}finally{b.e.add=entryAdd;}
  for(const x of[left+2.1,right-2.1])b.s19Window(x,2.0,end+.025,2.9,2.05);
  b.solid((left+right)/2,(back+end)/2,right-left,end-back);
  return {base,tiers,sourceProjection:southPiece,door:[doorX,2,doorZ],heightBasis:'Five eave bands from complete laboratory photograph; heights/intermediate setbacks fitted, not surveyed.'};

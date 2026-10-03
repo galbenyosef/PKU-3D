@@ -33,6 +33,23 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
  // Added first-floor-only block is evidenced by the first plan but absent from the source ring/typical plan.
  b.local(O[0],0,O[1],R,()=>group('single-storey-south-lobby',()=>{const w=lobby.u1-lobby.u0,d=lobby.v1-lobby.v0; b.box((lobby.u0+lobby.u1)/2,H.lobby,lobby.v0+d/2,w,.16,d,'#92988c',24);b.box(lobby.u0,H.lobby/2,lobby.v0+d/2,.10,H.lobby,d,'#cbcabe',24);b.box((lobby.u0+lobby.u1)/2,H.lobby/2,lobby.v1,w,H.lobby,.10,'#cbcabe',24);
  const s=lobby.doorV-.9,e=lobby.doorV+.9;for(const[a,c]of[[lobby.v0,s],[e,lobby.v1]])b.box(lobby.u1,H.lobby/2,(a+c)/2,.1,H.lobby,c-a,'#cbcabe',24);b.box(lobby.u1,.075,lobby.doorV,.10,.15,1.8,'#cbcabe',24);b.box(lobby.u1,2.95,lobby.doorV,.10,.30,1.8,'#cbcabe',24);b.box(lobby.u1-.38,1.48,lobby.doorV,.055,2.66,1.72,'#596965',5);for(const z of[s,e])b.box(lobby.u1-.19,1.48,z,.38,2.66,.06,'#e3e3d7',24);b.box(lobby.u1+.30,.075,lobby.doorV,.6,.15,2.0,'#b2b4a8',24);
+ // The first-floor evacuation plan draws paired leaves at this east-facing door.
+ // Keep the established opening, fitted glazing and 150 mm threshold; complete
+ // its head/sill returns so the recessed leaf plane actually meets the landing.
+ group('lobby-door-detail',()=>{
+  for(const y of[.175,2.785])b.box(lobby.u1-.19,y,lobby.doorV,.38,.05,1.8,'#e3e3d7',24);
+  b.box(lobby.u1-.34,1.48,lobby.doorV,.08,2.61,.055,'#d4dacf',6);
+  b.box(lobby.u1-.19,.075,lobby.doorV,.38,.15,1.8,'#b2b4a8',24);
+ });
+ // Room and lobby are separate in the first-floor plan (x=523..580 and
+ // x=580..637). The old empty shell exposed one undivided hall through the door.
+ // Partition/opening dimensions remain plan-proportioned, not measured elevations.
+ group('lobby-plan-partition',()=>{
+  const split=32.21,planV=y=>lobby.v0+(y-495)/(599-495)*(lobby.v1-lobby.v0),roomNorth=planV(515),doorStart=planV(526),doorEnd=planV(542);
+  b.box((lobby.u0+split)/2,H.lobby/2,roomNorth,split-lobby.u0,H.lobby,.10,'#cbcabe',24);
+  for(const[a,c]of[[roomNorth,doorStart],[doorEnd,lobby.v1]])b.box(split,H.lobby/2,(a+c)/2,.10,H.lobby,c-a,'#cbcabe',24);
+  b.box(split,2.75,(doorStart+doorEnd)/2,.10,.70,doorEnd-doorStart,'#cbcabe',24);
+ });
  }));
  return{strategy:'building031-v46',floors:5,floorEvidence:'historical-only-current-unverified',sourceOutline:true,oneStoreyLobby:true,eastFacingLobbyDoor:true,balconies:false,threeExits:true};
 }

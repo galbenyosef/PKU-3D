@@ -17,7 +17,13 @@ function render(b,f){
   // Rectilinear lattice behind the heavier red mullions, regional fit; exact south mullion counts remain unresolved.
   for(let j=0;j<n;j++){
    const cx=q.x-q.w/2+q.w*(j+.5)/n,ww=q.w/n-.13;
-   for(let yy=q.lo+.20;yy<q.hi-.08;yy+=.37){b.box(cx,yy,.068,ww,.028,.045,C.wood,6);b.box(cx-ww*.26,yy+.08,.068,.028,.20,.045,C.wood,6);b.box(cx+ww*.26,yy+.08,.068,.028,.20,.045,C.wood,6);}
+   for(let yy=q.lo+.20;yy<q.hi-.08;yy+=.37){
+    b.box(cx,yy,.068,ww,.028,.045,C.wood,6);
+    // Keep fitted lattice branches inside the heavy frame's inner edge.
+    // The former last upper row extended .05m beyond the actual window hole.
+    const bottom=yy-.02,top=Math.min(yy+.18,q.hi-.035),clipped=top<yy+.18-1e-9;
+    for(const side of[-1,1])b.box(cx+side*ww*.26,(clipped?(bottom+top)/2:yy+.08),.068,.028,clipped?top-bottom:.20,.045,C.wood,6);
+   }
   }
   b.box(q.x,q.lo-.065,.02,q.w+.17,.08,.25,C.stone,24);
  }

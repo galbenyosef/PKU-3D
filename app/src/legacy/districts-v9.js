@@ -67,10 +67,17 @@ P.historicWestGate=function(p,w=25.5,d=7.8){
  this.box(s*12.7,2.7,0,.55,4.95,d+.25,C.wall,24,.5);
  // Flanking low walls; local opening bounds exclude the traversable center.
  this.box(s*16.5,1.77,-.4,6.5,3.2,.60,C.wall,24,.45);this.solid(s*16.5,-.4,6.5,.60);this.v9Roof(s*16.5,3.45,-.4,6.9,1.7,.65,'gable',1.8);
- this.v9StoneBeast(s*9.6,d/2+3.3,.98,'lion');}
+ this.westGateLion(s*9.6,d/2+2.4,1);}
  for(const x of doorCenters){this.box(x,4.74,0,gap+.9,.86,d,C.red,20,1.1);for(const s of[-1,1]){this.box(x+s*(gap/2+.19),2.44,0,.32,4.25,d-.3,C.red,20,.75);this.solid(x+s*(gap/2+.19),0,.32,d-.3);} // three actual passage voids
- this.v9DoorLeaf(x-gap/2,.31,-d/2+.40,gap/2,4.00,Math.PI*.45);
- this.local(x+gap/2,.31,-d/2+.40,Math.PI,()=>this.v9DoorLeaf(0,0,0,gap/2,4.00,-Math.PI*.45));}
+ // Front-plane paired red doors. Outer passages are partly closed as photographed;
+ // the central passage stays open, and all rotations point inward (-z).
+ const angle=x===0?Math.PI*.43:Math.PI*.12,hingeZ=d/2-.48;
+ this.westGateDoor(x-gap/2,.31,hingeZ,gap/2-.045,4,1,angle);
+ this.westGateDoor(x+gap/2,.31,hingeZ,gap/2-.045,4,-1,-angle);
+ for(const side of[-1,1]){
+ this.box(x+side*(gap/2+.11),.45,hingeZ+.16,.43,.43,.67,C.stone,10,.6);
+ this.cyl(x+side*(gap/2+.11),.30,hingeZ-.20,.23,.20,C.stone,20,1,10,.6);
+ }}
  this.v9PaintedBeam(0,5.33,d/2+.13,w+.15,.96);this.v9PaintedBeam(0,5.33,-d/2-.13,w+.15,.96);
  this.v9Roof(0,6.13,0,w+2.3,d+3.0,1.72,'hipgable');
  this.box(0,4.82,d/2+.22,4.44,1.16,.21,'#c6c7b4',10,1.35);

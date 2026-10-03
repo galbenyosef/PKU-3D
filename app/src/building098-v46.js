@@ -68,8 +68,15 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
    b.box(door.u,1.7,v1-.25,door.width,2.5,.05,C.door,5);
    for(const x of [s,door.u,e])b.box(x,1.7,v1-.2,.05,2.5,.08,C.frame,6);
    for(const y of [.45,2.95])b.box(door.u,y,v1-.2,door.width,.05,.08,C.frame,6);
+   // Close the existing recessed opening back to the thin front wall, outside its original clear aperture.
+   group('reveal-returns',()=>{
+    for(const x of [s,e])b.box(x,1.725,v1-.13,.05,2.55,.22,C.frame,24);
+    b.box(door.u,2.9625,v1-.13,door.width,.075,.22,C.frame,24);
+   });
   });
-  for(const q of entrances)group('entrance-'+q.name,()=>{const d=q.name==='southwest-hall'?1.5:.8;b.box(q.u,q.sill/2,q.v+d/2-.02,q.width+.3,q.sill,d+.06,C.stone,24);const n=Math.round(q.sill/.15);for(let k=0;k<n;k++){const h=.15*(n-k);b.box(q.u,h/2,q.v+d+.18+k*.36,q.width+.3,h,.37,C.stone,24);}});
+  for(const q of entrances)group('entrance-'+q.name,()=>{const hall=q.name==='southwest-hall',d=hall?1.5:.8,recess=hall?.25:.30,rear=q.v-recess-.03,front=q.v+d+.01;
+   // Own ground plan shows connected entries: extend only behind the original landing to support recessed door frames.
+   b.box(q.u,q.sill/2,(rear+front)/2,q.width+.3,q.sill,front-rear,C.stone,24);const n=Math.round(q.sill/.15);for(let k=0;k<n;k++){const h=.15*(n-k);b.box(q.u,h/2,q.v+d+.18+k*.36,q.width+.3,h,.37,C.stone,24);}});
  });
  // Two stair heads project north in all six plans; no ground entrance is added beneath them.
  for(const [s,e] of stairBays){const v=10.45;facade(world(e,v),world(s,v),'north-stair',()=>[{s:.65,e:e-s-.65}]);

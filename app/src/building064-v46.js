@@ -103,6 +103,25 @@ function render(b,f){b.id=f.properties.pickId;
    for(const y of[.62,3.3])b.box(.66,y,.045,1.34,.038,.045,C.gold,9);
   });
  });
+ // Official south photographs show the rotating leaves inside a glazed drum,
+ // not free-standing radial sheets. Keep front/back sectors open for passage.
+ // Radius, arc extent and frame sections are fitted to the retained canopy.
+ group('revolving-fixed-drum',()=>{
+  const radius=1.47,lo=.62,hi=3.20,steps=18;
+  const point=(angle,y)=>[ENTRY+Math.sin(angle)*radius,y,D+.45+Math.cos(angle)*radius];
+  for(const start of[Math.PI/4,Math.PI*5/4]){
+   const glass=new G.Geometry();
+   for(let k=0;k<steps;k++){
+    const a=start+k*Math.PI/(2*steps),c=start+(k+1)*Math.PI/(2*steps);
+    glass.quad(point(a,lo),point(a,hi),point(c,hi),point(c,lo));
+    for(const y of[lo,hi])b.beam(point(a,y),point(c,y),.032,C.gold,9);
+   }
+   // Bucket keys own geometry in both the runtime engine and scene collector.
+   // Opposite arcs have different vertices and must not share the first mesh.
+   mesh('fixed-drum-clear-'+(start<Math.PI?'east':'west'),glass,C.glass,44);
+   for(const angle of[start,start+Math.PI/2])b.beam(point(angle,lo),point(angle,hi),.045,C.gold,9);
+  }
+ });
  group('entry-approach',()=>{
   const z0=D+3.5,z1=D+7.0,x0=ENTRY-3.85,x1=ENTRY+3.85,g=new G.Geometry();
   g.quad([x0,H.base,z0],[x1,H.base,z0],[x1,.04,z1],[x0,.04,z1]);mesh('entrance-incline',g,C.stone,21);

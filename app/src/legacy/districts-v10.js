@@ -45,11 +45,64 @@ P.lakePagoda=function(p){
 };
 P.lakeLuce=function(p){this.noPlant(0,0,21,21);this.local(0,0,0,Math.PI/8,()=>{
  for(let i=0;i<4;i++)this.cyl(0,i*.28,0,8.20-.22*i,.28,i%2?C.edge:C.stone,8,1,10,.07+i*.03);
- this.cyl(0,1.12,0,7.68,.24,'#bebbad',8,1,10,.21);this.cyl(0,1.37,0,5.47,3.88,'#ddd7c6',8,1,24,.55);this.solid(0,0,10.7,10.7);
+ this.cyl(0,1.12,0,7.68,.24,'#bebbad',8,1,10,.21);// One bounded recess behind the photographed entrance panel group. Other
+ // seven cylinder faces and both caps retain their original vertex records.
+ const enclosure297=this.geo('luce297-entry-recess',()=>{
+  const g=G.cylinder(8),out=new G.Geometry();
+  for(let i=0;i<8;i++)out.v.push(...g.v.slice(i*96+(i===1?48:0),(i+1)*96));
+  const a=3*Math.PI/8,face=5.47*Math.cos(Math.PI/8),half=5.47*Math.sin(Math.PI/8),lo=1.4,hi=4.82,w=1.28,depth=.75;
+  const at=(x,y,z=0)=>[(Math.cos(a)*(face+z)+Math.sin(a)*x)/5.47,(y-1.37)/3.88,(Math.sin(a)*(face+z)-Math.cos(a)*x)/5.47];
+  const rect=(x0,x1,y0,y1)=>out.quad(at(x0,y0),at(x1,y0),at(x1,y1),at(x0,y1));
+  rect(-half,-w,1.37,5.25);rect(w,half,1.37,5.25);rect(-w,w,1.37,lo);rect(-w,w,hi,5.25);
+  out.quad(at(-w,lo,-depth),at(-w,hi,-depth),at(-w,hi),at(-w,lo));
+  out.quad(at(w,hi,-depth),at(w,lo,-depth),at(w,lo),at(w,hi));
+  out.quad(at(w,lo),at(w,lo,-depth),at(-w,lo,-depth),at(-w,lo));
+  out.quad(at(w,hi,-depth),at(w,hi),at(-w,hi),at(-w,hi,-depth));
+  out.quad(at(-w,lo,-depth),at(w,lo,-depth),at(w,hi,-depth),at(-w,hi,-depth));
+  return out;
+ });
+ this.mesh('luce297-entry-recess',enclosure297,0,1.37,0,5.47,3.88,5.47,'#ddd7c6',24,.55);this.solid(0,0,10.7,10.7);
  for(let i=0;i<8;i++){let a=i*TAU/8,pt=radialPoint(a,7.10,1.38);this.cyl(pt[0],1.33,pt[2],.40,.23,C.stone,16,1,10,.4);this.cyl(pt[0],1.56,pt[2],.20,4.0,C.red,18,.92,20,.9);
  let mid=(i+.5)*TAU/8,face=5.47*Math.cos(Math.PI/8),bw=2*5.47*Math.sin(Math.PI/8);this.local(Math.cos(mid)*face,0,Math.sin(mid)*face,Math.PI/2-mid,()=>{
- if(i===1)this.heritageDoor(0,1.4,.055,2.38,3.32,0,C.red);else this.v9Lattice(0,3.36,.045,bw-.25,2.85,0,true);
- this.box(0,1.76,.08,bw-.05,.65,.13,'#988979',18,.65);this.v9PaintedBeam(0,5.21,(7.1-5.47)*Math.cos(Math.PI/8),5.2,.65);
+ if(i===1){
+  // Three visible panel groups, NOT three verified operable door leaves.
+  // Direction and overall dimensions retain the previous fitted entrance.
+  const oldAdd=this.e.add;this.e.add=function(k,...args){return oldAdd.call(this,'luce297-entry-'+k,...args);};
+  try{
+   const W=2.38,H=3.32,bottom=1.4,green='#486b59',cuts=[-W/2,-W*.23,W*.23,W/2],bar=.065;
+   for(let j=0;j<3;j++){
+    const l=cuts[j],r=cuts[j+1],w=r-l,cx=(l+r)/2,split=bottom+H*.44,top=bottom+H,foot=1.36,latticeBottom=bottom+H*.67;
+    // Flat green lower panels and coarse lattice. Exact fret motifs are unknown.
+    this.box(cx,(foot+split)/2,.075,w-.025,split-foot,.085,green,20,.90);
+    for(const x of[l+bar/2,r-bar/2])this.box(x,(foot+top)/2,.12,bar,top-foot,.12,green,20,.92);
+    for(const y of[foot+bar/2,split,latticeBottom,top-bar/2])this.box(cx,y,.12,w,bar,.12,green,20,.92);
+    const gy=(split+top)/2,gh=top-split-bar;
+    // Existing glazing material represents the pale reflective/translucent
+    // patches behind the lattice. Optical properties and recess are fitted.
+    this.box(cx,gy,-.07,w-2*bar+.008,gh+.008,.025,'#9faea1',5,.91);
+    // Photo: the lower translucent rectangle is clear of diagonals.
+    // Only its narrow bottom border rail is retained; no invented full-height X.
+    this.box(cx,split+H*.045,.13,w-2*bar,.028,.055,green,20,.94);
+    const ly=(latticeBottom+top-bar)/2,lh=top-bar-latticeBottom,lw=w-2*bar;
+    for(const t of[.12,.88])this.box(cx,latticeBottom+lh*t,.13,lw,.028,.055,green,20,.94);
+    if(j===1){
+     // Coarse angular loop visible in the broad upper centre, not a claim of
+     // the exact floral pattern. Narrow side fields only retain coarse stems.
+     const pts=[[cx-lw*.40,ly,.14],[cx,ly+lh*.35,.14],[cx+lw*.40,ly,.14],[cx,ly-lh*.35,.14]];
+     for(let k=0;k<4;k++)this.beam(pts[k],pts[(k+1)%4],.028,green,20,.95);
+    }else this.box(cx,ly,.13,.028,lh,.055,green,20,.95);
+   }
+   // Only this face: outer-column short rails flank a central walking gap.
+   const z=(7.10-5.47)*Math.cos(Math.PI/8),edge=7.10*Math.sin(Math.PI/8),gap=1.26,base=1.36,top=2.01;
+   for(const sign of[-1,1]){
+    const l=sign<0?-edge:gap,r=sign<0?-gap:edge,cx=(l+r)/2,w=r-l;
+    for(const x of[l+.04,r-.04])this.box(x,(base+top)/2,z,.08,top-base,.10,C.red,20,.96);
+    for(const y of[base+.04,top-.04])this.box(cx,y,z,w,.08,.10,C.red,20,.96);
+    this.box(cx,(base+top)/2,z,.035,top-base-.16,.055,green,20,.97);
+    for(const t of[-1,1])this.beam([l+.09,t<0?base+.10:top-.10,z],[r-.09,t<0?top-.10:base+.10,z],.035,green,20,.97);
+   }
+  }finally{this.e.add=oldAdd;}
+ }else{this.v9Lattice(0,3.36,.045,bw-.25,2.85,0,true);this.box(0,1.76,.08,bw-.05,.65,.13,'#988979',18,.65);}this.v9PaintedBeam(0,5.21,(7.1-5.47)*Math.cos(Math.PI/8),5.2,.65);
  });
  this.local(pt[0],5.12,pt[2],Math.PI/2-a,()=>this.v9Bracket(0,0,0,.64));}
  this.lakeOctagonRoof('v10-luce-roof',8,9.01,5.73,3.34,2.1);

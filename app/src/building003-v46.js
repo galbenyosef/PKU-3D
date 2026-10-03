@@ -9,7 +9,7 @@ function clip(p,a,k,greater){const out=[];for(let i=0;i<p.length;i++){const s=p[
 function pieces(f,box){const out=[];for(const pg of F.polygons(f.geometry))for(const tri of F.capTriangles(pg)){let p=tri.map(local);for(const [a,k,g] of [[0,box[0],true],[0,box[2],false],[1,box[1],true],[1,box[3],false]])if(p.length)p=clip(p,a,k,g);if(p.length>=3&&Math.abs(F.area([...p,p[0]]))>1e-8)out.push(p);}return out;}
 function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,v)=>{const p=world(u,v);return[p[0],y,p[1]];};
  function frame(u,v,r,fn){const p=world(u,v);b.local(p[0],0,p[1],R+r,fn);}
- function block(name,box,base,top,color=C.silver){const g=new G.Geometry(),cap=new G.Geometry();for(const p of pieces(f,box)){for(let i=0;i<p.length;i++){const a=p[i],c=p[(i+1)%p.length];g.quad(vertex(a[0],base,a[1]),vertex(c[0],base,c[1]),vertex(c[0],top,c[1]),vertex(a[0],top,a[1]));}for(let i=1;i<p.length-1;i++){cap.tri(...[p[0],p[i],p[i+1]].map(p=>vertex(p[0],top,p[1])));if(base>0)g.tri(...[p[0],p[i+1],p[i]].map(p=>vertex(p[0],base,p[1])));}}add('003-'+name,g,color,color===C.glass?28:24,id);add('003-'+name+'-cap',cap,C.roof,22,id);}
+ function block(name,box,base,top,color=C.silver){const g=new G.Geometry(),cap=new G.Geometry();for(const p of pieces(f,box)){for(let i=0;i<p.length;i++){const a=p[i],c=p[(i+1)%p.length];g.quad(vertex(a[0],base,a[1]),vertex(c[0],base,c[1]),vertex(c[0],top,c[1]),vertex(a[0],top,a[1]));}const roofRing=name.endsWith('-cantilever-glass')?clip(p,0,3.5,false):p;for(let i=1;i<roofRing.length-1;i++)cap.tri(...[roofRing[0],roofRing[i],roofRing[i+1]].map(p=>vertex(p[0],top,p[1])));if(base>0)for(let i=1;i<p.length-1;i++)g.tri(...[p[0],p[i+1],p[i]].map(p=>vertex(p[0],base,p[1])));}add('003-'+name,g,color,color===C.glass?28:24,id);const glassRoof=name.endsWith('-cantilever-glass');add('003-'+name+'-cap',cap,glassRoof?C.glass:C.roof,glassRoof?28:22,id);}
  // Carve an actual recessed doorway through the west glazing.
  block('two-storey-glass-base',[4.9,-1,43,36.5],0,H.base,C.glass);
  block('base-south-of-entry',[4.9,42.5,43,79],0,H.base,C.glass);
@@ -21,6 +21,12 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
   block(q.name+'-cantilever-floor',[.10,q.v0,4.3,q.v1],H.boxBase,H.boxBase+.42,C.silver);
   block(q.name+'-cantilever-glass',[.10,q.v0,4.3,q.v1],H.boxBase+.42,H.boxTop,C.glass);
   block(q.name+'-narrow-support',[2.5,mid-2.5,3.55,mid+2.5],H.base,H.boxBase,C.glass);
+  // The public west-side photograph shows a glazed top continuing the side grid.
+  // Stop at the main roof edge: no coplanar glass over the opaque roof cap.
+  frame(0,0,0,()=>{
+   for(let i=0;i<=7;i++)b.box(1.8,H.boxTop+.027,q.v0+(q.v1-q.v0)*i/7,3.46,.054,.065,C.dark,29,1.1);
+   for(const u of[.10,1.80,3.50])b.box(u,H.boxTop+.027,mid,.065,.054,q.v1-q.v0,C.dark,29,1.1);
+  });
   frame(.10,q.v0,-Math.PI/2,()=>{const len=q.v1-q.v0;for(let i=0;i<=7;i++)b.box(i*len/7,17.55,.055,.065,5.85,.085,C.dark,29);for(const yy of [14.70,15.10,17.3,20.38])b.box(len/2,yy,.055,len,.07,.085,C.dark,29);});
   for(const [vv,ang] of [[q.v0,Math.PI],[q.v1,0]])frame(.10,vv,ang,()=>{const sign=ang===0?1:-1;for(const x of [0,1.4,2.8,4.2])b.box(sign*x,17.55,.055,.065,5.85,.085,C.dark,29);for(const yy of [14.7,15.1,17.3,20.38])b.box(sign*2.1,yy,.055,4.2,.07,.085,C.dark,29);});
   frame(2.5,mid-2.5,-Math.PI/2,()=>{for(let i=0;i<=3;i++)b.box(i*5/3,11.3,.055,.06,5.8,.085,C.dark,29);for(const yy of [8.5,11.2,14.15])b.box(2.5,yy,.055,5,.065,.085,C.dark,29);});
@@ -54,12 +60,36 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
   for(const x of [-2.95,0,2.95])b.box(x,2.15,0,.09,3.1,.12,C.dark,29);
   for(const yy of [.64,3.68])b.box(0,yy,0,6,.09,.12,C.dark,29);
   for(const x of [-1.48,1.48])b.box(x,2.15,-.025,2.86,2.98,.055,C.glass,28);
-  for(const x of [-.23,.23])b.box(x,1.95,.12,.05,.65,.06,C.frame,29);
+  // Metal pulls have stand-offs and a returned grip, rather than floating bars.
+  for(const x of [-.23,.23]){
+   b.beam([x,1.63,.14],[x,2.28,.14],.024,C.frame,29);
+   for(const y of[1.68,2.23])b.beam([x,y,.025],[x,y,.14],.020,C.frame,29);
+  }
  });
  // The entry sign uses the 2023 college wording; building name remains on the wall above.
  frame(3.5,39.5,-Math.PI/2,()=>{b.box(0,4.15,.8,12.8,.32,3.6,C.silver,24);b.box(0,3.95,.8,12.5,.10,3.4,C.warm,24);b.box(0,4.76,2.56,12.0,.95,.16,C.stair,24);if(b.lettering)b.lettering('集成电路学院',0,4.76,2.67,7.4,.70,0,'#e6e8df');
   for(let j=0;j<4;j++)b.box(0,.075+j*.15,2.45-j*.38,9.8,.15,1.20,C.silver,10);b.box(0,.55,-.25,9.8,.10,2.4,C.silver,10);
-  for(const side of [-1,1]){b.beam([side*4.7,.65,1.0],[side*4.7,1.10,3.2],.05,C.frame,29);for(const z of [1.1,2.0,3.1])b.box(side*4.7,.65,z,.045,.95,.045,C.frame,29);}
+  // 2023 official entrance photo: a timber strip soffit with recessed round
+  // downlights, metal fascia and railings above the landing. Spacing is fitted.
+  for(let i=0;i<78;i++)b.box(-6.16+i*.16,3.875,.80,.105,.055,3.30,'#856e53',20,.9);
+  for(const x of[-4.8,-2.4,0,2.4,4.8])for(const z of[-.2,1.65]){
+   b.cyl(x,3.83,z,.115,.025,'#454b48',32,1,29,.91);
+   b.cyl(x,3.825,z,.083,.009,'#e3ded0',32,1,24,.92);
+  }
+  // Fascia joints remain fine; do not add an unsupported crest/logo graphic.
+  for(const x of[-6.25,-4.69,-3.13,-1.57,0,1.57,3.13,4.69,6.25])b.box(x,4.15,2.605,.015,.27,.014,'#7e898b',29,.9);
+  for(const side of [-1,1]){
+   const x=side*4.7;
+   for(const offset of[0,-.42]){
+    b.beam([x,1.60+offset,-1.0],[x,1.60+offset,1.0],.028,C.frame,29);
+    b.beam([x,1.60+offset,1.0],[x,1.05+offset,3.2],.028,C.frame,29);
+   }
+   for(const z of[-.9,.1,1.0,2.0,3.1]){
+    const top=1.60-Math.max(0,z-1)*.25;
+    b.beam([x,top-1,z],[x,top,z],.025,C.frame,29);
+    b.cyl(x,top-1,z,.064,.025,C.frame,24,1,29);
+   }
+  }
  });
  function boundary(a,c,fn){const dx=c[0]-a[0],dz=c[1]-a[1];b.local(a[0],0,a[1],Math.atan2(-dz,dx),()=>fn(Math.hypot(dx,dz)));}
  const pg=F.polygons(f.geometry)[0];
@@ -75,6 +105,22 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
  for(const ring of pg.slice(1)){const positive=F.area(ring)>0;for(let i=1;i<ring.length;i++){let a=ring[i-1],c=ring[i];if(!positive)[a,c]=[c,a];boundary(a,c,len=>{const n=Math.max(1,Math.round(len/2.7));for(let j=0;j<5;j++)for(let k=0;k<n;k++){const x=(k+.5)*len/n;b.box(x,2.0+j*4.05,.08,Math.min(2.4,len/n-.2),3.10,.09,C.glass,28);b.box(x,2+j*4.05,.15,.05,3.1,.045,C.frame,29);}for(let j=1;j<5;j++)b.box(len/2,j*4.05,.08,len,.15,.15,C.silver,24);});}}
  // East elevation remains a restrained fitted silver/glass rhythm; do not duplicate west boxes/stair.
  boundary(pg[0][1],pg[0][0],len=>{for(let j=0;j<5;j++)for(let k=0;k<26;k++){const x=(k+.5)*len/26;b.box(x,2+j*4.05,.08,2.35,3.0,.08,j<2?C.glass:(k%3===0?C.glass:C.silver),j<2||k%3===0?28:24);}for(let k=0;k<26;k++)b.box(k*len/26,10.2,.1,.055,20.3,.075,C.frame,29);});
+ // Low parapet/metal coping follows the actual inset roof and both courtyard
+ // edges. The aerial supports this vocabulary; heights remain proportional fits.
+ for(const polygon of F.polygons(f.geometry))for(let ri=0;ri<polygon.length;ri++){
+  let ring=polygon[ri].slice(0,-1).map(local);
+  for(const [axis,k,greater]of[[0,3.5,true],[0,43,false],[1,-1,true],[1,79,false]])if(ring.length)ring=clip(ring,axis,k,greater);
+  if(ring.length<3)continue;
+  if((F.area([...ring,ring[0]])>0)===(ri===0))ring.reverse();
+  for(let i=0;i<ring.length;i++){
+   const a=ring[i],c=ring[(i+1)%ring.length],du=c[0]-a[0],dv=c[1]-a[1],length=Math.hypot(du,dv);
+   if(length<.02)continue;
+   frame(a[0],a[1],Math.atan2(-dv,du),()=>{
+    b.box(length/2,H.main+.14,-.095,length,.28,.19,C.silver,24,1.1);
+    b.box(length/2,H.main+.30,-.095,length,.04,.22,C.frame,29,1.12);
+   });
+  }
+ }
  // Observed rooftop plant vocabulary, placed only on real solid roof areas.
  frame(0,0,0,()=>{for(const [u,v,w,d,h] of [[27,7,6,6,3],[19,37.5,5,5,2.7],[36.7,40,3,6,2.1]])b.box(u,H.main+h/2,v,w,h,d,'#d5dcda',24);for(const v of [4,8,12])b.box(37,H.main+.5,v,2.6,.95,1.8,'#cbd3d1',24);});
  return {strategy:'building003-v46',floors:5,sourceOutline:true,twoCourts:true,westCantilevers:true,suspendedStairs:true,dimensionFitted:true};

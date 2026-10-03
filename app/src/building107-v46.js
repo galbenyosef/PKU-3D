@@ -61,6 +61,21 @@ function render(b,f){b.id=f.properties.pickId;
   group('south-painted-beam',()=>{b.box(W/2,4.33,D-.05,W,.28,.28,C.paint,6);for(let x=.65;x<W;x+=1.3){b.box(x,4.33,D+.1,.55,.1,.035,C.gold,6);b.box(x,4.33,D+.13,.30,.055,.02,C.stone,24);}});
   // Only shallow threshold treads are added; the separate lake bank and neighboring 105 remain untouched.
   group('south-threshold',()=>{for(let j=0;j<3;j++){const h=.20*(3-j);b.box(W/2,h/2,D+.18+j*.32,5.35,h,.33,C.stone,24);}});
+  // Frame 38 shows low stone cheeks beside this hall's central short stair.
+  // Fit their cap to the three retained tread noses; do not raise the platform.
+  const cheek=new G.Geometry(),profile=[[-.02,0],[.985,0],[.985,.20],[.345,.60],[-.02,.60]];
+  for(let i=0;i<profile.length;i++){
+   const a=profile[i],c=profile[(i+1)%profile.length];
+   cheek.quad([-.11,a[1],a[0]],[.11,a[1],a[0]],[.11,c[1],c[0]],[-.11,c[1],c[0]]);
+  }
+  for(let i=1;i<profile.length-1;i++){
+   const a=profile[0],c=profile[i],d=profile[i+1];
+   cheek.tri([-.11,a[1],a[0]],[-.11,c[1],c[0]],[-.11,d[1],d[0]]);
+   cheek.tri([.11,a[1],a[0]],[.11,d[1],d[0]],[.11,c[1],c[0]]);
+  }
+  for(const side of[-1,1])b.mesh('107-stair-cheek',cheek,W/2+side*2.785,0,D,1,1,1,C.stone,24);
+  // Close the 15 mm construction gap between the source base and top tread.
+  group('threshold-joint',()=>b.box(W/2,.30,D+.0075,5.35,.60,.035,C.stone,24));
   roof();
  });
  return{id:ID,strategy:'building107-v46',floors:1,originalOutline:true,southBays:7,southPrincipalEntrances:1,southDoorLeaves:4,roofAxes:['east-west'],roofSegments:1,lowerEndHips:true,eaveHeight:H.eave,ridgeHeight:H.ridge,heightMeasured:false,rearElevationVerified:false,identityVerified:false};

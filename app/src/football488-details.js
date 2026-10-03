@@ -1,0 +1,11 @@
+/* May Fourth inner pitch: photographed halfway stripe only.
+ * Keep the mapped surface and its existing boundary; dimensions remain fitted. */
+(function(Y){'use strict';const prior=Y.Sports32.render,G=Y.Geo,M=Y.M,ID='way/1101754966',WIDTH=.13;
+function halfway(f){const center=f.properties.centre,ring=f.geometry.coordinates[0].map(p=>[center[0]+(p[0]-center[0])*.92,center[1]+(p[1]-center[1])*.92]),edges=ring.slice(1).map((p,i)=>({i,a:ring[i],b:p,length:Math.hypot(p[0]-ring[i][0],p[1]-ring[i][1])})),long=edges.slice().sort((a,b)=>b.length-a.length).slice(0,2),mid=e=>e.a.map((x,i)=>(x+e.b[i])/2),a=mid(long[0]),b=mid(long[1]),delta=b.map((x,i)=>x-a[i]),length=Math.hypot(...delta),d=delta.map(x=>x/length),n=[-d[1],d[0]],point=(t,s)=>[a[0]+d[0]*t+n[0]*s,a[1]+d[1]*t+n[1]*s];let poly=[point(-1,-WIDTH/2),point(length+1,-WIDTH/2),point(length+1,WIDTH/2),point(-1,WIDTH/2)];
+const boundary=G.ribbon(ring,WIDTH,.23,false),v=boundary.v;
+// Clip against the actual retained ribbon's inner edges, including its corner
+// normals, so the new stripe meets it without coplanar painted overlap.
+for(const e of edges){const at=k=>[v[e.i*48+k],v[e.i*48+k+2]],pairs=[[at(0),at(8)],[at(40),at(16)]],dist=pair=>Math.hypot((pair[0][0]+pair[1][0])/2-center[0],(pair[0][1]+pair[1][1])/2-center[1]);const [p,q]=dist(pairs[0])<dist(pairs[1])?pairs[0]:pairs[1],cross=r=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]),sign=Math.sign(cross(center)),side=r=>sign*cross(r),next=[];for(let i=0;i<poly.length;i++){const x=poly[i],y=poly[(i+1)%poly.length],sx=side(x),sy=side(y);if(sx>=0)next.push(x);if((sx>=0)!==(sy>=0)){const t=sx/(sx-sy);next.push(x.map((z,j)=>z+(y[j]-z)*t));}}poly=next;}
+const out=new G.Geometry();for(let i=1;i<poly.length-1;i++){const ps=[poly[0],poly[i],poly[i+1]].map(p=>[p[0],.23,p[1]]);if(M.cross(M.sub(ps[1],ps[0]),M.sub(ps[2],ps[0]))[1]<0)ps.reverse();out.tri(...ps);}return out;}
+Y.Sports32.render=function(b,f){const result=prior.call(this,b,f);if(f.properties.id!==ID||f.properties.pickId!==488)return result;if(result)throw Error('488 acquired a new court layout; review halfway integration');b.e.add('football488-halfway-line',halfway(f),M.identity(),'#e8e9d7',[10,488,0,0]);return result;};Y.Football488={halfway};
+})(YY);

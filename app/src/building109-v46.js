@@ -11,7 +11,8 @@ function render(b,f){b.id=f.properties.pickId;const poly=f.geometry.coordinates[
  const mesh=(name,g,color,mat=24)=>b.mesh('109-'+name,g,0,0,0,1,1,1,color,mat);
  function wall(name,a,c,holes=[]){const w=Math.hypot(c[0]-a[0],c[1]-a[1]);b.local(a[0],0,a[1],-Math.atan2(c[1]-a[1],c[0]-a[0]),()=>{
   const ys=[H.base,7,...holes.flatMap(q=>[q.lo,q.hi])].sort((a,b)=>a-b).filter((x,i,a)=>!i||x!==a[i-1]);group(name,()=>{for(let j=1;j<ys.length;j++){const lo=ys[j-1],hi=ys[j],cuts=holes.filter(q=>q.lo<=lo&&q.hi>=hi).sort((a,b)=>a.x-b.x);let prev=0;for(const q of [...cuts,{x:w,w:0}]){const end=q.x-q.w/2;if(end>prev)b.box((prev+end)/2,(lo+hi)/2,-.15,end-prev,hi-lo,.30,P.wall,24);prev=q.x+q.w/2;}}
-   b.box(w/2,.47,-.035,w,.70,.26,P.stone,24);
+   // Close the existing fitted plinth to ground; preserve its .82 m top and plan extent.
+   b.box(w/2,.405,-.035,w,.83,.26,P.stone,24);
    for(const q of holes){const cy=(q.lo+q.hi)/2,hh=q.hi-q.lo;b.box(q.x,cy,-.055,q.w,hh,.07,P.dark,5);for(const x of [q.x-q.w/2,q.x,q.x+q.w/2])b.box(x,cy,.03,.085,hh+.10,.15,P.wood,6);for(const y of[q.lo,q.lo+.38,q.hi-.35,q.hi])b.box(q.x,y,.03,q.w+.10,.085,.15,P.wood,6);b.box(q.x,q.lo-.10,.04,q.w+.22,.12,.26,P.stone,24);}
   });});}
  b.local(O[0],0,O[1],R,()=>{

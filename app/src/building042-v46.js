@@ -12,6 +12,11 @@ const segments=[{name:'west-annex',lo:-1,hi:15.594,h:3.7,rows:1,roof:'#898f86'},
 {name:'east-main',lo:143.2,hi:224,h:14.0,rows:4,roof:'#a3aaa0'}];
 const entrance={u:7.8,v:0,width:2.5,sill:.45,face:'south',annexOnly:true};
 function clip(poly,k,greater){const out=[];for(let i=0;i<poly.length;i++){const a=poly[i],c=poly[(i+1)%poly.length],ai=greater?a[0]>=k:a[0]<=k,ci=greater?c[0]>=k:c[0]<=k;if(ai)out.push(a);if(ai!==ci){const t=(k-a[0])/(c[0]-a[0]);out.push(a.map((x,j)=>x+t*(c[j]-x)));}}return out;}
+// The 2024 west-annex photo resolves brick piers and broad red jambs, not main-block doors.
+function pierMortar(){const g=new G.Geometry(),half=.22,back=-.17,front=.33,t=.008,row=.17;
+const face=(x0,x1,y0,y1,z)=>g.quad([x0,y0,z],[x1,y0,z],[x1,y1,z],[x0,y1,z]);
+for(let y=row;y<3.7;y+=row){face(-half,half,y-t/2,y+t/2,front+.003);for(const x of[-half,half])g.quad([x,y-t/2,back],[x,y-t/2,front],[x,y+t/2,front],[x,y+t/2,back]);}
+for(let i=0;i<Math.ceil(3.7/row);i++){const lo=i*row+t/2,hi=Math.min(3.7,(i+1)*row-t/2);for(const x of(i%2?[-.11,.11]:[0]))face(x-t/2,x+t/2,lo,hi,front+.004);for(const x of[-half,half]){const z=i%2?.08:-.05;g.quad([x,lo,z-t/2],[x,lo,z+t/2],[x,hi,z+t/2],[x,hi,z-t/2]);}}return g;}
 function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,v)=>{const p=world(u,v);return[p[0],y,p[1]];},ring=F.polygons(f.geometry)[0][0],raw=ring.map(local),positive=F.area(ring)>0;
 function group(name,fn){const old=b.e.add;b.e.add=function(k,...args){return old.call(this,'042-'+name+'-'+k,...args);};try{fn();}finally{b.e.add=old;}}
 for(const q of segments){const roof=new G.Geometry();for(const pg of F.polygons(f.geometry))for(const tri of F.capTriangles(pg)){let p=clip(clip(tri.map(local),q.lo,true),q.hi,false);for(let k=1;k<p.length-1;k++)roof.tri(...[p[0],p[k],p[k+1]].map(p=>vertex(p[0],q.h,p[1])));}add('042-flat-roof-'+q.name,roof,q.roof,24,id);
@@ -37,7 +42,7 @@ const x=entrance.u;
 b.box(x,.225,-.05,3.1,.45,2.1,'#b5bdae',24);for(let k=0;k<3;k++){const h=.15*(k+1);b.box(x,h/2,2.15-k*.5,2.65,h,.51,'#b5bdae',24);}
 // Solid sloping cheeks flank the actual steps without replacing the walkable flight.
 for(const side of[-1,1]){const a=x+side*1.48,w=.32,p=[a-w/2,a+w/2],g=new G.Geometry();g.quad(vertex(p[0],0,2.4),vertex(p[1],0,2.4),vertex(p[1],.45,.9),vertex(p[0],.45,.9));g.tri(vertex(p[0],0,.9),vertex(p[0],0,2.4),vertex(p[0],.45,.9));g.tri(vertex(p[1],0,2.4),vertex(p[1],0,.9),vertex(p[1],.45,.9));g.quad(vertex(p[0],0,.9),vertex(p[1],0,.9),vertex(p[1],.45,.9),vertex(p[0],.45,.9));g.quad(vertex(p[0],0,2.4),vertex(p[1],0,2.4),vertex(p[1],0,.9),vertex(p[0],0,.9));add('042-step-cheek-'+side,g,'#c3c9ba',24,id);}
-for(const side of[-1,1]){b.box(x+side*1.65,1.85,.08,.44,3.7,.50,'#6d756c',24);b.box(x+side*1.65,2.48,.40,.18,.48,.18,'#3e4c47',24);b.box(x+side*1.65,2.48,.51,.13,.33,.035,'#c6d8c1',5);}
+for(const side of[-1,1]){b.box(x+side*1.65,1.85,.08,.44,3.7,.50,'#6d756c',24);group('pier-mortar',()=>b.mesh('042-pier-mortar',b.geo('042-pier-mortar',pierMortar),x+side*1.65,0,0,1,1,1,'#a7a69a',24));group('red-door-jamb',()=>b.box(x+side*1.34,1.765,.065,.18,2.63,.22,'#9d342a',24));b.box(x+side*1.65,2.48,.40,.18,.48,.18,'#3e4c47',24);b.box(x+side*1.65,2.48,.51,.13,.33,.035,'#c6d8c1',5);}
 b.box(x,3.39,.10,3.5,.64,.55,'#9d342a',24);b.box(x,3.36,.42,2.45,.52,.07,'#543629',24);b.sign('南门驿站',x,3.36,.47,2.38,.48,0);
 const canopy=new G.Geometry(),ribs=new G.Geometry(),height=(u,v)=>4.22-.37*(v+.45)/1.5+.38*Math.pow(Math.abs(u)/2.35,6)*Math.pow((v+.45)/1.5,3),pt=(u,v,extra=0)=>vertex(x+u,height(u,v)+extra,v);
 for(let j=0;j<8;j++)for(let i=0;i<32;i++){const u=-2.35+i*4.7/32,v=-.45+j*1.5/8;canopy.quad(pt(u,v),pt(u+4.7/32,v),pt(u+4.7/32,v+1.5/8),pt(u,v+1.5/8));}
@@ -49,5 +54,5 @@ for(let u=-1.9;u<2;u+=.24){b.box(x+u,3.75,.42,.12,.14,.5,'#355b47',24);b.box(x+u
 }));
 return{strategy:'building042-v46',flatRoofSegments:6,westAnnexFloors:1,westMainTotalFloors:null,eastMainTotalFloors:null,westAnnexSouthDoorVerified:true,mainEntrancesVerified:false,heightMeasured:false};
 }
-A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};Y.Building042={id:ID,render,world,local,segments,entrance};
+A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};Y.Building042={id:ID,render,world,local,segments,entrance,pierMortar};
 })(YY);

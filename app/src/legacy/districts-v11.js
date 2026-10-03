@@ -21,6 +21,27 @@ P.libRoof=function(key,x,y,z,w,d,h,part=2){this.local(x,y,z,0,()=>{
  for(const s of[-1,1]){this.libBeam(key+'-ridge-finial',[s*w*.33,h+.06,0],[s*(w*.33+.65),h+.86,0],.32,.64,'#737c73',part+.08);this.sphere(s*(w*.33+.62),h+.92,0,.22,.26,.31,'#747c73',25,part+.08,true);for(let xx=-w/2+.3;xx<w/2;xx+=.80){let up=.78*Math.pow(Math.abs(xx/(w/2)),10);this.box(xx,-.36+up,s*(d*.5-1.8),.17,.24,3.9,C.belt,24,part-.12);}}
  });};
 P.libDoor=function(x,z,w=12){this.local(x,0,z,0,()=>{this.box(0,3.45,0,w,5.85,.22,C.dark,20,.64);this.box(0,3.45,.125,w-.32,5.52,.032,'#455653',5,.66);for(let i=-3;i<=3;i++)this.box(i*w/7,3.45,.22,.15,5.68,.18,C.metal,20,.7);this.box(0,4.3,.24,w-.12,.18,.2,C.metal,20,.71);for(let i=-2;i<=2;i++)this.box(i*w/6+.15,2.8,.36,.065,.85,.13,'#b5b6a7',9,.73);});};
+// East entry: the 2020 reopening photographs show bronze-brown framed glazing,
+// opaque lower panels and a separate transom. Overall width and bay count remain fitted.
+P.libEastDoor=function(){this.local(0,0,15.18,0,()=>{
+ const frame='#675344',panel='#79624e',glass='#455653',w=12.8,bottom=.6,top=6.375,head=4.9;
+ const edges=[-w/2,...Array.from({length:7},(_,i)=>(i-3)*w/7),w/2];
+ // Model the individual panes rather than overlaying a single glass sheet on a wall.
+ for(let i=0;i<edges.length-1;i++){
+  const a=edges[i],c=edges[i+1],x=(a+c)/2,bw=c-a;
+  this.box(x,(bottom+head)/2,0,bw-.045,head-bottom,.18,frame,20,.64);
+  this.box(x,1.12,.105,bw-.25,.78,.075,panel,9,.65);
+  this.box(x,3.13,.115,bw-.27,3.06,.032,glass,5,.66);
+  this.box(x,(head+top)/2,0,bw-.045,top-head,.18,frame,20,.67);
+  this.box(x,(head+top)/2,.115,bw-.28,top-head-.28,.032,glass,5,.68);
+  for(const sx of[-1,1])this.box(x+sx*(bw/2-.09),3.13,.145,.14,3.32,.12,frame,9,.69);
+  for(const y of[1.53,4.72])this.box(x,y,.145,bw-.16,.14,.12,frame,9,.69);
+  this.box(x,.67,.14,bw-.08,.13,.13,'#a49c8c',9,.70);
+ }
+ for(const x of edges)this.box(x,(bottom+top)/2,.08,.12,top-bottom,.30,frame,9,.71);
+ this.box(0,head,.08,w,.16,.30,frame,9,.72);
+ this.box(0,top,.08,w+.12,.16,.30,frame,9,.72);
+});};
 P.libraryEast=function(p,w=110,d=50){
  this.noPlant(0,12,135,101);this.box(0,.30,0,w+1.5,.60,d+1.5,C.stone,10,.15);
  // Discrete lower masses produce a real recessed entrance, not a flat front.
@@ -36,7 +57,7 @@ P.libraryEast=function(p,w=110,d=50){
   for(let xx=-49;xx<51;xx+=9.8)this.libWindow(xx,ys[f],-25.09,7.8,4.4,Math.PI,false);
  }
  for(const s of[-1,1]){for(let j=0;j<=3;j++)this.box(s*(25+j*10),13.4,25.50,.82,25.9,.7,C.pale,10,1.10);for(let x=s*26;x*s<55;x+=s*2)this.box(x,27.12,25.1,.042,.87,.027,'#9c9f93',10,1.13);}
- this.libDoor(0,15.18,12.8);
+ this.libEastDoor();
  // Raised hall with a seven-bay structural register and neutral stone piers.
  this.box(0,29.55,-1.8,78,6.0,31.5,C.stone,10,1.20);
  for(let i=0;i<7;i++){let xx=-31.5+i*10.5;this.libWindow(xx,28.40,14.07,8.85,3.70,0,true);this.box(xx,31.10,14.05,8.95,.90,.14,C.dark,20,1.32);for(let j=-3;j<=3;j++)this.box(xx+j*1.13,31.08,14.21,.07,.80,.16,'#a8aa9d',24,1.35);

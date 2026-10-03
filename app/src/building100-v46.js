@@ -56,10 +56,11 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
  }
  b.local(O[0],0,O[1],R,()=>{
   // West-wing outside strip is present on all six own plans, except the north end room.
+  // Existing fitted guards: embed the lower ends .01 in their slabs, preserving every top edge.
   group('wing-balconies',()=>{const s=wingY(450),e=17.085689,w=e-s;
    for(let floor=0;floor<6;floor++){const y=floor*H.floor+(floor===0?.3:.12);b.box(-.50,y-.08,(s+e)/2,1.18,.16,w,C.stone,24);b.box(-1.04,y+1,(s+e)/2,.06,.06,w,C.frame,6);
-    for(let v=s;v<e+.1;v+=.7)b.box(-1.04,y+.52,Math.min(v,e),.05,1,.05,C.frame,6);
-    for(const v of [s,e])b.box(-.5,y+.52,v,1.18,1,.06,C.wall,24);
+    for(let v=s;v<e+.1;v+=.7)b.box(-1.04,y+.505,Math.min(v,e),.05,1.03,.05,C.frame,6);
+    for(const v of [s,e])b.box(-.5,y+.505,v,1.18,1.03,.06,C.wall,24);
    }
   });
   // A low southwest hall fills only the first-floor extension, leaving all five upper levels empty.
@@ -72,13 +73,20 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
    for(const x of [s,door.u,e])b.box(x,1.7,v1-.2,.05,2.5,.08,C.frame,6);
    for(const y of [.45,2.95])b.box(door.u,y,v1-.2,door.width,.05,.08,C.frame,6);
   });
+  // Close the existing low hall's .25-deep doorway to its own .45-high landing.
+  // These fitted returns do not establish a new door style or another entrance.
+  group('hall-door-returns',()=>{const q=entrances[2],s=q.u-q.width/2,e=q.u+q.width/2,z=q.v-.14;
+   b.box(q.u,.225,z,q.width+.09,.45,.30,C.stone,24);
+   for(const x of [s-.015,e+.015])b.box(x,1.715,z,.06,2.55,.30,C.wall,24);
+   b.box(q.u,2.98,z,q.width+.09,.08,.30,C.wall,24);
+  });
   group('south-upper-balconies',()=>{for(const q of entrances.slice(0,2))for(let floor=1;floor<6;floor++){
    const y=floor*H.floor+.12,w=3.60,depth=1.18,z=q.v+depth/2;
    b.box(q.u,y-.08,z,w,.16,depth+.02,C.stone,24);
    b.box(q.u,y+1.02,q.v+depth,w,.055,.055,C.frame,6);
    for(const x of [q.u-w/2,q.u+w/2])b.box(x,y+1.02,z,.055,.055,depth,C.frame,6);
-   for(let j=0;j<=8;j++)b.box(q.u-w/2+w*j/8,y+.54,q.v+depth,.045,1.02,.045,C.frame,6);
-   for(const x of [q.u-w/2,q.u+w/2])for(const zz of [q.v+.22,q.v+.66])b.box(x,y+.54,zz,.045,1.02,.045,C.frame,6);
+   for(let j=0;j<=8;j++)b.box(q.u-w/2+w*j/8,y+.52,q.v+depth,.045,1.06,.045,C.frame,6);
+   for(const x of [q.u-w/2,q.u+w/2])for(const zz of [q.v+.22,q.v+.66])b.box(x,y+.52,zz,.045,1.06,.045,C.frame,6);
   }});
   for(const q of entrances)group('entrance-'+q.name,()=>{const d=q.name==='southwest-hall'?1.5:.8;b.box(q.u,q.sill/2,q.v+d/2-.02,q.width+.3,q.sill,d+.06,C.stone,24);const n=Math.round(q.sill/.15);for(let k=0;k<n;k++){const h=.15*(n-k);b.box(q.u,h/2,q.v+d+.18+k*.36,q.width+.3,h,.37,C.stone,24);}});
  });

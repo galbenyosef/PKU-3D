@@ -36,7 +36,7 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
   if(face==='east-north')source=source.slice(0,1);
   const positions=source.map(([s,e,ratio])=>{const ax=horizontal?0:1,d=horizontal?du:dv,t0=(s-la[ax])/d*len,t1=(e-la[ax])/d*len,mid=(t0+t1)/2,w=Math.abs(t1-t0)*ratio;return[mid-w/2,mid+w/2];}).filter(([s,e])=>s>.12&&e<len-.12&&e-s>.4).sort((a,c)=>a[0]-c[0]);
   b.local(a[0],0,a[1],Math.atan2(-dz,dx),()=>group('facade-'+face,()=>{
-   const panel=(x0,x1,y0,y1)=>{if(x1>x0&&y1>y0)b.box((x0+x1)/2,(y0+y1)/2,-.035,x1-x0,y1-y0,.07,C.wall,24);};
+   const panel=(x0,x1,y0,y1)=>{if(x1>x0&&y1>y0)b.box((x0+x1)/2,(y0+y1)/2,-.035,x1-x0,y1-y0,.07,C.wall,face==='east-north'?18:24);};
    for(let floor=0;floor<6;floor++){const base=floor*H.floor;let openings=positions.map(([s,e])=>({s,e,bottom:base+.84,top:base+2.70,door:false}));
     if(floor===0)for(const door of entrances.filter(q=>q.face===face)){const x=(door.axis===0?(door.u-la[0])/du:(door.v-la[1])/dv)*len,s=Math.max(0,x-door.width/2),e=Math.min(len,x+door.width/2);if(e>s+.15){openings=openings.filter(q=>q.e<s-.12||q.s>e+.12);openings.push({s,e,bottom:door.sill,top:3.03,door:true});}}
     openings.sort((a,c)=>a.s-c.s);let cursor=0;
@@ -45,13 +45,13 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
      for(const xx of [q.s,q.e])b.box(xx,y,-depth/2,.045,h,depth,C.frame,24);
      for(const yy of [q.bottom,q.top])b.box(x,yy,-depth/2,w,.045,depth,C.frame,24);
      b.box(x,y,-depth,w-.08,h-.06,.055,q.door?C.door:C.glass,5);
-     for(const xx of [q.s+.05,x,q.e-.05])b.box(xx,y,-depth+.05,.045,h,.07,C.frame,6);
-     for(const yy of [q.bottom+.035,q.top-.035])b.box(x,yy,-depth+.05,w,.055,.07,C.frame,6);
-     if(!q.door)b.box(x,base+1.95,-depth+.055,w,.035,.07,C.frame,6);
-     if(!q.door&&floor===0&&face==='east-north')for(let gx=q.s+.12;gx<q.e-.08;gx+=.16)b.box(gx,y,.02,.03,h,.035,C.frame,6);
+     for(const xx of [q.s+.05,x,q.e-.05])b.box(xx,y,-depth+.05,.045,h,.07,C.frame,face==='east-north'?37:6);
+     for(const yy of [q.bottom+.035,q.top-.035])b.box(x,yy,-depth+.05,w,.055,.07,C.frame,face==='east-north'?37:6);
+     if(!q.door)b.box(x,base+1.95,-depth+.055,w,.035,.07,C.frame,face==='east-north'?37:6);
+     if(!q.door&&floor===0&&face==='east-north')for(let gx=q.s+.12;gx<q.e-.08;gx+=.16)b.box(gx,y,.02,.03,h,.035,C.frame,face==='east-north'?37:6);
      cursor=q.e;
     }
-    panel(cursor,len,base,base+H.floor);b.box(len/2,base+3.14,.025,len,.12,.16,C.frame,24);
+    panel(cursor,len,base,base+H.floor);if(face!=='east-north')b.box(len/2,base+3.14,.025,len,.12,.16,C.frame,24);
    }
    b.box(len/2,H.wall+.04,.035,len,.16,.18,C.frame,24);
   }));
@@ -59,13 +59,22 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
  // South main lobby has its own broad outside stair; the other plan-labelled exits remain secondary.
  b.local(O[0],0,O[1],R,()=>{for(const q of entrances)group('entrance-'+q.name,()=>{
  const w=q.width,s=q.outward;
- if(q.name==='main-south'){b.box(q.u,.375,q.v+.60,w+.6,.75,1.2,C.stone,24);for(let k=0;k<5;k++){const h=.15*(k+1);b.box(q.u,h/2,q.v+3.45-k*.5,w+.6,h,.51,C.stone,24);}}
+ if(q.name==='main-south'){b.box(q.u,.375,q.v+.60,w+.6,.75,1.2,C.stone,24);for(let k=0;k<5;k++){const h=.15*(k+1);b.box(q.u,h/2,q.v+3.705-(k+.5)*.501,w+.6,h,.501,C.stone,24);}}
  else if(q.name==='east-north'){
-  b.box(q.u,.375,q.v-.55,w+.3,.75,1.1,C.stone,24);for(let k=0;k<5;k++){const h=.15*(k+1);b.box(q.u,h/2,q.v-3.10+k*.5,w+.3,h,.51,C.stone,24);}
+  b.box(q.u,.375,q.v-.55,w+.3,.75,1.1,C.stone,24);for(let k=0;k<5;k++){const h=.15*(k+1);b.box(q.u,h/2,q.v-3.355+(k+.5)*.451,w+.3,h,.451,C.stone,24);}
   b.box(q.u,3.13,q.v-.65,w+.8,.15,1.4,C.frame,24);
   for(const edge of [-1,1]){b.box(q.u+edge*(w/2+.4),3.31,q.v-.65,.10,.30,1.4,C.frame,24);
-   for(let k=0;k<5;k++){const v=q.v-3.10+k*.5,h=.15*(k+1);b.box(q.u+edge*(w/2+.10),h+.43,v,.04,.86,.04,C.frame,6);}
-   b.beam([q.u+edge*(w/2+.10),1.02,q.v-3.10],[q.u+edge*(w/2+.10),1.62,q.v-1.10],.04,C.frame,6);}
+   // The numbered photograph shows a metal stair guard with vertical infill
+   // and a level landing return. Dimensions remain fitted to the existing sill.
+   const x=q.u+edge*(w/2+.10),v0=q.v-3.1295,v1=q.v-1.3255,v2=q.v-.15;
+   for(let k=0;k<5;k++){const v=q.v-3.355+(k+.5)*.451,h=.15*(k+1);b.box(x,h+.43,v,.04,.86,.04,C.frame,37);}
+   b.box(x,1.18,v2,.04,.86,.04,C.frame,37);
+   b.beam([x,1.01,v0],[x,1.61,v1],.04,C.frame,37);
+   b.beam([x,1.61,v1],[x,1.61,v2],.04,C.frame,37);
+   b.beam([x,.27,v0],[x,.87,v1],.025,C.frame,37);
+   b.beam([x,.87,v1],[x,.87,v2],.025,C.frame,37);
+   for(let v=v0+.14;v<v2-.07;v+=.14){const top=v<v1?1.01+(v-v0)/(v1-v0)*.60:1.61;b.box(x,top-.37,v,.018,.74,.018,C.frame,37);}
+  }
  }
  else if(q.axis===0){b.box(q.u,.15,q.v+s*.35,w+.25,.3,.7,C.stone,24);b.box(q.u,.075,q.v+s*.88,w+.25,.15,.38,C.stone,24);}
  else{b.box(q.u+s*.35,.15,q.v,.7,.3,w+.25,C.stone,24);b.box(q.u+s*.88,.075,q.v,.38,.15,w+.25,C.stone,24);}

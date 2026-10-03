@@ -45,13 +45,27 @@ function render(b,f){b.id=f.properties.pickId;
    const lo=levels[i-1],hi=levels[i],cuts=holes.filter(q=>q.lo<=lo+.001&&q.hi>=hi-.001).sort((a,b)=>a.x-b.x);let c=0;
    for(const q of cuts){wall(c,q.x-q.w/2,lo,hi);c=q.x+q.w/2;}wall(c,width,lo,hi);
   }
+  // The own south-front photograph exposes a shallow rectangular stucco
+  // outline below the first main-bay upper window. Other bays are obscured
+  // by the portico, so do not extrapolate it onto hidden elevations.
+  if(name==='south-main')group('observed-west-bay-panel',()=>{
+   const q=holes.find(q=>q.hi===6.46),left=q.x-q.w/2+.12,right=q.x+q.w/2-.12,low=3.73,high=4.08;
+   for(const y of[low,high])b.box((left+right)/2,y,.018,right-left,.035,.055,C.wall,24);
+   for(const x of[left,right])b.box(x,(low+high)/2,.018,.035,high-low,.055,C.wall,24);
+  });
   for(const q of holes)if(q.door){group('recessed-door-fitted',()=>{
    b.box(q.x,1.63,-.21,2.2,2.84,.075,C.frame,6);
    for(const dx of[-.53,.53])b.box(q.x+dx,1.65,-.161,.94,2.50,.026,C.glass,5);
    b.box(q.x,1.66,-.12,.07,2.79,.07,C.frame,6);
    for(const dx of[-.09,.09])b.box(q.x+dx,1.43,-.063,.027,.30,.036,'#b7afa0',9);
   });}else frame(q);
-  for(const y of[H.base+.015,3.36,3.64])b.box(width/2,y,.025,width,.035,.065,C.wall,24);
+  for(const y of[H.base+.015,3.36,3.64]){
+   const cuts=holes.filter(q=>q.door&&q.lo<y+.0175&&q.hi>y-.0175).sort((a,b)=>a.x-b.x);
+   if(!cuts.length){b.box(width/2,y,.025,width,.035,.065,C.wall,24);continue;}
+   // Preserve the base moulding on both wall segments, but never run it
+   // across the real door aperture in front of the recessed glass.
+   group('door-cleared-plinth-band',()=>{let start=0;for(const q of cuts){const end=q.x-q.w/2;if(end>start)b.box((start+end)/2,y,.025,end-start,.035,.065,C.wall,24);start=q.x+q.w/2;}if(start<width)b.box((start+width)/2,y,.025,width-start,.035,.065,C.wall,24);});
+  }
   if(decor)painted(width);
  }));}
  function column(x,z,height,r=.255){b.cyl(x,.26,z,r,height-.26,C.red,24,1,10);b.cyl(x,.06,z,r+.10,.22,C.base,24,1,24);for(const y of[height-.12,height-.24])b.cyl(x,y,z,r+.012,.037,C.gold,24,1,10);}
@@ -96,6 +110,9 @@ function render(b,f){b.id=f.properties.pickId;
   b.box(x,.12,(back+front)/2,w+.28,.24,front-back+.55,C.base,21);
   b.box(x,.055,front+.54,w+.56,.11,.55,C.stone,21);
   for(const u of[-w/2,-w/6,w/6,w/2])column(x+u,front-.20,3.22,.185);
+  // The photograph shows square stone bearing pads on the exposed front
+  // column feet; retain the existing round neck/base above each pad.
+  group('front-column-stone-pads',()=>{for(const u of[-w/2,-w/6,w/6,w/2])b.box(x+u,.255,front-.20,.62,.07,.60,C.base,24);});
   for(const u of[-w/2,w/2])column(x+u,back+.15,3.22,.185);
   b.local(x-w/2,0,front-.20,0,()=>painted(w,3.27));
   for(const u of[-w/2,w/2])b.box(x+u,3.24,(back+front)/2,.25,.27,front-back,C.darkRed,6);

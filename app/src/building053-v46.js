@@ -19,6 +19,7 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
   if(!q.door)b.box(x,lo-.07,.05,w+.21,.12,.35,C.edge,24);
  }
  b.local(O[0],0,O[1],R,()=>{
+  const lateDetails=[];
   group('plinth',()=>b.box(M,H.base/2,Z,W-2*I,H.base,D-2*I,C.stone,24));
   group('flat-roof-edges',()=>{for(const z of[.12,D-.12]){b.box(M,6.16,z,W,.36,.24,C.brick,30);b.box(M,6.365,z,W+.05,.08,.35,C.edge,24);}for(const x of[.12,W-.12]){b.box(x,6.16,Z,.24,.36,D-.24,C.brick,30);b.box(x,6.365,Z,.35,.08,D-.20,C.edge,24);}
    for(const x of[W/3,W*2/3])b.box(x,6.065,Z,.16,.085,D-.45,C.edge,24);
@@ -55,8 +56,34 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
      for(const x of[-3.12,0,3.12]){const pts=[[x,1.81,.48],[x,1.81,1.54],[x,.99,3.53]];for(let k=1;k<pts.length;k++)b.beam(pts[k-1],pts[k],.025,C.metal,9);for(const [z,y]of[[.53,H.base],[1.52,H.base],[3.50,.17]])b.beam([x,y,z],[x,y+.96,z],.024,C.metal,9);b.beam([x,1.48,1.54],[x,.66,3.53],.018,C.metal,9);}
      b.box(-3.20,4.45,.17,.31,.21,.20,'#4e5d58',24);b.box(-3.20,4.45,.285,.24,.14,.035,'#d9ddcc',24);
     });}
+    if(side===1){group('east-cladding-joints',()=>{
+     // The 2023 entrance photo resolves rectangular cladding on the white
+     // surround and canopy. Joint spacing/width remains a proportional fit.
+     const joint=(x,y,z,w,h,d)=>b.box(x,y,z,w,h,d,'#92998f',24);
+     for(const x of[-2.66,2.66]){
+      joint(x,3.02,.384,.012,4.30,.008);
+      for(const y of[1.82,2.92,4.02])joint(x,y,.384,.98,.012,.008);
+     }
+     for(const x of[-2.1,-1.05,0,1.05,2.1])joint(x,4.70,.384,.012,1.18,.008);
+     for(const x of[-2.59,-1.73,-.86,0,.86,1.73,2.59]){
+      joint(x,5.38,1.659,.010,.28,.008);
+      joint(x,5.226,.74,.010,.008,1.81);
+     }
+    });lateDetails.push(()=>b.local(ox,0,oz,rot,()=>group('east-transom-labels',()=>{
+     // These two small green labels are visible on the historical east photo;
+     // no seasonal padded curtains or current operating rules are inferred.
+     for(const [x,label,key]of[[-1.04,'入口','entry'],[1.04,'出口','exit']]){
+      b.sign('053-east-'+key,x,3.72,-.105,1.12,.28,0,true);
+      const uv=b.signs.get('053-east-'+key+'_true');if(!uv)continue;
+      const px=uv[0]*4096,py=(1-uv[1]-uv[3])*4096;
+      b.ctx.fillStyle='#447b60';b.ctx.fillRect(px,py,512,128);
+      b.ctx.strokeStyle='#e7dc9b';b.ctx.lineWidth=6;b.ctx.strokeRect(px+8,py+8,496,112);
+      b.ctx.fillStyle='#eee5b4';b.ctx.textAlign='center';b.ctx.textBaseline='middle';b.ctx.font='600 84px "Noto Sans CJK SC","Microsoft YaHei",sans-serif';b.ctx.fillText(label,px+256,py+65);
+     }
+    })));}
    }));
   }
+  for(const fn of lateDetails)fn();
  });
  return{strategy:'building053-v46',hallFloorsFitted:1,clerestory:true,intermediateSlab:false,lowRoofPanels:3,southDoorTypeVerified:true,southDoorOffsetVerified:false,eastPhotoDirectionVerified:true,allFacadesVerified:false,heightMeasured:false,sourceOutlinePreserved:true};
 }

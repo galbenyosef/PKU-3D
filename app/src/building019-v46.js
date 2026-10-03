@@ -60,12 +60,17 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
  // Both plan-labelled entrance halls face the western recess. The L stairs are footprint-fitted.
  b.local(O[0],0,O[1],R,()=>{for(const q of entrances)group('entrance-'+q.number,()=>{
   const s=q.number===38?1:-1,v=q.v;
-  b.box(27.85,.30,v,1.58,.60,2.50,C.stone,24);
-  b.box(25.48,.15,v,1.22,.30,1.22,C.stone,24);
-  for(let k=0;k<3;k++){const h=.10*(k+1);b.box(25.48,h/2,v-s*(1.70-k*.43),1.22,h,.46,C.stone,24);}
-  for(let k=0;k<3;k++){const h=.40+k*.10;b.box(26.25+k*.36,h/2,v,.37,h,1.22,C.stone,24);}
-  for(const [u,vv,h] of [[24.86,v-s*1.70,.10],[24.86,v,.30],[27.0,v+s*.65,.60]])b.cyl(u,h,vv,.026,.83,'#6c7870',8,1,6);
-  b.beam([24.86,.93,v-s*1.70],[24.86,1.13,v],.027,'#6c7870',6);b.beam([25.0,1.13,v+s*.65],[27.0,1.43,v+s*.65],.027,'#6c7870',6);
+  // Disjoint tread footprints meet at risers; no coplanar landing overlaps.
+  const slab=(u0,u1,v0,v1,h)=>b.box((u0+u1)/2,h/2,v+(v0+v1)*s/2,u1-u0,h,v1-v0,C.stone,24);
+  slab(27.06,28.64,-1.25,1.25,.60);
+  slab(24.87,26.09,-.61,.61,.30);
+  for(let k=0;k<3;k++)slab(24.87,26.09,-1.93+k*.44,-1.93+(k+1)*.44,.10*(k+1));
+  for(let k=0;k<3;k++)slab(26.09+k*.97/3,26.09+(k+1)*.97/3,-.61,.61,.40+k*.10);
+  // Continuous outer rail follows both flights and the turning landing.
+  // Height and section remain fitted; the plan establishes only the stair route.
+  const rail=[[24.89,.10,v-s*1.70],[24.89,.30,v-s*.59],[24.89,.30,v+s*.59],[26.09,.30,v+s*.59],[27.06,.60,v+s*.59]];
+  for(const [u,h,vv] of rail)b.cyl(u,h,vv,.026,.83,'#6c7870',8,1,6);
+  for(let i=1;i<rail.length;i++){const a=rail[i-1],c=rail[i];b.beam([a[0],a[1]+.83,a[2]],[c[0],c[1]+.83,c[2]],.027,'#6c7870',6);}
  });});
  return{strategy:'building019-v46',floors:6,sourceOutline:true,northWing:38,southWing:39,connectorShared:true,threeRoofBars:true,seventhStoreyUnmodeled:true,dimensionFitted:true};
 }

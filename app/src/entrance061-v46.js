@@ -62,7 +62,8 @@ function render(b){
    const x=-2.52,top=1.47;
    for(const z of[.35,1.36,2.00]){
     tube([x,.43,z],[x,top,z]);
-    b.cyl(x,.423,z,.068,.035,C.metal,16,1,9);
+    // Extend only the flange underside into the tread by 0.5 mm; retain its upper face.
+    b.cyl(x,.4195,z,.068,.0385,C.metal,16,1,9);
    }
    for(const y of[top,.96,.64])tube([x,y,.32],[x,y,1.90]);
    // Rounded returns in the y/z plane, matching the bent round tube.

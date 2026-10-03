@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0
+
+- Reference-backed campus building, courtyard, entrance and landscape refinements, including Shaoyuan, Yannan Garden and the West Gate.
+- Preserve original plaque and sign proportions; repair supported stair, threshold, wall-foot and roof joints without inventing unobserved details.
+- Defer unnecessary road mesh construction during cached startup; retain full model detail, original image resolution, shadows, reflections and antialiasing.
+- Package the matching prebuilt scene and portable regression fixtures for fresh checkouts.
+- Document unresolved model details separately from deferred objects. Three global performance metrics still fail the original frozen comparison; see [performance status](docs/development/performance.md).
+
 ## 1.2.0
 
 - Directional sky and ground ambient light for clearer sheltered surfaces; rain and mist attenuate direct sunlight consistently.

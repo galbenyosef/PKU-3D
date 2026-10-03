@@ -21,6 +21,26 @@ function render(b,f,add){if(f.properties.id!==ID)return false;const id=f.propert
   mesh.rim.quad(vert(-width(inside),deck(inside),inside),vert(-width(inside),rim(inside)+.04,inside),vert(width(inside),rim(inside)+.04,inside),vert(width(inside),deck(inside),inside));
   mesh.cap.quad(vert(-w,h+.04,v),vert(w,h+.04,v),vert(width(inside),rim(inside)+.04,inside),vert(-width(inside),rim(inside)+.04,inside));
  }
+ // The archive photograph shows a projecting, softened stone coping rather
+ // than a knife-thin top. Follow the existing rim, leaving its west opening clear.
+ const coping=new G.Geometry(),path=[],copingStations=stations.filter(v=>Math.abs(v)<L/2-.25||Math.abs(v)===L/2);
+ const point=(side,v)=>[side*(width(v)-.115),rim(v)+.04,v];
+ for(const v of copingStations.filter(v=>v<=-GAP+1e-8).slice().reverse())path.push(point(-1,v));
+ for(const v of copingStations)path.push(point(1,v));
+ for(const v of copingStations.filter(v=>v>=GAP-1e-8).slice().reverse())path.push(point(-1,v));
+ const section=[[-.155,0],[-.145,.055],[-.105,.085],[.105,.085],[.145,.055],[.155,0]],rings=[];
+ for(let i=0;i<path.length;i++){
+  const p=path[i],a=path[Math.max(0,i-1)],c=path[Math.min(path.length-1,i+1)];
+  const normal=(a,c)=>{const dx=c[0]-a[0],dz=c[2]-a[2],l=Math.hypot(dx,dz);return[-dz/l,dx/l];};
+  const n0=normal(i?a:p,i?p:c),n1=normal(i===path.length-1?a:p,i===path.length-1?p:c),den=1+n0[0]*n1[0]+n0[1]*n1[1],m=[(n0[0]+n1[0])/den,(n0[1]+n1[1])/den];
+  rings.push(section.map(([d,h])=>vert(p[0]+m[0]*d,p[1]+h,p[2]+m[1]*d)));
+ }
+ for(let i=1;i<rings.length;i++)for(let j=1;j<section.length;j++)coping.quad(rings[i-1][j-1],rings[i-1][j],rings[i][j],rings[i][j-1]);
+ // Solid cut ends close the west rim at the open access boundary.
+ for(const index of[0,rings.length-1]){const r=rings[index];for(let j=1;j<r.length-1;j++)coping.tri(r[0],r[index===0?j+1:j],r[index===0?j:j+1]);
+  const p=path[index],v=p[2],w=width(v);const face=[vert(-w,deck(v),v),vert(-w,rim(v)+.04,v),vert(-w+.23,rim(v)+.04,v),vert(-w+.23,deck(v),v)];mesh.rim.quad(...(v<0?face.reverse():face));
+ }
+ add('047-rounded-coping',coping,'#c8c9bb',10,id);
  // Join the mapped west rim path to the deck; both ends use this same surface.
  const start=-8.5,end=-W/2+.06,half=1.7,bank=world(start,0),bankY=(Y.Landscape42?.walkElevation(...bank)||.8)+.12;
  mesh.approach.quad(vert(start,bankY,-half),vert(start,bankY,half),vert(end,DECK,half),vert(end,DECK,-half));

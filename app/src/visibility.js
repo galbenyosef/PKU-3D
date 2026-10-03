@@ -11,10 +11,10 @@
  function prepare(data,geometry){const{center:c,half:h}=bounds(geometry),out=new Float32Array(data.length/28*5);for(let i=0,n=0;i<data.length;i+=28,n+=5){out[n]=data[i]*c[0]+data[i+4]*c[1]+data[i+8]*c[2]+data[i+12];out[n+1]=data[i+1]*c[0]+data[i+5]*c[1]+data[i+9]*c[2]+data[i+13];out[n+2]=data[i+2]*c[0]+data[i+6]*c[1]+data[i+10]*c[2]+data[i+14];const ext=[0,1,2].map(j=>Math.abs(data[i+j])*h[0]+Math.abs(data[i+4+j])*h[1]+Math.abs(data[i+8+j])*h[2]);out[n+3]=Math.hypot(...ext)+1.2;const sides=[0,4,8].map((k,j)=>2*h[j]*Math.hypot(data[i+k],data[i+k+1],data[i+k+2])).sort((a,b)=>a-b);out[n+4]=sides[1];}return out;}
  function keepSurfaceDetail(width,distance,focal,enabled=true){return enabled===false||width*focal/Math.max(1,distance)>=.85;}
  function sphereVisible(planes,x,y,z,r){for(let k=0;k<planes.length;k++){const p=planes[k];if(p[0]*x+p[1]*y+p[2]*z+p[3]<-r)return false;}return true;}
- function compile(bucket){
-  const data=bucket.data,sp=bucket.spatial,n=data.length/28,ids=new Set(),materials=new Set(),surface=bucket.detailWidth?new Float64Array(n):null,flags=new Uint8Array(n);
-  const groups=bucket.groups=n>=128?new Float64Array(Math.ceil(n/64)*5):null;
-  const detail=bucket.groupDetail=groups?new Float64Array(Math.ceil(n/64)*4):null,routes=bucket.groupRoutes=groups?new Uint8Array(Math.ceil(n/64)):null;
+ function compile(bucket,allocate){
+  const data=bucket.data,sp=bucket.spatial,n=data.length/28,ids=new Set(),materials=new Set(),surface=bucket.detailWidth?(allocate?allocate(Float64Array,n):new Float64Array(n)):null,flags=(allocate?allocate(Uint8Array,n):new Uint8Array(n));
+  const groups=bucket.groups=n>=128?(allocate?allocate(Float64Array,Math.ceil(n/64)*5):new Float64Array(Math.ceil(n/64)*5)):null;
+  const detail=bucket.groupDetail=groups?(allocate?allocate(Float64Array,Math.ceil(n/64)*4):new Float64Array(Math.ceil(n/64)*4)):null,routes=bucket.groupRoutes=groups?(allocate?allocate(Uint8Array,Math.ceil(n/64)):new Uint8Array(Math.ceil(n/64))):null;
   let x0=Infinity,y0=Infinity,z0=Infinity,x1=-Infinity,y1=-Infinity,z1=-Infinity,maxPart=0;
   let ax=Infinity,ay=Infinity,az=Infinity,bx=-Infinity,by=-Infinity,bz=-Infinity,part=0;
   let minDetail=Infinity,minSurface=Infinity,maxDetail=0,maxSurface=0,hasRoute=0;
@@ -47,16 +47,33 @@
   }
   bucket.ids=ids;bucket.materials=materials;bucket.uniformMaterial=materials.size===1?materials.values().next().value:null;bucket.uniformId=ids.size===1?ids.values().next().value:null;bucket.maxPart=maxPart;bucket.surfaceWidths=surface;bucket.essentialFlags=flags;
   bucket.coarse=[(x0+x1)/2,(y0+y1)/2,(z0+z1)/2,Math.hypot(x1-x0,y1-y0,z1-z0)/2];
+  // compile is serialized alone into the decode worker; keep this proof local.
+  const c=bucket.coarse;
+  bucket.singleSphere=!!(data.length===28&&!groups&&c[0]===sp[0]&&c[1]===sp[1]&&c[2]===sp[2]&&Number.isFinite(sp[0])&&Number.isFinite(sp[1])&&Number.isFinite(sp[2])&&Number.isFinite(sp[3])&&Number.isFinite(c[3])&&c[3]>=sp[3]&&Number.isFinite(data[23]));
  }
- function select(bucket,planes,eye,focal,state,scratch,ownedScratch=false,appendToStream=false){
+ function prepareSingle(bucket){
+  const data=bucket.data,sp=bucket.spatial,c=bucket.coarse;
+  bucket.singleSphere=!!(data.length===28&&!bucket.groups&&c[0]===sp[0]&&c[1]===sp[1]&&c[2]===sp[2]&&Number.isFinite(sp[0])&&Number.isFinite(sp[1])&&Number.isFinite(sp[2])&&Number.isFinite(sp[3])&&Number.isFinite(c[3])&&c[3]>=sp[3]&&Number.isFinite(data[23]));
+ }
+ function select(bucket,planes,eye,focal,state,scratch,ownedScratch=false,appendToStream=false,result={count:0,culled:0}){
+  // Engine may provide one synchronous result slot; ordinary callers still
+  // receive a fresh object. Reset before any early exit or possible error.
+  result.count=0;result.culled=0;
   const data=bucket.data,sp=bucket.spatial,iso=state.isolate,only=bucket.uniformId,coarse=bucket.coarse;
-  if(iso&&!bucket.ids.has(iso)&&!bucket.ids.has(999999))return{count:0,culled:0};
-  if(only!==null&&((state.vegetation===false&&only>=800000&&only<900000)||(only>=950000&&only<960000&&!state.routeEdges?.has(only-950000))))return{count:0,culled:0};
-  if(!sphereVisible(planes,coarse[0],coarse[1],coarse[2],coarse[3]+Math.abs(state.explode||0)*bucket.maxPart))return{count:0,culled:0};
+  if(iso&&!bucket.ids.has(iso)&&!bucket.ids.has(999999))return result;
+  if(only!==null&&((state.vegetation===false&&only>=800000&&only<900000)||(only>=950000&&only<960000&&!state.routeEdges?.has(only-950000))))return result;
+  // A finite, concentric single instance can use its exact scalar sphere once.
+  // Any displacement or ambiguous metadata retains the original two-stage path.
+  let singleInside=false;
+  if(bucket.singleSphere&&state.explode===0&&(scratch?scratch.data:bucket.visible)){
+   const y=sp[1]+(data[21]===state.selected?(state.explode||0)*data[23]:0);
+   if(!sphereVisible(planes,sp[0],y,sp[2],sp[3]))return result;
+   singleInside=true;
+  }else if(!sphereVisible(planes,coarse[0],coarse[1],coarse[2],coarse[3]+Math.abs(state.explode||0)*bucket.maxPart))return result;
   const offset=appendToStream?scratch.used:0;
   let out=scratch?scratch.data:bucket.visible;if(!out){out=new Float32Array(Math.min(64,bucket.count)*28);if(scratch)scratch.data=out;else bucket.visible=out;}let count=0,culled=0;
   const enabled=state.detailLOD!==false,selected=state.selected,surface=bucket.surfaceWidths,flags=bucket.essentialFlags,groups=bucket.groups;
-  let inside=false,runStart=-1,runEnd=0,runOutput=0;
+  let inside=singleInside,runStart=-1,runEnd=0,runOutput=0;
   for(let i=0,j=0,k=0;i<data.length;i+=28,j+=5,k++){
    if(groups&&(k&63)===0){
     const q=(k>>6)*5,r=groups[q+3]+Math.abs(state.explode||0)*groups[q+4];let outside=false;inside=true;
@@ -106,7 +123,7 @@
    runEnd=i+28;count++;
   }
   if(runStart>=0)out.set(data.subarray(runStart,runEnd),offset+runOutput*28);
-  return{count,culled};
+  result.count=count;result.culled=culled;return result;
  }
- Y.Visibility={keepDetail,keepSurfaceDetail,prepare,bounds,sphereVisible,compile,select};
+ Y.Visibility={essentialMaterials:Object.freeze([...essential]),keepDetail,keepSurfaceDetail,prepare,bounds,sphereVisible,compile,prepareSingle,select};
 })(YY);

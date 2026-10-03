@@ -9,6 +9,10 @@ const C={brick:'#a8aea7',stone:'#c9c7ba',panel:'#a9b2b1',joint:'#515d5c',metal:'
 const world=(u,v)=>[O[0]+u*CO+v*SI,O[1]-u*SI+v*CO],local=p=>[(p[0]-O[0])*CO-(p[1]-O[1])*SI,(p[0]-O[0])*SI+(p[1]-O[1])*CO];
 const atrium={x0:9,x1:26,z0:5.2,z1:18.3};
 const rect=(x0,z0,x1,z1)=>[[x0,z0],[x1,z0],[x1,z1],[x0,z1],[x0,z0]];
+// The completion photograph shows broad white side webs below the stair treads.
+// Canonical local mesh: both sides reuse identical coordinates via instance translation.
+function stairSideWeb(){const g=new G.Geometry(),n=22,run=10.2,rise=(H.mezzanine-H.base)/n,half=.045,lower=z=>Math.max(H.base,H.base+z/run*(H.mezzanine-H.base)-.55);
+for(let i=0;i<n;i++){const z0=i*run/n,z1=(i+1)*run/n,top=H.base+(i+1)*rise-.12,lo0=lower(z0),lo1=lower(z1);for(const x of[-half,half])g.quad([x,lo0,z0],[x,lo1,z1],[x,top,z1],[x,top,z0]);g.quad([-half,lo0,z0],[half,lo0,z0],[half,lo1,z1],[-half,lo1,z1]);g.quad([-half,top,z0],[-half,top,z1],[half,top,z1],[half,top,z0]);const previous=i?H.base+i*rise-.12:lo0;g.quad([-half,previous,z0],[half,previous,z0],[half,top,z0],[-half,top,z0]);if(i===n-1)g.quad([-half,lo1,z1],[-half,top,z1],[half,top,z1],[half,lo1,z1]);}return g;}
 function render(b,f,add){b.id=f.properties.pickId;let clearPane=0;
  const group=(name,fn)=>{const old=b.e.add;b.e.add=function(k,...v){return old.call(this,'062-'+name+'-'+k,...v);};try{fn();}finally{b.e.add=old;}};
  const mesh=(key,g,col,mat=24)=>b.mesh('062-'+key,g,0,0,0,1,1,1,col,mat);
@@ -108,6 +112,7 @@ function render(b,f,add){b.id=f.properties.pickId;let clearPane=0;
    // Each thin tread has a riser; the stair underside remains open.
    for(let i=0;i<n;i++){const y=H.base+(i+1)*rise,z=z0+(i+.5)*run/n;b.box(x,y-.06,z,width,.12,run/n+.015,C.wood,24);b.box(x,y-rise/2,z0+i*run/n,width,rise,.065,C.white,24);}
    for(const xx of[x-width/2,x+width/2]){
+    group('white-stringer-web',()=>b.mesh('062-stair-side-web',b.geo('062-stair-side-web',stairSideWeb),xx,0,z0,1,1,1,C.white,24));
     const g=new G.Geometry();g.quad([xx,H.base+1.04,z0],[xx,H.mezzanine+1.04,z0+run],[xx,H.mezzanine,z0+run],[xx,H.base,z0]);mesh('stair-glass-'+xx,g,C.glass,44);b.beam([xx,H.base+1.09,z0],[xx,H.mezzanine+1.09,z0+run],.025,C.metal,9);
     b.beam([xx,H.base-.06,z0],[xx,H.mezzanine-.12,z0+run],.095,C.white,24);
    }
@@ -120,5 +125,5 @@ function render(b,f,add){b.id=f.properties.pickId;let clearPane=0;
  });
  return{strategy:'building062-v46',floors:2,mezzanine:true,skylight:true,blueHistoricPortal:false,centralServingIsland:false,northAndEastDoors:true,allFacadesVerified:false,heightMeasured:false,entranceOffsetsMeasured:false,roofGridMeasured:false,sourceOutlinePreserved:true};
 }
-A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};Y.Building062={id:ID,render,world,local,W,D,H,atrium};
+A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};Y.Building062={id:ID,render,world,local,W,D,H,atrium,stairSideWeb};
 })(YY);

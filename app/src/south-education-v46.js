@@ -75,7 +75,9 @@ function render(b,f){
   // is left over the doorway opening when seen from the west.
   // The door plane is behind the column line; dark recess adds real depth.
   box('entry-dark-recess',7.97,entry,2.47,.07,11.45,4.04,C.dark);
-  box('entry-floor',5.5,entry,.55,5.0,13.2,.30,C.stone,10);
+  // Meet the existing highest stair at u=3.90 with the same .03 m overlap
+  // used between stair boxes; keep the rear edge at u=8 and top at .70.
+  box('entry-floor',5.935,entry,.55,4.13,13.2,.30,C.stone,10);
   for(const v of[entry-6.4,entry+6.4])box('entry-two-storey-brick-pier',4.55,v,4.65,1.3,1.25,8.5,C.brick);
   box('entry-portal-fascia',4.54,entry,4.95,.8,11.5,.85,C.cap,10);
   box('entry-door-glass',7.80,entry,2.35,.045,5.9,3.42,C.glass,28);

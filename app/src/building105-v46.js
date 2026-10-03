@@ -17,6 +17,12 @@ function render(b,f){b.id=f.properties.pickId;
   for(const h of holes){const mid=(h.lo+h.hi)/2,height=h.hi-h.lo;
    b.box(h.x,mid,-.11,h.w-.02,height-.02,.05,h.door?C.red:C.dark,h.door?6:5);
    const panes=h.door?4:2;
+   // The documented east windows have closed red leaves in both the 2015
+   // and 2026 lake photographs. Keep the recessed glazing and original
+   // frame/lattice, adding fitted leaf cores only on these observed faces.
+   if(observed&&!h.door)group('closed-red-leaves',()=>{
+    for(const side of[-1,1])b.box(h.x+side*h.w/4,mid,-.0375,h.w/2-.08,height-.11,.035,C.red,6);
+   });
    for(let i=0;i<=panes;i++)b.box(h.x-h.w/2+h.w*i/panes,mid,.015,.064,height+.07,.22,C.wood,6);
    for(const y of[h.lo,h.hi])b.box(h.x,y,.015,h.w+.08,.065,.22,C.wood,6);
    if(h.door){for(let i=0;i<4;i++)for(let y=1.05;y<2.63;y+=.25)b.box(h.x-h.w/2+h.w*(i+.5)/4,y,.031,h.w/4-.10,.027,.05,C.gold,6);}

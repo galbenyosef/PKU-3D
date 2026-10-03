@@ -88,14 +88,44 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
   b.box(u-.08,3.52,v,.98,.36,18.0,'#d5d8cb',24);b.box(u-.06,7.51,v,.60,.18,17.8,'#d5d8cb',24);
   for(const x of[-5.4,0,5.4]){const w=x===0?6.35:2.72;for(const y of[3.97,4.41])b.box(u-.14,y,v+x,.075,.065,w,'#8e9d96',24);for(let z=-w/2;z<=w/2+.001;z+=.61)b.box(u-.14,4.18,v+x+z,.065,.52,.05,'#8e9d96',24);}
   // Recessed back door and second-floor glazing. No invented eastern portal.
-  for(const x of[-5.575,5.575])b.box(u+2.3,1.925,v+x,.12,2.95,3.25,'#858e84',24);
+  // Official 2025 front and 2026 oblique photographs show red-framed
+  // glazing behind both narrow portal bays, not solid rear walls. Keep their
+  // original envelope and cut only the photographed apertures; sizes are fitted.
+  group('side-portal-glazing',()=>{
+   for(const x of[-5.575,5.575]){
+    const w=2.15,lo=.45,hi=3.10;
+    for(const z of[-1,1])b.box(u+2.3,1.925,v+x+z*(3.25+w)/4,.12,2.95,(3.25-w)/2,'#858e84',24);
+    b.box(u+2.3,(hi+3.4)/2,v+x,.12,3.4-hi,w,'#858e84',24);
+    b.box(u+2.39,(lo+hi)/2,v+x,.05,hi-lo-.10,w-.10,'#657b7b',5);
+    for(const z of[-w/2,0,w/2])b.box(u+2.31,(lo+hi)/2,v+x+z,.14,hi-lo,.09,'#783d30',24);
+    for(const y of[lo,1.13,2.73,hi])b.box(u+2.31,y,v+x,.14,.09,w,'#783d30',24);
+   }
+  });
   for(const x of[-7.2,7.2])b.box(u+1.15,1.925,v+x,2.42,2.95,.12,'#858e84',24);
   b.box(u+2.3,3.275,v,.12,.25,7.90,'#858e84',24);b.box(u+2.39,1.76,v,.05,2.62,7.8,'#657b7b',5);
   for(const z of[-3.95,0,3.95])b.box(u+2.31,1.78,v+z,.14,2.66,.10,'#783d30',24);for(const y of[.45,2.73,3.1])b.box(u+2.31,y,v,.14,.09,8.05,'#783d30',24);
+  // The recessed central doorway has narrower side lights. The original
+  // lone middle stile incorrectly left two uninterrupted 3.9 m glass spans.
+  group('central-door-sashes',()=>{
+   for(const z of[-2.05,2.05])b.box(u+2.31,1.78,v+z,.14,2.66,.10,'#783d30',24);
+   b.box(u+2.31,1.13,v,.14,.09,8.05,'#783d30',24);
+  });
   for(const z of[-5.4,0,5.4]){const w=z===0?6.35:2.72;b.box(u+2.32,5.5,v+z,.06,3.1,w,'#657b7b',5);for(const y of[3.95,5.3,6.7,7.08])b.box(u+2.24,y,v+z,.12,.07,w,'#783d30',24);for(let x=-w/2;x<=w/2+.001;x+=w/3)b.box(u+2.24,5.5,v+z+x,.12,3.18,.07,'#783d30',24);}
   b.box(u+1.15,3.70,v,2.42,.18,14.4,'#858e84',24);b.box(u+1.15,7.51,v,2.42,.18,14.4,'#858e84',24);
   b.box(u+1.15,.225,v,3.1,.45,15.0,'#b5bdae',24);for(let k=0;k<3;k++){const h=.15*(k+1);b.box(u-1.6+k*.5,h/2,v,.51,h,17.6,'#b5bdae',24);}
-  for(const z of[-4.4,4.4]){const pts=Array.from({length:13},(_,i)=>[u-.57,2.85+.28*Math.sin(i/12*Math.PI*1.5),v+z+.22*Math.cos(i/12*Math.PI*1.5)]);for(let j=1;j<pts.length;j++)b.beam(pts[j-1],pts[j],.025,'#303d35',24);b.box(u-.58,2.40,v+z,.24,.42,.26,'#35463c',24);b.box(u-.72,2.40,v+z,.025,.27,.18,'#b8c3af',5);}
+  // The official oblique photo mounts the curled fixtures on the exterior
+  // brick piers. Centre each fixture on an outer pier, with a visible backplate
+  // and short return linking the retained scroll to its supporting masonry.
+  group('pier-lanterns',()=>{
+   for(const z of[-7.2,7.2]){
+    b.box(u-.395,2.70,v+z+.22,.06,.60,.10,'#303d35',24);
+    b.beam([u-.42,2.36,v+z+.22],[u-.42,3.04,v+z+.22],.035,'#303d35',24);
+    b.beam([u-.40,2.85,v+z+.22],[u-.57,2.85,v+z+.22],.035,'#303d35',24);
+    const pts=Array.from({length:13},(_,i)=>[u-.57,2.85+.28*Math.sin(i/12*Math.PI*1.5),v+z+.22*Math.cos(i/12*Math.PI*1.5)]);
+    for(let j=1;j<pts.length;j++)b.beam(pts[j-1],pts[j],.025,'#303d35',24);
+    b.box(u-.58,2.40,v+z,.24,.42,.26,'#35463c',24);b.box(u-.72,2.40,v+z,.025,.27,.18,'#b8c3af',5);
+   }
+  });
  }));
  // Close only the vertical boundary between the wall top and the clipped main slope.
  // The west annex roofs and the recessed outdoor strip stay independent and open.

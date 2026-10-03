@@ -88,10 +88,38 @@ b.local(4.94,0,35.7,-Math.PI/2,()=>group('west-portico',()=>{
  b.box(0,3.43,.015,13.0,.36,.90,C.light,24);
  for(const s of[-1,1]){b.box(s*4.14,1.78,-2.05,4.1,2.92,.16,C.brick,24);b.box(s*6.2,1.78,-1.02,.15,2.92,2.2,C.brick,24);}
  b.box(0,3.20,-2.05,4.2,.35,.16,C.brick,24);b.box(0,3.25,-1.02,12.4,.12,2.2,C.light,24);
- b.box(0,1.62,-2.15,4.12,2.68,.05,C.glass,5);for(const x of[-2.1,-1.04,0,1.04,2.1])b.box(x,1.64,-2.09,.095,2.72,.15,C.red,24);for(const y of[.28,2.4,2.94])b.box(0,y,-2.09,4.26,.09,.16,C.red,24);
+ // 2025 close photograph: bronze double leaves inside red fixed sidelights,
+ // with a separate glazed transom. All panes stop above the stone landing.
+ group('door',()=>{
+  const bronze='#806e48',bottom=.38,top=2.4;
+  for(const x of[-2.1,2.1])b.box(x,1.66,-2.09,.095,2.56,.15,C.red,24);
+  for(const x of[-1.04,0,1.04])b.box(x,(bottom+top)/2,-2.055,.095,top-bottom,.19,bronze,24);
+  for(const y of[bottom,top])b.box(0,y,-2.055,2.18,.095,.19,bronze,24);
+  for(const s of[-1,1]){
+   b.box(s*.52,.555,-2.055,.94,.35,.14,bronze,24);
+   b.box(s*.52,1.56,-2.15,.94,1.63,.04,C.glass,5);
+   b.box(s*1.57,.48,-2.09,.96,.2,.15,C.red,24);
+   b.box(s*1.57,1.485,-2.15,.96,1.81,.04,C.glass,5);
+   b.box(s*1.57,top,-2.09,1.06,.09,.16,C.red,24);
+  }
+  for(const x of[-1.04,1.04])b.box(x,2.67,-2.09,.095,.54,.15,C.red,24);
+  for(const x of[-1.57,0,1.57])b.box(x,2.67,-2.15,x===0?1.98:.96,.44,.04,C.glass,5);
+  b.box(0,2.94,-2.09,4.26,.09,.16,C.red,24);
+ });
+ // Central light-stone sign fascia projects from the three-bay lintel.
+ // Lettering and changing institutional plaques are not reconstructed.
+ group('sign-fascia',()=>b.box(0,3.48,.51,5.52,.62,.16,C.light,24));
  b.box(0,.19,-.9,12.8,.38,2.7,C.light,24);for(let k=0;k<3;k++){const h=.126*(k+1);b.box(0,h/2,.6+(2-k)*.4,12.8,h,.43,C.light,24);}
  for(const y of[3.74,4.05])b.box(0,y,.04,12.4,.055,.065,C.metal,24);for(let x=-6;x<=6;x+=.6)b.box(x,3.88,.04,.04,.40,.055,C.metal,24);
- for(const s of[-1,1]){b.box(s*3.1,2.69,.43,.24,.40,.24,'#45594c',24);b.box(s*3.1,2.69,.49,.13,.25,.15,'#bac5af',10);}
+ group('lanterns',()=>{for(const s of[-1,1]){
+  const x=s*3.1,dark='#38483f';
+  b.box(x,2.72,.37,.11,.57,.08,dark,24);
+  b.box(x,2.93,.47,.075,.065,.28,dark,24);
+  b.box(x,2.66,.55,.24,.36,.21,'#bac5af',5);
+  for(const dx of[-.13,.13])b.box(x+dx,2.66,.68,.035,.38,.035,dark,24);
+  for(const y of[2.45,2.87])b.box(x,y,.55,.32,.065,.30,dark,24);
+  b.box(x,2.37,.55,.06,.10,.06,dark,24);
+ }});
 }));
 // Only the south-west end has individually attributable three curved caps and balcony.
 b.local(0,0,63.55,-Math.PI/2,()=>group('southwest-three-caps',()=>{

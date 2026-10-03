@@ -12,9 +12,23 @@ const C={brick:'#977a69',band:'#c4c4b3',edge:'#d5d6c9',joint:'#acb3a5',glass:'#7
 const world=(x,z)=>[O[0]+x*CO+z*SI,O[1]-x*SI+z*CO],local=p=>[(p[0]-O[0])*CO-(p[1]-O[1])*SI,(p[0]-O[0])*SI+(p[1]-O[1])*CO];
 const join=[local([-367.800,145.144])[0],local([-356.612,144.478])[0]];
 const entryX=W*.52;
+// A fitted paved connection to the existing courtyard footway. The photographs
+// establish hard paving outside the steps, not surveyed paving boundaries.
+function entranceApproach(road){
+ if(!road||road.geometry.type!=='LineString')return null;
+ // Reuse the rendered ribbon edge, including its averaged corner tangent.
+ const ribbon=G.ribbon(road.geometry.coordinates,road.properties.width,.12).v.slice(-48);
+ const a=[ribbon[40],ribbon[42]],c=[ribbon[16],ribbon[18]],dx=c[0]-a[0],dz=c[1]-a[1],len=Math.hypot(dx,dz);
+ if(!len||!Number.isFinite(len))return null;
+ const v=[dx/len,dz/len],front=[world(entryX-2.88,D+3.06),world(entryX+2.88,D+3.06)];
+ const edge=front.map(p=>{const t=(p[0]-a[0])*v[0]+(p[1]-a[1])*v[1];return[a[0]+v[0]*t,a[1]+v[1]*t];});
+ return{front,edge,outline:[front[0],front[1],edge[1],edge[0],front[0]]};
+}
 const roofY=(x,z)=>H.eave+(H.ridge-H.eave)*Math.max(0,Math.min(1,(x+.50)/(D/2+.50),(W+.50-x)/(D/2+.50),(z+.50)/(D/2+.50),(D+.50-z)/(D/2+.50)));
 function render(b,f){b.id=f.properties.pickId;
  const group=(name,fn)=>{const old=b.e.add;b.e.add=function(k,...args){return old.call(this,'061-'+name+'-'+k,...args);};try{fn();}finally{b.e.add=old;}};
+ const approach=entranceApproach(Y.CAMPUS?.features.find(q=>q.properties.id==='way/1160812191'));
+ if(approach)group('entrance-approach',()=>b.mesh('paving',Y.Footprints.surface({type:'Polygon',coordinates:[approach.outline]},.12),0,0,0,1,1,1,'#cbc7b7',7));
  function fan(){const g=new G.Geometry();for(let i=0;i<20;i++){const a=i*Math.PI/10,c=(i+1)*Math.PI/10;g.tri([0,0,0],[Math.cos(a)*.22,Math.sin(a)*.22,0],[Math.cos(c)*.22,Math.sin(c)*.22,0]);}return g;}
  function ac(x,y){group('air-conditioner',()=>{b.box(x,y,.30,.76,.60,.42,C.frame,24);b.mesh('fan',b.geo('061-fan',fan),x-.12,y,.514,1,1,1,'#6e7f77',9);for(let j=-2;j<=2;j++)b.box(x-.12,y+j*.073,.521,.41,.015,.012,C.metal,9);for(let j=0;j<4;j++)b.box(x+.21+j*.032,y,.520,.012,.40,.014,C.metal,9);for(const dx of[-.27,.27])b.box(x+dx,y-.34,.24,.04,.08,.40,C.metal,9);});}
  function face(name,x,z,rot,width,count){b.local(x,0,z,rot,()=>group(name,()=>{
@@ -42,7 +56,20 @@ function render(b,f){b.id=f.properties.pickId;
   }
   for(const u of[-width/2+.13,width/2-.13])b.box(u,(H.base+H.wall)/2,.035,.25,H.wall-H.base,.30,C.band,24);
   b.box(0,H.wall-.13,.11,width+.09,.25,.46,C.band,24);b.box(0,H.eave-.16,.18,width+.17,.32,.74,C.edge,24);
-  for(let u=-width/2+.8;u<width/2;u+=stride*2){b.box(u,H.wall-.30,.22,.14,.32,.36,C.joint,24);if((name==='south-courtyard'||name==='north-fitted')&&!(name==='south-courtyard'&&Math.abs(u+.17-entryU)<3.2))b.box(u+.17,(H.wall+.30)/2,.31,.036,H.wall-.30,.036,C.frame,9);}
+  for(let u=-width/2+.8;u<width/2;u+=stride*2){b.box(u,H.wall-.30,.22,.14,.32,.36,C.joint,24);if((name==='south-courtyard'||name==='north-fitted')&&!(name==='south-courtyard'&&Math.abs(u+.17-entryU)<3.2)){
+    if(name==='south-courtyard')group('round-drainpipe',()=>{
+     // The 2022 close-up and 2020 court photograph show round white pipework,
+     // including collars. Put pipes on alternating solid bay boundaries, clear
+     // of the AC pairs on the intervening boundaries. Bottom/top and the
+     // four-pipe count remain fitted; the first pipe stays inside the end pier.
+     const axis=u-.8+(Math.abs(u-.8+width/2)<1e-6?.34:0);
+     b.cyl(axis,.30,.31,.045,H.wall-.30,C.frame,20,1,9);
+     for(const y of[.72,6.2,11.7]){
+      b.cyl(axis,y,.31,.060,.035,C.metal,20,1,9);
+      b.box(axis,y+.0175,.16,.055,.035,.34,C.metal,9);
+     }
+    });else b.box(u+.17,(H.wall+.30)/2,.31,.036,H.wall-.30,.036,C.frame,9);
+   }}
  }));}
  function roof(){const a=-.50,c=W+.50,n=-.50,s=D+.50,m=D/2,cut=D/2,polys=[[[a,n],[c,n],[W-cut,m],[cut,m]],[[cut,m],[W-cut,m],[c,s],[a,s]],[[a,n],[cut,m],[a,s]],[[W-cut,m],[c,n],[c,s]]];
   b.box(W/2,H.eave-.025,D/2,W,.10,D,C.band,24);
@@ -62,10 +89,19 @@ function render(b,f){b.id=f.properties.pickId;
   group('shared-south-wall',()=>b.box((join[0]+join[1])/2,(H.eave+H.base)/2,D-.115,join[1]-join[0],H.eave-H.base,.23,C.band,24));
   // The user deferred the 1/3 naming dispute; retain the current OSM location.
   // This courtyard-facing door axis is a documented fit, not a surveyed bearing.
-  b.local(entryX,0,D,0,()=>group('entrance',()=>Y.Entrance061.render(b)));
+  b.local(entryX,0,D,0,()=>{
+   group('entrance',()=>Y.Entrance061.render(b));
+   // Small circular flush light visible under the 2022 porch ceiling; leave
+   // the shared entrance component and its existing rail/door geometry intact.
+   group('porch-ceiling-light',()=>{
+    const ceiling=Y.Entrance061.dimensions.canopyBottom;
+    b.cyl(0,ceiling-.035,.94,.17,.04,'#c8cec4',24,1,9);
+    b.sphere(0,ceiling-.035,.94,.15,.025,.15,'#ececda',24);
+   });
+  });
   group('roof',roof);
  });
  return{strategy:'building061-v46',floors:5,ownNorthernWing:true,southFacadePartlyPhotographed:true,entrancePlacementFitted:true,balconyStack:false,fullFacadeVerified:false,entranceDirectionVerified:false,heightMeasured:false,roofJunctionVerified:false};
 }
-A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};Y.Building061={id:ID,render,W,D,H,world,local,join,entryX,roofY};
+A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};Y.Building061={id:ID,render,W,D,H,world,local,join,entryX,roofY,entranceApproach};
 })(YY);

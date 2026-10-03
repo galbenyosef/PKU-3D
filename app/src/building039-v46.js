@@ -4,6 +4,23 @@ const O=[-14.075,504.829],R=Math.atan2(1.043,31.429),CO=Math.cos(R),SI=Math.sin(
 const C={wall:'#a0a69d',frame:'#d9ddd1',glass:'#687e82',roof:'#737e78',tile:'#939e95',stone:'#b3baac'};
 const world=(u,v)=>[O[0]+u*CO+v*SI,O[1]-u*SI+v*CO],local=p=>[(p[0]-O[0])*CO-(p[1]-O[1])*SI,(p[0]-O[0])*SI+(p[1]-O[1])*CO];
 const entrances=[{name:'main-east',u:32.55,v:37.64,w:5.5},{name:'court-west',u:14.08,v:39.0,w:2.5},{name:'north-east',u:31.45,v:9.64,w:1.9},{name:'south-east',u:31.44,v:67.8,w:1.9},{name:'north-west',u:0,v:9.64,w:1.9},{name:'south-west',u:.08,v:67.8,w:1.9},{name:'north-court-stair',u:1.4,v:19.264,w:1.9},{name:'south-court-stair',u:1.4,v:58.593,w:1.9}];
+// Model-only connection to the unchanged mapped road; paving extent is not surveyed.
+function entranceApproach(front,road){
+ if(!road||road.geometry.type!=='LineString'||!(road.properties.width>0))return null;
+ const ribbon=G.ribbon(road.geometry.coordinates,road.properties.width,.12).v;let best=null;
+ // Read the actual ribbon edges, including vertex tangents at road bends.
+ for(let i=0;i<ribbon.length;i+=48)for(const [j,k]of[[0,8],[40,16]]){
+  const a=[ribbon[i+j],ribbon[i+j+2]],c=[ribbon[i+k],ribbon[i+k+2]],dx=c[0]-a[0],dz=c[1]-a[1],len2=dx*dx+dz*dz;
+  if(len2<1e-8)continue;
+  const ts=front.map(p=>((p[0]-a[0])*dx+(p[1]-a[1])*dz)/len2);
+  if(ts.some(t=>t<0||t>1))continue;
+  const edge=ts.map(t=>[a[0]+t*dx,a[1]+t*dz]),dist=front.map((p,n)=>Math.hypot(p[0]-edge[n][0],p[1]-edge[n][1]));
+  // Fail closed if the local mapped road no longer adjoins this landing.
+  if(dist.some(d=>!Number.isFinite(d)||d<.01||d>4))continue;
+  const score=dist[0]+dist[1];if(!best||score<best.score)best={front,edge,score};
+ }
+ return best;
+}
 function clip(p,a,k,greater){const out=[];for(let i=0;i<p.length;i++){const s=p[i],e=p[(i+1)%p.length],si=greater?s[a]>=k:s[a]<=k,ei=greater?e[a]>=k:e[a]<=k;if(si)out.push(s);if(si!==ei){const t=(k-s[a])/(e[a]-s[a]);out.push(s.map((x,j)=>x+t*(e[j]-x)));}}return out;}
 function pieces(f,box){const out=[];for(const pg of F.polygons(f.geometry))for(const tri of F.capTriangles(pg)){let p=tri.map(local);for(const [a,k,g] of [[0,box[0],true],[0,box[2],false],[1,box[1],true],[1,box[3],false]])if(p.length)p=clip(p,a,k,g);if(p.length>=3&&Math.abs(F.area([...p,p[0]]))>1e-8)out.push(p);}return out;}
 function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,v)=>{const p=world(u,v);return[p[0],y,p[1]];};
@@ -36,8 +53,27 @@ b.local(a[0],0,a[1],e.rotation,()=>group('facade-'+edges.indexOf(e),()=>{
 const panel=(s,t,lo,hi)=>{if(t>s&&hi>lo)b.box((s+t)/2,(lo+hi)/2,-.08,t-s,hi-lo,.16,C.wall,24);};
 for(let floor=0;floor<6;floor++){const base=floor*3.2;let holes=positions.map(([s,t])=>({s,t,lo:base+.9,hi:base+2.6}));if(floor===0)for(const d of e.doors){const s=d.x-d.w/2,t=d.x+d.w/2;holes=holes.filter(h=>h.t<s||h.s>t);holes.push({s,t,lo:.3,hi:3.02,door:true});}holes.sort((a,b)=>a.s-b.s);let prev=0;
 for(const h of holes){panel(prev,h.s,base,base+3.2);panel(h.s,h.t,base,h.lo);panel(h.s,h.t,h.hi,base+3.2);const x=(h.s+h.t)/2,w=h.t-h.s,y=(h.lo+h.hi)/2,hh=h.hi-h.lo;for(const xx of[h.s,h.t])b.box(xx,y,-.10,.07,hh,.30,C.frame,24);for(const yy of[h.lo,h.hi])b.box(x,yy,-.10,w,.07,.30,C.frame,24);b.box(x,y,-.28,w-.1,hh-.1,.05,C.glass,5);b.box(x,y,-.23,.06,hh,.08,C.frame,24);prev=h.t;}panel(prev,len,base,base+3.2);b.box(len/2,base+3.13,.03,len,.14,.20,C.frame,24);}
-for(const d of e.doors)group('entrance-'+d.name,()=>{b.box(d.x,.15,.40,d.w+.24,.3,.96,C.stone,24);b.box(d.x,.075,1.02,d.w+.24,.15,.3,C.stone,24);});
+for(const d of e.doors)group('entrance-'+d.name,()=>{
+ // The 2018 first-floor plan shows the east hall's projecting landing and stair
+ // strip (drawing y=475..422..393), unlike the seven secondary exits. These
+ // are plan-fitted depths; retain the existing provisional vertical profile.
+ if(d.name==='main-east'){
+  const scale=(31.446-14.08)/(768-475),landing=53*scale,outer=82*scale;
+  b.box(d.x,.15,(landing-.08)/2,d.w+.24,.3,landing+.08,C.stone,24);
+  b.box(d.x,.075,(landing+outer)/2,d.w+.24,.15,outer-landing,C.stone,24);
+  const front=[d.x-(d.w+.24)/2,d.x+(d.w+.24)/2].map(x=>{const p=b.world([x,0,outer]);return[p[0],p[2]];});
+  const approach=entranceApproach(front,Y.CAMPUS?.features.find(q=>q.properties.id==='way/240825488'));
+  if(approach){const g=new G.Geometry();g.quad(...[front[0],approach.edge[0],approach.edge[1],front[1]].map(p=>[p[0],.12,p[1]]));add('039-entrance-main-east-fitted-apron',g,C.stone,7,id);}
+
+ }else{
+  b.box(d.x,.15,.40,d.w+.24,.3,.96,C.stone,24);
+  b.box(d.x,.075,1.02,d.w+.24,.15,.3,C.stone,24);
+ }
+ // A recessed pane lies behind the thin facade. Connect its sill to the
+ // exterior landing instead of leaving an uncovered slot at the threshold.
+ b.box(d.x,.15,-.21,d.w-.07,.3,.26,C.stone,24);
+});
 }));}
 return{strategy:'building039-v46',floors:6,basementFloors:2,entranceCount:8,groundHallOnly:true,westOpenCourt:true,facadesVerified:false};}
-A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};Y.Building039={id:ID,render,world,local,entrances,heights:H};
+A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};Y.Building039={id:ID,render,world,local,entrances,entranceApproach,heights:H};
 })(YY);

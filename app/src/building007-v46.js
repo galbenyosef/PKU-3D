@@ -23,7 +23,7 @@ function render(b,f,add){
   for(const p of ps){for(let i=0;i<p.length;i++){const a=world(...p[i]),c=world(...p[(i+1)%p.length]);mesh.quad([a[0],base,a[1]],[c[0],base,c[1]],[c[0],top,c[1]],[a[0],top,a[1]]);}
    for(let i=1;i<p.length-1;i++){const vs=[p[0],p[i],p[i+1]].map(p=>{const w=world(...p);return [w[0],top,w[1]];});cap.tri(...vs);if(base>0)mesh.tri(...vs.map(v=>[v[0],base,v[2]]).reverse());}
   }
-  add('007-'+name,mesh,color,color===C.glass?28:24,id);add('007-'+name+'-cap',cap,C.roof,22,id);return ps;
+  add('007-'+name,mesh,color,color===C.glass?28:color===C.brick?30:24,id);add('007-'+name+'-cap',cap,C.roof,22,id);return ps;
  }
  function frame(u,v,angle,fn){const p=world(u,v);b.local(p[0],0,p[1],R+angle,fn);}
  function win(x,y,w,h,z=.09){
@@ -37,7 +37,14 @@ function render(b,f,add){
  block('south-front-west',[-5,65.5,9.5,70],0,heights.low,C.stone);
  block('south-colonnade-lintel',[9.5,65.5,49.5,70],7.4,heights.low,C.stone);
  block('south-front-east',[49.5,65.5,56.65,70],0,heights.low,C.stone);
- block('east-core',[28,16.25,69,45.3],0,heights.main);
+ // Leave a real entrance pocket behind the east doors, retaining the main mass.
+ block('east-core-upper',[28,16.25,69,45.3],3.65,heights.main);
+ block('east-core-back',[59.4,16.25,66.6,45.3],0,3.65);
+ block('west-entry-north-solid',[28,16.25,59.4,27.1],0,3.65);
+ block('west-entry-south-solid',[28,32.1,59.4,45.3],0,3.65);
+ block('east-entry-header-strip',[66.6,16.25,69,45.3],3.5,3.65);
+ block('east-core-entry-north',[66.6,16.25,69,27.2],0,3.5);
+ block('east-core-entry-south',[66.6,33.8,69,45.3],0,3.5);
  block('east-core-south',[56.65,45.3,69,70],0,heights.main);
  block('east-front-north',[69,16.25,75,24],0,heights.main);
  block('east-entry-lintel',[69,24,75,37],7.6,heights.main);
@@ -77,6 +84,36 @@ function render(b,f,add){
   }
  }
  const inner=F.polygons(f.geometry)[0][1],sourceOuter=F.polygons(f.geometry)[0][0];
+ // Historic courtyard photographs show red brick around two grass islands,
+ // continuing under the bridge. Trace the mapped wall edges; lawn dimensions
+ // and pale band spacing are photographic fitting, not a landscape survey.
+ const courtOuter=[sourceOuter[23],sourceOuter[22],sourceOuter[21],sourceOuter[20],inner[0],inner[5],inner[4],inner[3],inner[2],inner[1],sourceOuter[19],sourceOuter[18],sourceOuter[23]].map(local);
+ const lawns=[[4,21,18.5,40.5],[34,23,48,38]],rect=([a,c,d,e])=>[[a,c],[d,c],[d,e],[a,e],[a,c]];
+ const court=[courtOuter,...lawns.map(rect)],brickFloor=new G.Geometry(),stoneBands=new G.Geometry();
+ const bandU=[2.5,20.5,25.1,30.5,51.5,55.4],bandV=[18.4,42.7],halfBand=.12;
+ // Split once at band boundaries, so crossing bands share one surface and do
+ // not stack coplanar quads. The two lawn holes survive every clipping step.
+ const cuts=(min,max,bands)=>[min,...bands.flatMap(x=>[x-halfBand,x+halfBand]),max].sort((a,b)=>a-b);
+ const us=cuts(-3,60,bandU),vs=cuts(13,46,bandV);
+ for(const tri of F.capTriangles(court))for(let i=1;i<us.length;i++)for(let j=1;j<vs.length;j++){
+  let poly=tri;for(const [axis,k,greater]of [[0,us[i-1],true],[0,us[i],false],[1,vs[j-1],true],[1,vs[j],false]])if(poly.length)poly=clip(poly,axis,k,greater);
+  if(poly.length<3||Math.abs(F.area([...poly,poly[0]]))<1e-8)continue;
+  const midU=(us[i-1]+us[i])/2,midV=(vs[j-1]+vs[j])/2,isBand=bandU.some(x=>Math.abs(midU-x)<halfBand)||bandV.some(x=>Math.abs(midV-x)<halfBand),mesh=isBand?stoneBands:brickFloor;
+  for(let k=1;k<poly.length-1;k++){const points=[poly[0],poly[k],poly[k+1]];mesh.tri(...points.map(([u,v])=>{const w=world(u,v);return[w[0],.12,w[1]];}),points.map(([u,v])=>[u,v*.5]));}
+ }
+ // Material 31 reads physical UVs: the half-rate second axis gives fitted
+ // 240 x 120 mm paving bricks, without changing wall-brick dimensions.
+ add('007-court-brick',brickFloor,'#966653',31,id);
+ add('007-court-bands',stoneBands,'#c9c4b5',10,id);
+ for(const [u0,v0,u1,v1]of lawns){
+  frame((u0+u1)/2,(v0+v1)/2,0,()=>{
+   b.box(0,.085,0,u1-u0,.11,v1-v0,'#647b48',0);
+   for(const x of [-(u1-u0)/2,(u1-u0)/2])b.box(x,.135,0,.14,.11,v1-v0+.14,C.stone,10);
+   for(const z of [-(v1-v0)/2,(v1-v0)/2])b.box(0,.135,z,u1-u0-.14,.11,.14,C.stone,10);
+  });
+ }
+ frame(27,30,0,()=>b.noPlant(0,0,60,33));
+
  boundary(inner[0],inner[5],len=>courtWindows(len,true));
  boundary(inner[2],inner[1],len=>courtWindows(len));
  // The two small eastern inner returns have no complete photograph: narrow fitted panes only.
@@ -104,12 +141,49 @@ function render(b,f,add){
  });
  // West court hall: shallow stone skin, tall central glazing, ATTACHED round pilasters.
  frame(56.45,29.6,-Math.PI/2,()=>{
-  b.box(0,5.7,-.24,25.6,11.4,.42,C.stone,24);
+  // Split the stone facing around the door as well as the structural core.
+  for(const x of [-7.65,7.65])b.box(x,1.825,-.24,10.3,3.65,.42,C.stone,24);
+  // Leave three real shallow reveals in the stone facing for the high glazing.
+  // The structural wall behind remains; only the photographed exterior recess
+  // is established, not an invented interior hall.
+  b.box(0,4.25,-.24,25.6,1.2,.42,C.stone,24);
+  b.box(0,10.925,-.24,25.6,.95,.42,C.stone,24);
+  for(const [lo,hi]of [[-12.8,-5.45],[-3.25,-2.4],[2.4,3.25],[5.45,12.8]])b.box((lo+hi)/2,7.65,-.24,hi-lo,5.6,.42,C.stone,24);
   // The west photograph separates grey fourth-storey brick from the pale fifth-storey band.
   b.box(0,17.1,-.24,25.6,3.8,.42,C.stone,24);
   for(const x of [-6.0,6.0])b.cyl(x,.12,-.10,.42,11.15,C.stone,20,1,24);
-  win(0,2.1,4.9,3.6,.04);for(const x of [-9,-4.7,4.7,9])win(x,2.2,2.2,2.9,.04);
-  win(0,7.65,4.8,5.6,.04);for(const x of [-4.35,4.35])win(x,7.65,2.2,5.6,.04);
+  const doorFrame='#48524e',doorGlass='#657a74',base=.18,top=3.65,z=.075,bay=4.9/4;
+  // Historical west view: a dark, low glazed entrance independent of the
+  // pale tall windows above. Division widths and hidden hardware are fitted.
+  for(let i=0;i<4;i++){
+   const x=-2.45+(i+.5)*bay;
+   b.box(x,(base+3.23)/2,z,bay-.08,3.23-base-.07,.045,doorGlass,28);
+   b.box(x,(3.23+top)/2,z,bay-.075,top-3.23-.07,.045,doorGlass,28);
+  }
+  for(const x of [-2.45,-bay,bay,2.45])b.box(x,(base+top)/2,z+.025,.065,top-base,.10,doorFrame,29);
+  for(const x of [-.03,.03])b.box(x,(base+3.23)/2,z+.025,.045,3.23-base,.10,doorFrame,29);
+  b.box(0,(3.23+top)/2,z+.025,.065,top-3.23,.10,doorFrame,29);
+  for(const y of [base,3.23,top])b.box(0,y,z+.025,4.9,.075,.10,doorFrame,29);
+  for(const x of [-.16,.16]){
+   b.beam([x,1.1,z+.13],[x,1.62,z+.13],.015,doorFrame,29);
+   for(const y of [1.15,1.57])b.beam([x,y,z+.025],[x,y,z+.13],.012,doorFrame,29);
+  }
+  b.box(0,.15,-1.13,4.9,.06,3.66,C.stone,10);
+  b.noPlant(0,-1.13,4.9,3.66);
+  for(const x of [-9,-4.7,4.7,9])win(x,2.2,2.2,2.9,.04);
+  function hallHighWindow(x,width,divisions){
+   const low=4.85,high=10.45,z=-.13,ys=Array.from({length:6},(_,i)=>low+(high-low)*i/5),xs=divisions.map(t=>x+t*width);
+   // Five rows; narrower outer lights flank three central lights in the
+   // middle opening, and a single broad light in each side opening.
+   for(let i=1;i<xs.length;i++)for(let j=1;j<ys.length;j++)b.box((xs[i-1]+xs[i])/2,(ys[j-1]+ys[j])/2,z,xs[i]-xs[i-1]-.055,ys[j]-ys[j-1]-.055,.035,C.glass,28);
+   for(const xx of xs)b.box(xx,7.65,z+.045,.055,high-low,.065,C.frame,29);
+   for(const yy of ys)b.box(x,yy,z+.045,width+.055,.055,.065,C.frame,29);
+   for(const xx of [x-width/2-.05,x+width/2+.05])b.box(xx,7.65,-.13,.10,high-low+.20,.22,C.stone,24);
+   b.box(x,high+.05,-.13,width,.10,.22,C.stone,24);
+   b.box(x,low-.09,-.02,width+.25,.18,.38,C.stone,24);
+  }
+  hallHighWindow(0,4.8,[-.5,-.38,-.13,.13,.38,.5]);
+  for(const x of [-4.35,4.35])hallHighWindow(x,2.2,[-.5,-.25,.25,.5]);
   for(const x of [-10.2,10.2])for(const yy of [5.9,9.3])win(x,yy,.85,1.3,.04);
   for(let j=0;j<11;j++)win(-12.5+j*2.5,17.2,1.9,1.8,.02);
   for(let j=0;j<10;j++)win(-11.5+j*2.5,13.5,1.1,1.15,.02);
@@ -118,17 +192,77 @@ function render(b,f,add){
  frame(73.20,30.5,Math.PI/2,()=>{
   for(const x of [-4.8,4.8]){b.cyl(x,.28,-.25,.70,7.1,C.stone,24,1,24);b.cyl(x,.28,-.25,.79,.42,C.stone,24,1,24);}
   for(const yy of [6.55,7.55])b.box(0,yy,-.05,12.8,.55,1.35,C.stone,24);
-  win(0,2.25,7.4,3.7,-4.02);b.box(0,4.72,-3.94,7.9,1.12,.16,'#bdac77',24);
-  if(b.lettering)b.lettering('光华管理学院',0,4.74,-3.82,7.4,.76,0,'#61482e');
+  const base=.415,z=-4.02,width=6.2,bay=width/6,leafH=2.85,transom=.85,frame='#c3c3ab',glass='#566e6c';
+  const bar=(x,y,zz,w,h,d=.095)=>b.box(x,y,zz,w,h,d,frame,29);
+  // Six upper panes: fixed sidelights flank four leaves. One inner leaf is
+  // shown inward-open, as in the official photo; this is a display state.
+  for(let i=0;i<6;i++){
+   const x=-width/2+(i+.5)*bay;
+   b.box(x,base+leafH+transom/2,z,bay-.07,transom-.07,.045,glass,28);
+   if(i===0||i===5)b.box(x,base+leafH/2,z,bay-.07,leafH-.06,.045,glass,28);
+  }
+  for(let i=0;i<=6;i++)bar(-width/2+i*bay,base+leafH+transom/2,z,.065,transom);
+  for(const x of [-width/2,-2*bay,2*bay,width/2])bar(x,base+leafH/2,z,.065,leafH);
+  for(const y of [base,base+leafH,base+leafH+transom])bar(0,y,z,width,.07);
+  for(let i=1;i<=4;i++){
+   const centre=-width/2+(i+.5)*bay,side=i>=3?-1:1,hinge=centre-side*bay/2,angle=i===3?-1.12:0;
+   b.local(hinge,base,z,angle,()=>{
+    const cx=side*bay/2,w=bay-.035;
+    b.box(cx,leafH/2,0,w-.075,leafH-.10,.045,glass,28);
+    for(const dx of [-w/2,w/2])bar(cx+dx,leafH/2,.025,.045,leafH);
+    for(const y of [.055,leafH-.04])bar(cx,y,.025,w,.08);
+    const hx=cx+side*(w/2-.13);
+    b.beam([hx,1.05,.12],[hx,1.62,.12],.017,frame,29);
+    for(const y of [1.1,1.57])b.beam([hx,y,.02],[hx,y,.12],.013,frame,29);
+   });
+  }
+  const signBase=base+leafH+transom;
+  b.box(0,signBase+.61,z-.015,width+.15,1.22,.18,'#bdac77',24);
+  if(b.lettering)b.lettering('光华管理学院',0,signBase+.61,z+.09,width-.22,.76,0,'#61482e');
+  const upperBase=signBase+1.22,upperTop=6.27;
+  for(let i=0;i<6;i++){const x=-width/2+(i+.5)*bay;b.box(x,(upperBase+upperTop)/2,z,bay-.06,upperTop-upperBase,.045,glass,28);bar(x-bay/2,(upperBase+upperTop)/2,z,.055,upperTop-upperBase);}
+  bar(width/2,(upperBase+upperTop)/2,z,.055,upperTop-upperBase);
+  // A landing joins the upper tread to the threshold, including the pocket.
+  b.box(0,(.12+base)/2,-3.4125,12.5,base-.12,6.375,C.stone,10);
   for(let j=0;j<3;j++)b.box(0,.10+j*.11,1.0-j*.40,12.5,.19,.85,C.stone,10);
+  b.noPlant(0,-2.5875,12.5,8.025);
  });
  // South outer wing: two-storey square-column portico, not a one-storey canopy.
  // The colonnade lies just within the mapped southern strip; its recessed wall remains visible.
  frame(29,68.2,0,()=>{
   b.box(0,7.65,-1.05,39,.65,2.6,C.stone,24);
-  for(let i=0;i<7;i++)b.box(-18+i*6,3.7,-.12,1.05,7.4,1.10,C.stone,24);
-  for(let j=0;j<2;j++)for(let i=0;i<6;i++)win(-15+i*6,2.1+j*3.7,3.4,2.65,-2.36);
+  // Broad square stone piers with shallow course joints and visible soffit ribs.
+  // Their proportions and course pitch are fitted to the 2015 portico views.
+  for(let i=0;i<7;i++){
+   const x=-18+i*6;
+   b.box(x,3.76,-.12,1.53,7.28,1.53,'#b7b4ab',24);
+   for(let course=0;course<10;course++)b.box(x,.12+(course+.5)*.728,-.12,1.55,.719,1.55,C.stone,24);
+   b.box(x,7.13,-1.02,1.55,.54,3.35,C.stone,24);
+  }
+  function southGlazing(x,base,top,width,rails){
+   const z=-2.48,h=top-base;
+   // Two main lights and distinct horizontal divisions, not the generic
+   // four-wide courtyard window. Lower openings are not asserted as doors.
+   b.box(x,(base+top)/2,z,width,h,.04,C.glass,28);
+   for(const dx of [-width/2,0,width/2])b.box(x+dx,(base+top)/2,z+.055,.065,h+.09,.095,C.frame,29);
+   for(const y of [base,...rails,top])b.box(x,y,z+.055,width+.08,.065,.095,C.frame,29);
+   b.box(x,base-.10,z-.02,width+.27,.17,.31,C.stone,24);
+   for(const dx of [-width/2-.10,width/2+.10])b.box(x+dx,(base+top)/2,z-.025,.12,h+.27,.20,C.stone,24);
+  }
+  for(let i=0;i<6;i++){
+   const x=-15+i*6;
+   southGlazing(x,.42,3.48,2.65,[1.10,1.79,2.48,3.00]);
+   southGlazing(x,4.55,6.95,2.65,[6.40]);
+  }
   b.box(0,3.9,-2.3,38,.3,.18,C.stone,24);
+  // Brick apron meets the recessed wall and extends beyond the column line.
+  // Its outer edge is photo-fitted; the southern road connection is unverified.
+  const floorRing=[[-27.6,.45],[-19.5,.45],[-19.5,-2.7],[20.5,-2.7],[20.5,.45],[27.65,.45],[27.65,3],[-27.6,3],[-27.6,.45]],floor=new G.Geometry();
+  for(const tri of F.capTriangles([floorRing]))floor.tri(...tri.map(([x,z])=>[x,.12,z]),tri.map(([x,z])=>[x,z*.5]));
+  b.mesh('007-south-portico-floor',floor,0,0,0,1,1,1,'#966653',31);
+  // Stone strips run across the apron at the pier axes, as in the source.
+  for(let i=0;i<7;i++)b.box(-18+i*6,.123,1.83,.24,.006,2.34,'#c9c4b5',10);
+  b.noPlant(0,.15,55.3,5.7);
   for(let i=0;i<8;i++)win(-18+i*5.1,9.65,2.4,1.8,.46);
  });
  // Restrained unobserved north/east window rhythms. Counts are fitting, not an elevation survey.

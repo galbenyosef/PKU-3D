@@ -33,7 +33,12 @@ function render(b,f){
     for(const q of cuts){part(cursor,q.x-q.w/2);cursor=q.x+q.w/2;}part(cursor,width);
    }});
    group(name+'-windows',()=>{for(const q of holes)if(!q.door&&!q.vent)window(q);});
-   group(name+'-belt',()=>{for(const[y,h,d]of[[.64,.11,.06]])b.box(width/2,y,.015,width,h,d,C.stone,24);});
+   group(name+'-belt',()=>{for(const[y,h,d]of[[.64,.11,.06]]){
+    // The photographed wall plinth ends at the gate; it must not cross the leaves.
+    const cuts=holes.filter(q=>q.door&&q.lo<y+h/2&&q.hi>y-h/2).sort((a,c)=>a.x-c.x);let cursor=0;
+    const part=(a,c)=>{if(c>a+1e-6)b.box((a+c)/2,y,.015,c-a,h,d,C.stone,24);};
+    for(const q of cuts){part(cursor,Math.max(0,q.x-q.w/2));cursor=Math.max(cursor,Math.min(width,q.x+q.w/2));}part(cursor,width);
+   }});
    if(extra)extra(width);
   });
  }

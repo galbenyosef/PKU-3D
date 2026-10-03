@@ -6,6 +6,27 @@ const world=(u,v)=>[O[0]+u*CO+v*SI,O[1]-u*SI+v*CO],local=p=>[(p[0]-O[0])*CO-(p[1
 function clip(p,a,k,greater){const out=[];for(let i=0;i<p.length;i++){const s=p[i],e=p[(i+1)%p.length],si=greater?s[a]>=k:s[a]<=k,ei=greater?e[a]>=k:e[a]<=k;if(si)out.push(s);if(si!==ei){const t=(k-s[a])/(e[a]-s[a]);out.push(s.map((x,j)=>x+t*(e[j]-x)));}}return out;}
 function pieces(f,box){const out=[];for(const pg of F.polygons(f.geometry))for(const tri of F.capTriangles(pg)){let p=tri.map(local);for(const [a,k,g] of [[0,box[0],true],[0,box[2],false],[1,box[1],true],[1,box[3],false]])if(p.length)p=clip(p,a,k,g);if(p.length>=3&&Math.abs(F.area([...p,p[0]]))>1e-8)out.push(p);}return out;}
 
+// The reference entrance has narrow sidelights, two door leaves and a deep
+// transom. Keep the existing photographed aperture; dimensions remain fitted.
+function entryDoor(b,o){const x=o.x,lo=o.lo,hi=o.hi,w=o.w,split=hi-.82,y=(lo+split)/2;
+ const box=(part,x,y,z,w,h,d,c,mat=24)=>b.mesh('043-door-'+part,b.geo('box',G.box),x,y,z,w,h,d,c,mat);
+ const frame='#3f5b53',glass='#637e79';
+ for(const xx of[x-w/2+.045,x+w/2-.045])box('jamb-reveal',xx,(lo+hi)/2,-.16,.09,hi-lo,.24,'#dddcd0');
+ box('head-reveal',x,hi-.045,-.16,w,.09,.24,'#dddcd0');
+ for(const xx of[x-w/2+.07,x-.97,x,x+.97,x+w/2-.07])box('frame',xx,y,-.19,.055,split-lo,.10,frame);
+ for(const yy of[lo+.035,split,hi-.035])box('rail',x,yy,-.19,w-.09,.07,.10,frame);
+ for(const xx of[x-w/2+.07,x-.97,x+.97,x+w/2-.07])box('transom-mullion',xx,(split+hi)/2,-.19,.055,hi-split,.10,frame);
+ for(const [a,c]of[[-w/2+.10,-1.005],[-.935,-.035],[.035,.935],[1.005,w/2-.10]])box('pane',x+(a+c)/2,y,-.23,c-a,split-lo-.08,.04,glass,5);
+ for(const [a,c]of[[-w/2+.10,-1.005],[-.935,.935],[1.005,w/2-.10]])box('transom-pane',x+(a+c)/2,(split+hi)/2,-.23,c-a,hi-split-.08,.04,glass,5);
+ for(const xx of[x-.12,x+.12]){box('pull',xx,lo+1.05,-.095,.028,.42,.035,'#b4beb4',29);for(const yy of[lo+.88,lo+1.22])box('pull-mount',xx,yy,-.14,.028,.028,.08,'#b4beb4',29);}
+}
+
+function roadApron(road){if(!road)return null;const [a,c]=road.geometry.coordinates.map(local),dx=c[0]-a[0],dz=c[1]-a[1],len=Math.hypot(dx,dz),half=road.properties.width/2;
+ // Road east edge, in the building frame. This is the existing mapped service road.
+ const offset=[dz/len*half,-dx/len*half],edge=v=>[a[0]+offset[0]+(v-a[1]-offset[1])*dx/dz,v];
+ return[edge(89.286),[-3.6,89.286],[-3.6,103],edge(103)];
+}
+
 function render(b,f,add){const id=f.properties.pickId;b.id=id;
 const vertex=(u,y,v)=>{const p=world(u,v);return[p[0],y,p[1]];};
 function group(name,fn){const old=b.e.add;b.e.add=function(k,...args){return old.call(this,'043-'+name+'-'+k,...args);};try{fn();}finally{b.e.add=old;}}
@@ -16,7 +37,7 @@ function face(name,u,v,angle,len,h,opens){const p=world(u,v);b.local(p[0],0,p[1]
  const panel=(s,e,lo,hi)=>{if(e>s+1e-6&&hi>lo+1e-6)b.box((s+e)/2,(hi+lo)/2,-.055,e-s,hi-lo,.11,'#dddcd0',24);};
  const cuts=[0,h,...opens.flatMap(o=>[o.lo,o.hi])].filter(y=>y>=0&&y<=h).sort((a,b)=>a-b);
  for(let j=1;j<cuts.length;j++){const lo=cuts[j-1],hi=cuts[j],os=opens.filter(o=>o.lo<hi-1e-6&&o.hi>lo+1e-6).sort((a,b)=>a.x-b.x);let x=0;for(const o of os){panel(x,Math.max(x,o.x-o.w/2),lo,hi);x=Math.max(x,o.x+o.w/2);}panel(x,len,lo,hi);}
- for(const o of opens){if(o.air)continue;const w=o.w,hh=o.hi-o.lo,y=(o.lo+o.hi)/2;b.box(o.x,y,-.23,w-.08,hh-.08,.04,'#637e79',5);for(const x of[o.x-w/2,o.x+w/2])b.box(x,y,-.075,.055,hh,.15,'#3f5b53',24);for(const yy of[o.lo,o.hi])b.box(o.x,yy,-.075,w,.055,.15,'#3f5b53',24);const n=o.grille?Math.ceil(w/.18):Math.max(1,Math.round(w/.7));for(let k=1;k<n;k++)b.box(o.x-w/2+w*k/n,y,-.025,.025,hh,.09,o.grille?'#c6ccbc':'#3f5b53',24);if(!o.grille)b.box(o.x,o.hi-.55,-.025,w,.035,.09,'#3f5b53',24);}
+ for(const o of opens){if(o.air)continue;if(o.door){entryDoor(b,o);continue;}const w=o.w,hh=o.hi-o.lo,y=(o.lo+o.hi)/2;b.box(o.x,y,-.23,w-.08,hh-.08,.04,'#637e79',5);for(const x of[o.x-w/2,o.x+w/2])b.box(x,y,-.075,.055,hh,.15,'#3f5b53',24);for(const yy of[o.lo,o.hi])b.box(o.x,yy,-.075,w,.055,.15,'#3f5b53',24);const n=o.grille?Math.ceil(w/.18):Math.max(1,Math.round(w/.7));for(let k=1;k<n;k++)b.box(o.x-w/2+w*k/n,y,-.025,.025,hh,.09,o.grille?'#c6ccbc':'#3f5b53',24);if(!o.grille)b.box(o.x,o.hi-.55,-.025,w,.035,.09,'#3f5b53',24);}
  b.box(len/2,h-.10,0,len,.20,.22,'#e8e6d9',24);
  }));}
 const pairRows=(len,lo,hi,step=6.3)=>{const os=[];for(let x=2.4;x<len-1.5;x+=step)for(const off of[-.78,.78])os.push({x:x+off,w:1.1,lo,hi});return os;};
@@ -34,7 +55,7 @@ face('north-end',15.2,0,Math.PI,15.2,10.7,[]);
 face('south-end',-.134,131.8,0,19.873,6.3,[]);
 face('south-step',0,98.283,0,15.2,10.7,[{x:7.6,w:15.2,lo:0,hi:6.3,air:true}]);
 // Entrance block four unequal photo levels: doorway, small intermediate window, two upper windows.
-const entryWindows=[{x:5.9,w:3.2,lo:.45,hi:3.7},{x:10.3,w:1.25,lo:1.4,hi:3.3},{x:10.3,w:1.15,lo:4.5,hi:6.2},{x:5.9,w:3.3,lo:7.0,hi:9.1},{x:10.3,w:1.15,lo:7.0,hi:9.1},{x:5.9,w:3.3,lo:10,hi:12.1},{x:10.3,w:1.15,lo:10,hi:12.1}];
+const entryWindows=[{x:5.9,w:3.2,lo:.45,hi:3.7,door:true},{x:10.3,w:1.25,lo:1.4,hi:3.3},{x:10.3,w:1.15,lo:4.5,hi:6.2},{x:5.9,w:3.3,lo:7.0,hi:9.1},{x:10.3,w:1.15,lo:7.0,hi:9.1},{x:5.9,w:3.3,lo:10,hi:12.1},{x:10.3,w:1.15,lo:10,hi:12.1}];
 face('west-entrance',-3.44,85.786,-Math.PI/2,12.497,13.6,entryWindows);
 face('entry-north-return',5.2,85.786,Math.PI,8.64,13.6,[]);face('entry-south-return',-3.44,98.283,0,8.64,13.6,[]);
 face('entry-upper-east',5.2,98.283,Math.PI/2,12.497,13.6,[{x:6.2485,w:12.497,lo:0,hi:10.7,air:true}]);
@@ -45,9 +66,22 @@ b.local(O[0],0,O[1],R,()=>{
  // Western entrance apron and south-running ramp stay on the road side.
  group('west-entry-apron',()=>{const v=91.686;b.box(-3.32,.225,v,.28,.45,3.2,'#bcbfb4',24);b.box(-4.4,.225,v,2.0,.45,4.6,'#bcbfb4',24);b.box(-4.55,3.95,v,2.4,.18,6.0,'#e1e0d4',24);for(let k=0;k<3;k++){const h=(k+1)*.15;b.box(-6.35+k*.48,h/2,v,.49,h,4.8,'#bcbfb4',24);}const g=new G.Geometry();g.quad(vertex(-5.2,.45,93.986),vertex(-3.6,.45,93.986),vertex(-3.6,.03,101.5),vertex(-5.2,.03,101.5));add('043-west-ramp-slope',g,'#b9bdb1',24,id);for(const u of[-5.2,-3.6]){b.beam([u,1.35,93.986],[u,.93,101.5],.045,'#aebaae',24);b.beam([u,.98,93.986],[u,.56,101.5],.035,'#aebaae',24);for(let j=0;j<=6;j++){const z=93.986+(101.5-93.986)*j/6,y=.45-.42*j/6;b.box(u,y+.45,z,.04,.9,.04,'#aebaae',24);}}});
 });
+// Reference shows continuous paving in front of the entrance and its ramp.
+// Join their retained ground geometry to the actual mapped road edge.
+const apron=roadApron(Y.CAMPUS?.features.find(q=>q.properties.id==='way/1101754965'));
+if(apron){const g=new G.Geometry();g.quad(...apron.map(p=>vertex(p[0],.025,p[1])).reverse());add('043-road-entry-paving',g,'#b9bdb1',24,id);}
 // Sign is attached to the western door facade; text is not an assertion of floor count.
-const wp=world(-3.56,85.786);b.local(wp[0],0,wp[1],R-Math.PI/2,()=>group('west-sign',()=>{[...'五四体育活动中心'].forEach((ch,i)=>b.lettering(ch,8.75,11.6-i*.85,.04,.58,.66,0,'#b49a56'));}));
+const wp=world(-3.56,85.786);b.local(wp[0],0,wp[1],R-Math.PI/2,()=>group('west-sign',()=>{
+ // Keep the existing glyph pixels and world scale, but exclude atlas tile
+ // borders next to opaque plaques. All eight alpha bounds fit x[110,146),
+ // y[14,51) in a 256x64 tile; x[96,160),y[8,56) retains their antialiasing.
+ const mesh=b.mesh;b.mesh=function(key,g,x,y,z,sx,sy,sz,color,mat,part,r,uv){
+  if(key==='plane'&&mat===8&&uv){const [u,v,w,h]=uv;return mesh.call(this,key,g,x,y,z,sx*.25,sy*.75,sz,color,mat,part,r,[u+w*.375,v+h*.125,w*.25,h*.75]);}
+  return mesh.apply(this,arguments);
+ };
+ try{[...'五四体育活动中心'].forEach((ch,i)=>b.lettering(ch,8.75,11.6-i*.85,.04,.58,.66,0,'#b49a56'));}finally{b.mesh=mesh;}
+}));
 return{strategy:'building043-v46',formalFloorsKnown:false,flatRoofZones:3,eastStands:true,westEntrance:true,entryVisibleLevels:4,mainUniformFourFloors:false,allEntrancesVerified:false};
 }
-A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};Y.Building043={id:ID,render,world,local,pieces};
+A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};Y.Building043={id:ID,render,world,local,pieces,roadApron};
 })(YY);

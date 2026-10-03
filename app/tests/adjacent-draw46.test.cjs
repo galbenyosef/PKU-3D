@@ -20,3 +20,12 @@ test('identical meshes cannot merge across the specialized leaf shader boundary'
  [true,true,false,true].forEach((leaf,i)=>items[i].b.foliageIsotropic=leaf);
  const g=e.groupDraws(items,4);assert.equal(g.drawItems.length,3);assert.equal(g.drawItems[0].record.count,2);assert.deepEqual(expand(g.drawItems),expand(items));
 });
+test('adjacent geometry cannot merge across the ceramic shader boundary in either order',()=>{
+ for(const materials of [[25,25,18,25],[18,25,25,null],[25,null,24,18]]){
+  const items=materials.map((mat,i)=>{const x=item(a,i*28,1);x.b.uniformMaterial=mat;return x;});
+  const grouped=e.groupDraws(items,items.length);
+  assert.deepEqual(expand(grouped.drawItems),expand(items));
+  for(const draw of grouped.drawItems){const start=draw.record.offset/28;for(let i=0;i<draw.record.count;i++)assert.equal(draw.b.uniformMaterial===25,materials[start+i]===25,'merged draw changed the shader of an instance');}
+  const expected=1+materials.slice(1).filter((m,i)=>(m===25)!==(materials[i]===25)).length;assert.equal(grouped.drawItems.length,expected);
+ }
+});

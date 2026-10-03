@@ -48,6 +48,9 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
     const t=(s+e)/2/len,u=la[0]+t*du,v=la[1]+t*dv;
     const balcony=(face==='36-south'&&u>map36(466)&&!(u>map36(966)&&u<map36(1037)))||
       (face==='connector-east'&&v>24.9&&v<34.9);
+    // The photographed No.36 balconies have narrow dividing piers. Keep the
+    // plan-derived bay centers, with an 88% opening ratio fitted from the image.
+    if(balcony){const extra=(e-s)*(.88/.72-1)/2;s-=extra;e+=extra;}
     return {s,e,bottom:base+(balcony?.18:.84),top:base+(balcony?2.94:2.70),door:false,balcony};
    });
     if(floor===0)for(const door of entrances.filter(q=>q.face===face)){const x=(door.u-la[0])/du*len;if(x>1.5&&x<len-1.5){openings=openings.filter(q=>q.e<x-1.35||q.s>x+1.35);openings.push({s:x-1.2,e:x+1.2,bottom:.60,top:2.86,door:true});}}
@@ -61,14 +64,22 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
        for(const xx of [q.s,q.e])b.box(xx,y,-depth/2,.13,h,depth,white,24);
        b.box(x,base+.16,-depth/2,w,.14,depth,white,24);
        b.box(x,base+2.99,-depth/2,w,.14,depth,white,24);
-       b.box(x,base+.66,-.055,w,.98,.13,white,24);
-       b.box(x,base+1.17,-.035,w+.06,.09,.19,white,24);
-       b.box(x,base+1.56,-depth-.015,w,2.82,.045,brick,24);
+       if(floor>0){b.box(x,base+.66,-.055,w,.98,.13,white,24);
+        b.box(x,base+1.17,-.035,w+.06,.09,.19,white,24);}
+       b.box(x,base+1.56,-depth-.015,w,2.82,.045,brick,18);
        const gw=w*.78,gh=1.90,gy=base+1.70;
        b.box(x,gy,-depth+.04,gw,gh,.05,C.glass,5);
        for(const xx of [x-gw/2,x+gw/2,x])b.box(xx,gy,-depth+.08,.06,gh,.07,white,6);
        for(const yy of [gy-gh/2,gy+gh/2,base+2.12])b.box(x,yy,-depth+.08,gw,.055,.07,white,6);
-       if(floor===0){for(let gx=q.s+.16;gx<q.e-.08;gx+=.18)b.box(gx,base+1.95,.015,.035,1.52,.035,white,6);}
+       if(floor===0)group('36-ground-grille',()=>{
+        // 2010 No.36 photo: full-height rods joined by two zigzag bands.
+        // Pitch, bar section and band heights are fitted to the photographed pattern.
+        const left=q.s+.10,right=q.e-.10,n=Math.ceil((right-left)/.18),bottom=.25,top=2.92;
+        for(const yy of [bottom,top])b.box(x,yy,.015,w-.16,.035,.035,white,6);
+        for(let i=0;i<=n;i++){const gx=left+(right-left)*i/n;b.box(gx,(bottom+top)/2,.015,.023,top-bottom,.023,white,6);
+         if(i<n)for(const yy of [1.10,2.05])b.beam([gx,yy+(i%2?.09:-.09),.015],[left+(right-left)*(i+1)/n,yy+(i%2?-.09:.09),.015],.018,white,6);
+        }
+       });
       });
       cursor=q.e;continue;
      }
@@ -91,7 +102,7 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
  b.local(O[0],0,O[1],R,()=>{for(const q of entrances)group('entrance-'+q.number,()=>{
   const sign=q.outward;
   b.box(q.u,.30,q.v+sign*.55,4.3,.6,1.1,C.stone,24);
-  for(let k=0;k<5;k++){const h=.1*(k+1);b.box(q.u,h/2,q.v+sign*(2.90-k*.4),3.8,h,.42,C.stone,24);}
+  for(let k=0;k<5;k++){const h=.1*(k+1);b.box(q.u,h/2,q.v+sign*(3.11-(k+.5)*.402),3.8,h,.402,C.stone,24);}
  });});
  return{strategy:'building021-v46',floors:6,sourceOutline:true,northWing:36,southWing:37,westConnector:true,threeRoofBars:true,inwardSeparateEntrances:true,dimensionFitted:true};
 }

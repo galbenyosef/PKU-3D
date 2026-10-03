@@ -47,7 +47,7 @@ function wang(b,feature,add){
  const original=b.e.add.bind(b.e),origin=[415.15,681.7],r=.0447,scale=.76;
  // Transfer only the upper tower from V16. Never reuse its former campus position or podium outline.
  b.e.add=(key,geo,m,color,params,uv)=>{const out=new Float32Array(m);for(const j of [0,2,4,6,8,10])out[j]*=scale;out[12]=origin[0]+(out[12]-origin[0])*scale;out[14]=origin[1]+(out[14]-origin[1])*scale;original(key,geo,out,color,params,uv)};
- try{b.group({id,x:origin[0],z:origin[1],r,w:36,d:36,h:78},()=>b.wangTower30());}finally{b.e.add=original;}
+ try{b.group({id,x:origin[0],z:origin[1],r,w:36,d:36,h:Y.WangRoof120?Y.WangRoof120.topY:74.75},()=>b.wangTower30());}finally{b.e.add=original;}
  // Source outline windows are confined to the low base, not carried to the crown.
  const win=new G.Geometry();for(const ring of F.polygons(g).flat()){const sign=F.area(ring)>0?1:-1;for(let k=1;k<ring.length;k++){const a=ring[k-1],c=ring[k],l=Math.hypot(c[0]-a[0],c[1]-a[1]),ux=(c[0]-a[0])/l,uz=(c[1]-a[1])/l,nx=uz*sign,nz=-ux*sign;for(let t=2.8;t<l-1.5;t+=4.0)for(let row=0;row<3;row++){const x=a[0]+ux*t+nx*.07,z=a[1]+uz*t+nz*.07,y=1.1+row*3.7,w=1.05;win.quad([x-ux*w,y,z-uz*w],[x+ux*w,y,z+uz*w],[x+ux*w,y+2.4,z+uz*w],[x-ux*w,y+2.4,z-uz*w]);}}}
  add('wang30-base-windows',win,'#4b6065',28,id);
@@ -64,7 +64,7 @@ function wang(b,feature,add){
   b.lettering('王克桢楼',0,11.96,.32,8.0,.65,0,'#635f51');
  }finally{[b.origin,b.rotation,b.id,b.anim]=previous;}
 
- return {profile:'wang-stepped-tower',baseHeight:12.5,towerCenter:origin,towerHeight:74.75,sourceModel:'districts-v16.js:wangKezhen',limits:'南部高塔位置按影像辨识，比例按照片拟合；总高、背面与层数仍未实测'};
+ return {profile:'wang-stepped-tower',baseHeight:12.5,towerCenter:origin,towerHeight:Y.WangRoof120?Y.WangRoof120.topY:74.75,sourceModel:'districts-v16.js:wangKezhen',limits:'南部高塔位置按影像辨识，比例按照片拟合；总高、背面与层数仍未实测'};
 }
 Y.Architecture30={wang};
 })(YY);
@@ -91,7 +91,7 @@ function clipGeometry(g,bb){
  const polygons=[];for(const pg of F.polygons(g)){const outer=clipRing(pg[0]);if(outer.length<4||Math.abs(F.area(outer))<.001)continue;const holes=pg.slice(1).map(clipRing).filter(r=>r.length>3&&Math.abs(F.area(r))>.001);polygons.push([outer,...holes]);}return{type:'MultiPolygon',coordinates:polygons};
 }
 function footprint(b,f,add,opts={}){
- const p=f.properties,g=f.geometry,id=p.pickId,arch=p.architecture||{},style=opts.style||arch.style||'modern',col=palette[style]||palette.modern,es=edges(g),fr=Adapter.frame(g),roof=opts.roof||p.roofTreatment||'flat',h=opts.height||p.height;
+ const p=f.properties,g=f.geometry,id=p.pickId,arch=p.architecture||{},style=opts.style||arch.style||'modern',col=opts.palette?{...(palette[style]||palette.modern),...opts.palette}:palette[style]||palette.modern,es=edges(g),fr=Adapter.frame(g),roof=opts.roof||p.roofTreatment||'flat',h=opts.height||p.height;
  const classic=['heritage','courtyard','redgallery','redvilla'].includes(style),pitched=['hip','gable'].includes(roof),rise=pitched?Math.min(classic?4.4:5.4,Math.max(1.1,Math.min(fr.w,fr.d)*.17),h*.29):roof==='barrel'?Math.min(5.0,h*.28):0,body=h-rise;
  const isCanopy=style==='canopy',isGlass=style==='greenhouse',isLv=p.legacyType==='lv';
  if(!isCanopy)add('v30-walls-'+id+'-'+opts.key,F.walls(g,.30,body),col.wall,col.mat,id);
@@ -116,7 +116,8 @@ function footprint(b,f,add,opts={}){
  if(profile){const ends=new G.Geometry();for(const e of es){const n=Math.max(1,Math.ceil(e.len/1.5));for(let k=0;k<n;k++){const a=[e.a[0]+e.ux*e.len*k/n,e.a[1]+e.uz*e.len*k/n],c=[e.a[0]+e.ux*e.len*(k+1)/n,e.a[1]+e.uz*e.len*(k+1)/n];ends.quad([a[0],body,a[1]],[c[0],body,c[1]],[c[0],profile(c),c[1]],[a[0],profile(a),a[1]]);}}add('v30-roof-ends-'+id+'-'+opts.key,ends,col.wall,col.mat,id);}
  b.id=id;const floors=opts.floors||Math.max(1,Math.min(24,p.floors||Math.round(body/(classic?4.2:3.6)))),fh=(body-.55)/floors;
  for(const e of es){if(e.len<3.4)continue;const r=Math.atan2(e.nx,e.nz),step=classic?4.8:style==='dorm'?3.6:4.35,count=Math.max(1,Math.floor(e.len/step)),stride=e.len/count,ww=Math.min(classic?2.3:2.75,stride*(classic?.55:.68)),wh=Math.min(classic?3.05:2.65,fh*.63);
-  if(!isCanopy)for(let floor=0;floor<floors;floor++)for(let k=0;k<count;k++){const t=(k+.5)*stride,x=e.a[0]+e.ux*t+e.nx*.045,z=e.a[1]+e.uz*t+e.nz*.045,y=.55+fh*(floor+.52);
+  const customFacade=opts.renderFacade?.(b,e,{body,floors,fh,count,stride,ww,r})===true;
+  if(!customFacade&&!isCanopy)for(let floor=0;floor<floors;floor++)for(let k=0;k<count;k++){const t=(k+.5)*stride,x=e.a[0]+e.ux*t+e.nx*.045,z=e.a[1]+e.uz*t+e.nz*.045,y=.55+fh*(floor+.52);
    if(isGlass){b.local(x,y,z,r,()=>{b.box(0,0,0,.075,body,.10,col.frame,29);});continue;}
    if(classic&&floor===0&&wh>1.5)b.v9Lattice(x,y,z,ww,wh,r,style==='courtyard');else b.window(x,y,z,ww,wh,r,col.frame);
    if(style==='dorm'){b.local(x,0,z,r,()=>{b.box(-stride*.47,body/2,-.03,.25,body,.34,'#e4e3d8',24);if(floor>0){b.box(0,.55+floor*fh-.17,.09,stride,.38,.42,'#e2e2d7',24);b.box(0,.55+floor*fh+.22,.08,stride,.08,.29,'#bdc4b8',29);}});}
@@ -126,7 +127,7 @@ function footprint(b,f,add,opts={}){
    b.box(0,body-.18,.01,e.len,.24,.30,classic?'#8b624d':'#c7cbbf',classic?6:24);
    if(isLv){b.box(0,body+.55,-.06,e.len,.38,1.45,'#d2d3c9',24);b.box(0,body-.48,-.03,e.len,.58,.35,'#777f78',20);if(e.len>18&&!e.inner){const glassWidth=Math.min(8,e.len*.16);b.box(0,body*.51,.06,glassWidth,body*.89,.14,'#576f70',28);for(let j=1;j<floors;j++)b.box(0,.55+j*fh,.17,glassWidth,.17,.20,'#b1bbb4',29);for(const sg of[-1,1])b.box(sg*(glassWidth/2+.23),body*.49,.10,.45,body*.95,.62,'#c7c8bd',24);}}
    if(!pitched&&!isCanopy){b.box(0,body+.35,-.16,e.len,.75,.29,'#b1b8ac',24);b.box(0,body+.76,-.16,e.len+.06,.13,.42,'#cbd0c2',24);}
-   if(!classic&&!isCanopy)for(let j=1;j<floors;j++)b.box(0,.55+j*fh,.025,e.len,.13,.11,'#c9cec0',24);
+   if(!customFacade&&!classic&&!isCanopy)for(let j=1;j<floors;j++)b.box(0,.55+j*fh,.025,e.len,.13,.11,'#c9cec0',24);
   });
  }
  return {id:p.id,strategy:'footprint',style,roof,bodyHeight:body,roofRise:rise,sourceOutline:true};

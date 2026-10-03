@@ -12,6 +12,10 @@ const slopes=[{name:'north',p:[[0,0],[W,0],[g1,zg],[g1,Z],[g0,Z],[g0,zg]],axis:1
  {name:'west-hip',p:[[0,0],[g0,zg],[g0,zs],[0,D]],axis:0,y:p=>roofY(p[0]/g0*zg)},
  {name:'east-hip',p:[[g1,zg],[W,0],[W,D],[g1,zs]],axis:0,y:p=>roofY((W-p[0])/g0*zg)}];
 function clip(p,axis,k,greater){const out=[];for(let i=0;i<p.length;i++){const a=p[i],c=p[(i+1)%p.length],ai=greater?a[axis]>=k:a[axis]<=k,ci=greater?c[axis]>=k:c[axis]<=k;if(ai)out.push(a);if(ai!==ci){const t=(k-a[axis])/(c[axis]-a[axis]);out.push(a.map((v,j)=>v+t*(c[j]-v)));}}return out;}
+// Photo shows a single upper transom pane above the two lower casements.
+function casementMullion(lo,hi,door){const top=door?hi-.04:hi-.65-.0275,bottom=lo+.04;return {y:(top+bottom)/2,h:top-bottom};}
+// The light window aprons have a shallow chamfer-corner border, not a blank plate.
+function apronBorder(width,height){const g=new G.Geometry(),ring=(w,h,c)=>[[-w/2+c,-h/2],[w/2-c,-h/2],[w/2,-h/2+c],[w/2,h/2-c],[w/2-c,h/2],[-w/2+c,h/2],[-w/2,h/2-c],[-w/2,-h/2+c]],outer=ring(width,height,.075),inner=ring(width-.06,height-.06,.060);for(let i=0;i<8;i++){const j=(i+1)%8;g.quad([...outer[i],0],[...outer[j],0],[...inner[j],0],[...inner[i],0]);}return g;}
 function render(b,f,add){const id=f.properties.pickId;b.id=id;
  const vertex=p=>{const w=world(p[0],p[2]);return[w[0],p[1],w[1]];};
  const group=(name,fn)=>{const old=b.e.add;b.e.add=function(k,...v){return old.call(this,'052-'+name+'-'+k,...v);};try{fn();}finally{b.e.add=old;}};
@@ -45,9 +49,9 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
      let holes=positions.map(x=>({x,w:long?1.63:2.28,lo:bottom,hi:top,door:false}));
      if(fl===0&&[2,3].includes(side)){if(side===3)holes=holes.filter(q=>Math.abs(q.x)>1.5);holes.push({x:0,w:side===2?2.82:2.35,lo:H.base,hi:3.40,door:true});holes.sort((a,c)=>a.x-c.x);}
      let cursor=-width/2;for(const q of holes){const a=q.x-q.w/2,c=q.x+q.w/2;panel(cursor,a,lo,hi);panel(a,c,lo,q.lo);panel(a,c,q.hi,hi);
-      const h=q.hi-q.lo,y=(q.lo+q.hi)/2;for(const x of[a,c])b.box(x,y,-.025,.085,h,.20,C.red,24);for(const yy of[q.lo,q.hi])b.box(q.x,yy,-.025,q.w,.085,.20,C.red,24);b.box(q.x,y,-.135,q.w-.10,h-.09,.035,C.glass,5);b.box(q.x,y,-.055,.048,h-.08,.075,C.red,24);b.box(q.x,q.hi-.65,-.055,q.w-.09,.055,.075,C.red,24);if(!q.door)b.box(q.x,q.lo-.07,.025,q.w+.18,.13,.36,C.stone,24);cursor=c;
+      const h=q.hi-q.lo,y=(q.lo+q.hi)/2;for(const x of[a,c])b.box(x,y,-.025,.085,h,.20,C.red,24);for(const yy of[q.lo,q.hi])b.box(q.x,yy,-.025,q.w,.085,.20,C.red,24);b.box(q.x,y,-.135,q.w-.10,h-.09,.035,C.glass,5);const mullion=casementMullion(q.lo,q.hi,q.door);b.box(q.x,mullion.y,-.055,.048,mullion.h,.075,C.red,24);b.box(q.x,q.hi-.65,-.055,q.w-.09,.055,.075,C.red,24);if(!q.door)b.box(q.x,q.lo-.07,.025,q.w+.18,.13,.36,C.stone,24);cursor=c;
      }panel(cursor,width/2,lo,hi);
-     if(fl>0)for(const x of(long?pairs.flatMap(x=>[x-.97,x+.97]):[-4.75,0,4.75])){const ww=long?1.84:2.47,yy=bottom-.50;b.box(x,yy,.035,ww,.58,.18,C.stone,24);b.box(x,yy,.133,ww-.24,.36,.025,C.panel,24);}
+     if(fl>0)for(const x of(long?pairs.flatMap(x=>[x-.97,x+.97]):[-4.75,0,4.75])){const ww=long?1.84:2.47,yy=bottom-.50;b.box(x,yy,.035,ww,.58,.18,C.stone,24);b.box(x,yy,.133,ww-.24,.36,.025,C.panel,24);group('apron-border',()=>b.mesh('052-apron-border-'+ww,b.geo('052-apron-border-'+ww,()=>apronBorder(ww-.24,.36)),x,yy,.152,1,1,1,C.stone,24));}
     }
     b.box(0,4.36,.05,width+.09,.18,.31,C.stone,24);
     group('painted-eave',()=>{b.box(0,11.12,.09,width+.20,.22,.45,C.red,24);b.box(0,11.34,.32,width+.50,.18,.67,C.green,24);b.box(0,11.51,.63,width+.90,.10,1.01,C.blue,24);
@@ -74,5 +78,5 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
  });
  return{strategy:'building052-v46',floors:3,floorsVerified:true,xieshan:true,roofGables:2,entranceTypes:2,entryDirectionsVerified:false,wholeWindowCountVerified:false,heightMeasured:false,sourceOutlinePreserved:true};
 }
-A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};Y.Building052={id:ID,render,world,local,W,D,I,H,roofY,slopes,g0,g1,zg,zs};
+A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};Y.Building052={id:ID,render,world,local,W,D,I,H,roofY,slopes,g0,g1,zg,zs,casementMullion,apronBorder};
 })(YY);

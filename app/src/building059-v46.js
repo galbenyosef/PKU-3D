@@ -65,7 +65,15 @@ function render(b,f){b.id=f.properties.pickId;
   const front=D+1.94,w=5.30,left=ENTRY-w/2,right=ENTRY+w/2;
   b.box(ENTRY,H.base/2,D+1.04,5.70,H.base,2.16,C.stone,24);
   // Inner brown double doors and a glazed transom, without a plaster wall behind them.
-  b.box(ENTRY,1.76,D-.10,2.57,2.44,.095,C.wood,6);
+  // The OIR view shows glazed upper panels in the brown inner double doors.
+  // Partition the timber slab around those panes instead of covering both
+  // panes with an unbroken opaque backing. Leaf outline and panel sizes stay fitted.
+  group('inner-door-timber',()=>{
+   const low=.54,high=2.98,glassLow=1.665,glassHigh=2.775,left=ENTRY-1.285,right=ENTRY+1.285;
+   const spans=[[left,ENTRY-1.085],[ENTRY-.215,ENTRY+.215],[ENTRY+1.085,right]];
+   for(const [a,c]of spans)b.box((a+c)/2,(low+high)/2,D-.10,c-a,high-low,.095,C.wood,6);
+   for(const x of[ENTRY-.65,ENTRY+.65])for(const [a,c]of[[low,glassLow],[glassHigh,high]])b.box(x,(a+c)/2,D-.10,.87,c-a,.095,C.wood,6);
+  });
   for(const xx of[ENTRY-1.32,ENTRY,ENTRY+1.32])b.box(xx,1.82,D+.005,.075,2.56,.15,C.wood,6);
   b.box(ENTRY,3.21,D-.09,2.55,.53,.045,C.glass,5);
   for(const y of[.57,3.0,3.50])b.box(ENTRY,y,D+.018,2.70,.065,.14,C.silver,9);

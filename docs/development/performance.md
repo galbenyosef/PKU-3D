@@ -1,19 +1,42 @@
-# 保持漫游流畅
+# Rendering performance
 
-性能检查用来确认新的建筑和交互没有让已有漫游明显变慢。它是维护工具，不是用户操作步骤。
+## Current result
 
-保留模型细节、图片分辨率、阴影、反射与抗锯齿。优化应来自更少的重复计算、无损资源复用和合理调度。
+The maintained scene retains full model detail, original image resolution, shadows, reflections and antialiasing. It does **not** meet the original frozen performance reference in three metrics. The most recent formal comparison follows the Yannan Garden No. 55 platform repair; it is not a claim that this repair improves performance.
 
-## 检查方式
+| Metric | Change from preceding maintained scene | Change from frozen reference | Frozen result |
+| --- | ---: | ---: | --- |
+| First-frame submission time | −3.663647% | +11.403301% | Fail |
+| GPU-ready time | −3.417324% | −10.674191% | Pass |
+| Reported heap | −0.037007% | +2.849589% | Pass |
+| Campus FPS | +0.175763% | −15.716023% | Fail |
+| Lake FPS | +0.007976% | −27.715539% | Fail |
+| Lake main-thread median time | −0.746268% | −19.526628% | Pass |
 
-在相同设备、完整浏览器版本、视口和像素比下，对固定参考与当前版本交替测量三组，比较首帧、内存、全校视角和湖区旋转的中位数。10% 是触发复查的边界，不能当成每次改动都可累计消耗的预算。
+All six incremental checks passed; only three of six frozen-reference checks passed. Keep these separate. Heap API precision, shared browser processes and unobserved external GPU activity limit interpretation. Values are measurements from the retained comparison, not portable device promises or isolated causal estimates. Physical-phone and whole-campus fidelity acceptance remain open.
 
-保留冻结参考和历次失败；环境不一致时不能据此判定通过。对建筑外形的有意修改单独查看画面；数值检查不能代替视觉确认。
+## Delivered cost reductions
 
-## 运行时约定
+- Cache startup defers the two road meshes until the live builder actually needs them, preserving captured inputs and retry behavior. This removes unnecessary computation; the retained startup median difference of 5.2 ms does not establish a large speedup.
+- Prebuilt scene loading retains lossless mesh reuse and compression, checksum verification, two decoding workers, bounded uploads, visibility caches, ordered instance streams, the two-frame GPU queue and idle scheduling.
+- Deferred builder data, shared geometry pages and conservative visibility handling retain ordinary fallback paths. Context recovery, lazy photos and local-file/offline behavior remain supported.
+- Reflection scissoring and conservative reflection culling retain full-resolution targets and fall back where bounds cannot prove a safe restriction.
 
-保持预构建场景、无损网格复用与索引、两个 Worker 解压、分时上传、可见性缓存、阶段内连续实例缓冲、最多两帧的 GPU 队列，以及静止与隐藏时暂停无效绘制。
+## Validation protocol
 
-保留照片按需加载、地图节点复用、离线加载备选和 WebGL 上下文恢复。相邻绘制合并不能改变透明排序或实例顺序；uniform 缓存按数值更新，不能把可变数组引用当成不变状态。
+Validate modified geometry and interactions in actual desktop and narrow-screen WebGL views. For rendering-path changes, compare matching cameras, state, ordered instance streams and final pixels where equivalence is expected. Include real context recovery and offline loading; unit tests do not replace these checks.
 
-完整冻结对照和机器测量记录保存在维护工作区，不随公开网站发布。贡献者应附受影响视角与环境信息，由维护者运行固定对照检查。
+Formal comparisons retain the original 24 stages: three alternating A/B pairs and three alternating frozen-reference/B pairs, with startup and motion recorded separately. Compare matching builds, viewport, browser and quality settings; use the original median formulas and thresholds. Never replace the frozen reference, relax thresholds or repeat unchanged failed candidates to obtain a pass. Preserve source identity, raw samples, failed attempts and cleanup receipts in the local evidence archive.
+
+The original frozen bundle and machine-specific measurement harness are not distributed as public product assets. A fresh checkout can run the portable tests and the exact packaged scene, but cannot independently reproduce the historical table without that retained measurement archive.
+
+## Candidates not adopted
+
+| Direction | Reason for stopping |
+| --- | --- |
+| Deferred decorative strokes | Formal incremental comparison failed the reported-heap limit. |
+| Immutable texture-array storage | Texture mip and scene comparisons passed, but startup differences were near zero and inconsistent across pairs. |
+| Lossless binary encoding of range metadata | Reduced script bytes, but all seven offline compilation/execution pairs were slower; no browser performance claim. |
+| Repeated mesh positions and large ceramic-tile indexing | Insufficient supported reuse to justify implementation. |
+
+These investigations are not delivered optimizations. Detailed chronological reports and intermediate captures remain local. New candidates need a substantive change or new evidence before further testing.

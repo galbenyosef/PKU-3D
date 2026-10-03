@@ -29,7 +29,13 @@ function render(b,f){
     for(const q of cuts){part(cursor,q.x-q.w/2);cursor=q.x+q.w/2;}part(cursor,width);
    }});
    group(name+'-windows',()=>{for(const q of holes)if(!q.door&&!q.vent)window(q);});
-   group(name+'-belt',()=>{for(const[y,h,d]of[[.64,.11,.06],[H.floor,.20,.09],[H.floor-.19,.07,.10]])b.box(width/2,y,.015,width,h,d,C.stone,24);});
+   group(name+'-belt',()=>{for(const[y,h,d]of[[.64,.11,.06],[H.floor,.20,.09],[H.floor-.19,.07,.10]]){
+    // The photographed end doors meet their thresholds: the stone base band
+    // terminates at the jambs, rather than continuing across the opening.
+    let spans=[[0,width]];
+    for(const q of holes)if(q.door&&q.lo<y+h/2&&q.hi>y-h/2)spans=spans.flatMap(([a,c])=>[[a,Math.min(c,q.x-q.w/2)],[Math.max(a,q.x+q.w/2),c]]).filter(([a,c])=>c>a+1e-6);
+    for(const[a,c]of spans)b.box((a+c)/2,y,.015,c-a,h,d,C.stone,24);
+   }});
    if(extra)extra(width);
   });
  }

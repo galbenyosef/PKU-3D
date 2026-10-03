@@ -71,8 +71,11 @@ function render(b,f,method,source,options={}){
  // A supplied source frame fits the primary roof, excluding detached foreground/flanking pieces.
  const fr=options.frame||frame(g,source.r||0),sf=options.sourceFrame,sx=(fr.w-.15)/(sf?.w||bb[3]-bb[0]),sz=(fr.d-.15)/(sf?.d||bb[5]-bb[2]),sy=options.keepHeight?1:p.height/bb[4],cx=sf?sf.centre[0]:(bb[0]+bb[3])/2,cz=sf?sf.centre[1]:(bb[2]+bb[5])/2;
  const root=M.multiply(M.transform([fr.centre[0],0,fr.centre[1]],[sx,sy,sz],fr.r),M.transform([-cx,0,-cz],[1,1,1],0));
+ // Optional source-height restoration must not also resurrect previously filtered
+ // near-ground pieces. This frame is pre-elevation, exactly like the original filter.
+ const filterRoot=options.preserveLowHeightFilter?M.multiply(M.transform([fr.centre[0],0,fr.centre[1]],[sx,p.height/bb[4],sz],fr.r),M.transform([-cx,0,-cz],[1,1,1],0)):null;
  const edges=boundary(g),shape=F.polygons(g).flatMap(pg=>F.capTriangles(pg)).map(tri=>({tri,bb:[Math.min(...tri.map(p=>p[0])),Math.min(...tri.map(p=>p[1])),Math.max(...tri.map(p=>p[0])),Math.max(...tri.map(p=>p[1]))]})),groups=new Map(),roofCuts=new G.Geometry();let retained=0,clipped=0,dropped=0;
- for(const rec of records){const m=M.multiply(root,rec.m),q=transformedBounds(rec.geo,m);if(q[4]<.10)continue;if(!options.preserveOuterParts&&(q[3]<p.bounds[0]||q[0]>p.bounds[2]||q[5]<p.bounds[1]||q[2]>p.bounds[3])){dropped++;continue;}
+ for(const rec of records){const m=M.multiply(root,rec.m),q=transformedBounds(rec.geo,m);const filterTop=filterRoot?transformedBounds(rec.geo,M.multiply(filterRoot,rec.m))[4]:q[4];if(filterTop<.10&&!options.retainLowKeys?.includes(rec.key))continue;if(!options.preserveOuterParts&&(q[3]<p.bounds[0]||q[0]>p.bounds[2]||q[5]<p.bounds[1]||q[2]>p.bounds[3])){dropped++;continue;}
   if(options.preserveOuterParts||options.noClip||bboxInside(q,g,edges)){add('v30-'+rec.key,rec.geo,m,rec.color,[rec.params[0],p.pickId,0,rec.params[3]],rec.uv);retained++;}else{bakeClipped(rec.geo,m,shape,groups,rec.color,[rec.params[0],p.pickId,0,rec.params[3]],rec.uv);clipped++;if(options.roofCutBase!=null&&rec.key.startsWith('v19-roof-shell-'))roofCutFaces(rec.geo,m,g,edges,M.apply(root,[0,options.roofCutBase,0,1])[1],roofCuts);}
  }
  for(const[k,v]of groups)if(v.geo.v.length)add('v30-clipped-'+p.pickId+'-'+(options.name||source.id)+'-'+k,v.geo,M.identity(),v.color,v.params);

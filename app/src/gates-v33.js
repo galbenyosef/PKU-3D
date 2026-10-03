@@ -19,6 +19,43 @@ function rail(b,a,c,y=1.4){
  for(let x=a;x<=c;x+=.29)b.box(x,y/2+.15,0,.045,y,.045,'#384b45',29);
  for(const h of[.30,y])b.box((a+c)/2,h,0,c-a,.065,.06,'#384b45',29);
 }
+// A shared leaf preserves full ironwork geometry across all four hinged leaves.
+function ironLeaf(b){return b.geo('east-iron-leaf',()=>{
+ const g=new Y.Geo.Geometry(),M=Y.M;
+ const q=new Y.Builder({add(key,mesh,m){
+  const axes=[0,4,8].map(k=>m[k]*m[k]+m[k+1]*m[k+1]+m[k+2]*m[k+2]);
+  for(let i=0;i<mesh.v.length;i+=8){const v=mesh.v,n=v.slice(i+3,i+6),normal=[0,1,2].map(k=>m[k]*n[0]/axes[0]+m[k+4]*n[1]/axes[1]+m[k+8]*n[2]/axes[2]);
+   g.vertex(M.apply(m,[v[i],v[i+1],v[i+2],1]).slice(0,3),M.norm(normal),v.slice(i+6,i+8));
+  }
+ }}),w=1.43,color='#34443e',top=x=>3.70+.65*Math.sin(x/2.95*Math.PI);
+ for(const x of[0,w])q.box(x,(.18+top(x))/2,0,.075,top(x)-.18,.10,color,29);
+ for(const y of[.22,.52,.77,2.28,2.53])q.box(w/2,y,0,w,.055,.085,color,29);
+ for(let i=1;i<10;i++){const x=w*i/10;q.box(x,(.24+top(x))/2,0,.027,top(x)-.24,.035,color,29);}
+ for(let i=0;i<24;i++){const a=w*i/24,c=w*(i+1)/24;q.beam([a,top(a),0],[c,top(c),0],.036,color,29);}
+ // Paired curling iron straps, left open rather than filled black panels.
+ for(const cy of[.645,2.405])for(let j=0;j<5;j++)for(const side of[-1,1]){
+  const cx=.145+j*.285,pts=[];
+  for(let k=0;k<=20;k++){const a=-Math.PI*.65+k/20*Math.PI*1.7,r=.115-k/20*.055;pts.push([cx+side*r*Math.cos(a),cy+r*Math.sin(a),.012]);}
+  for(let k=1;k<pts.length;k++)q.beam(pts[k-1],pts[k],.012,color,29);
+ }
+ for(const z of[-.075,.075]){q.beam([w-.11,1.05,z],[w-.11,1.39,z],.019,color,29);for(const y of[1.05,1.39])q.beam([w-.11,y,0],[w-.11,y,z],.014,color,29);}
+ return g;
+});}
+function pedestrianLeaves(b,a,c){
+ const g=ironLeaf(b),angle=.34*Math.PI;
+ for(const [x,r]of[[a,angle],[c,Math.PI-angle]]){
+  b.mesh('east-iron-leaf',g,x,0,0,1,1,1,'#34443e',29,0,r);
+  for(const y of[.45,1.85,3.25]){b.cyl(x,y,0,.065,.22,'#384b45',16,1,29);b.box(x,y+.11,-.065,.15,.11,.17,'#384b45',29);}
+ }
+}
+function retractableBarrier(b,a,c){
+ const n=6,step=(c-a)/n,color='#394b45';
+ for(const z of[-.17,.17]){
+  for(let i=0;i<n;i++){const x=a+i*step;for(const reverse of[false,true])b.beam([x,reverse?1.18:.32,z],[x+step,reverse?.32:1.18,z],.022,color,29);}
+  for(let i=0;i<=n;i++){const x=a+i*step;b.box(x,.76,z,.035,1.17,.045,color,29);b.sphere(x,.75,z,.045,.045,.035,'#a9b3ac',29,0,true);}
+ }
+ for(const x of[a,c]){b.box(x,.81,0,.22,1.38,.48,color,29);b.box(x,1.53,0,.28,.08,.54,'#65766e',29);for(const z of[-.21,.21])b.sphere(x,.15,z,.11,.11,.045,'#293832',29,0,true);}
+}
 function east(b){
  for(const s of[-1,1]){
   pillar(b,s*6.4,6.1,1.8);pillar(b,s*11.1,4.75,1.45);pillar(b,s*18.1,4.75,1.45);
@@ -36,23 +73,65 @@ function east(b){
   for(let j=0;j<8;j++){const cx=7.56+j*2.60/7,cy=4.08+.72*Math.sin((cx-7.4)/2.95*Math.PI)-.11;
    for(let k=0;k<16;k++){const a=k*Math.PI/8,c=(k+1)*Math.PI/8;b.beam([s*(cx+.115*Math.cos(a)),cy+.115*Math.sin(a),0],[s*(cx+.115*Math.cos(c)),cy+.115*Math.sin(c),0],.018,'#34443e',29);}
   }
-  b.lion(s*12.1,2,1.03);
+  pedestrianLeaves(b,Math.min(s*7.4,s*10.35),Math.max(s*7.4,s*10.35));
+  b.eastGateLion(s*12.1,2);
  }
  // Individual vertical characters follow the photo's tall plaque.
  b.box(6.4,3.32,.94,.83,3.9,.08,'#deded3',10);
  for(const[i,ch]of [...'北京大学'].entries())b.lettering(ch,6.4,4.5-i*.76,1.0,.58,.58,0,'#33362f');
- // Retracted leaves leave the entrance centre open for walking.
- rail(b,-5.4,-3.2);rail(b,3.2,5.4);
+ // Partially retracted display state; do not imply current access restrictions.
+ retractableBarrier(b,-5.4,-3.2);retractableBarrier(b,3.2,5.4);
  for(let x=-5;x<=5;x+=2.5)b.sphere(x,.31,2.5,.26,.28,.26,'#c4c6b9',10,0,true);
 }
 
 function south(b){
- for(const x of[-7,-4,4,7]){b.box(x,3.3,0,1.05,6.6,1.28,'#b6bcb4',10);b.box(x,.16,0,1.3,.32,1.55,'#a6afa5',10);b.box(x,6.45,0,1.18,.35,1.43,'#9aa69d',10);for(let i=-3;i<=3;i++)b.box(x+i*.12,6.53,.74,.055,.52,.08,'#738078',29);}
- b.box(0,6.99,0,17.2,.66,2.65,'#c2c6bc',10);b.box(0,6.58,0,17,.17,2.46,'#8c9990',10);
- b.box(0,5.88,.15,7.15,1.06,.65,'#354d43',10);b.sign('北京大学',0,5.90,.49,5.8,.73,0,false);
- for(const side of[-1,1]){b.box(side*11.3,1.61,0,7.6,3.22,1.05,'#bbc1b7',10);b.box(side*11.3,3.42,0,7.9,.35,2.1,'#c3c8bd',10);b.box(side*11.3,1.80,.57,4.8,1.45,.12,'#d1d6c9',10);for(let j=0;j<12;j++)b.sphere(side*(7.5+j*.63),3.68,.72,.062,.11,.062,'#d8dcd0',10,0,true);}
- for(let j=0;j<=40;j++)b.sphere(-8.4+j*.42,7.42,.94,.06,.105,.06,'#d6dacd',10,0,true);
- rail(b,-6.2,-5.8);rail(b,5.8,6.2);for(const x of[-3.25,3.25]){b.box(x,.75,.9,.25,1.5,.32,'#c0c7c0',29);b.box(x,1.08,.98,.13,.17,.10,'#283f38',29);}
+ const stone='#bcc0b8',trim='#c9cdc3',joint='#8a958b',metal='#778783';
+ for(const x of[-7,-4,4,7]){
+  b.box(x,3.3,0,1.05,6.6,1.28,stone,10);b.box(x,.16,0,1.3,.32,1.55,'#a6afa5',10);
+  for(const y of[1.55,3.12,4.70])b.box(x,y,.649,1.04,.015,.018,joint,10);
+  // Dark recessed grille with substantial vertical fins beneath the flat canopy.
+  b.box(x,6.42,.63,1.14,.46,.10,'#46534c',29);
+  for(let i=-3;i<=3;i++)b.box(x+i*.145,6.42,.724,.070,.45,.11,metal,29);
+  b.box(x,6.13,.68,1.21,.08,.16,trim,10);
+ }
+ b.box(0,6.99,0,17.2,.66,2.65,stone,10);
+ for(const y of[6.63,7.35])b.box(0,y,0,17.42,.095,2.79,trim,10);
+ // Flat stone fascia joints and recessed underside light housings visible in 2017.
+ for(let x=-7.8;x<=7.8;x+=1.3)b.box(x,6.99,1.332,.017,.60,.018,joint,10);
+ for(const x of[-6,-2,2,6]){
+  b.box(x,6.642,.66,.66,.035,.40,'#4d5750',29);
+  b.box(x,6.619,.66,.49,.012,.25,'#cbd0c2',10);
+ }
+ b.box(0,5.88,.15,7.15,1.06,.65,'#28332e',10);
+ b.lettering('北京大学',0,5.90,.492,5.8,.73,0,'#c0a764');
+ for(const side of[-1,1]){
+  // The photographed inner wing has a window beside the outer relief panel.
+  b.box(side*11.3,1.61,0,7.6,3.22,1.05,stone,10);
+  b.box(side*11.3,3.31,0,7.9,.18,2.1,trim,10);
+  for(const y of[.35,2.78])b.box(side*8.70,y,.59,2.03,.13,.16,trim,10);
+  for(const x of[7.68,9.72])b.box(side*x,1.56,.59,.13,2.55,.16,trim,10);
+  b.box(side*8.70,1.57,.555,1.91,2.30,.05,'#354a46',28);
+  for(const y of[.93,1.67,2.65])b.box(side*8.70,y,.625,1.91,.055,.055,metal,29);
+  b.box(side*8.70,1.57,.625,.05,2.30,.055,metal,29);
+  b.box(side*12.48,1.63,.57,4.30,2.18,.12,'#d1d6c9',10);
+  for(const y of[.49,2.77])b.box(side*12.48,y,.665,4.46,.10,.13,trim,10);
+  for(const x of[10.20,14.76])b.box(side*x,1.63,.665,.10,2.37,.13,trim,10);
+ }
+ // Historical right-hand pedestrian leaf: rectilinear silver bars and open square motif.
+ // The left leaf is obscured in this reference and is not invented by mirroring.
+ b.local(6.43,0,-.10,Math.PI*.68,()=>{
+  const w=1.76,h=2.53;
+  for(const x of[0,w])b.box(x,h/2+.12,0,.055,h,.075,metal,29);
+  for(const y of[.13,1.0,1.34,2.65])b.box(w/2,y,0,w,.050,.07,metal,29);
+  for(let i=1;i<=7;i++){const x=w*i/8;b.box(x,1.38,0,.026,2.46,.035,metal,29);}
+  for(const [cx,cy,ww,hh]of[[.88,1.18,.40,.65],[.66,1.18,.23,.37],[1.10,1.18,.23,.37]]){
+   for(const x of[cx-ww/2,cx+ww/2])b.box(x,cy,.028,.026,hh,.035,metal,29);
+   for(const y of[cy-hh/2,cy+hh/2])b.box(cx,y,.028,ww,.026,.035,metal,29);
+  }
+  b.beam([w-.12,1.07,.07],[w-.12,1.38,.07],.016,metal,29);
+ });
+ for(const y of[.35,1.35,2.35])b.cyl(6.43,y,-.10,.048,.18,metal,16,1,29);
+ for(const x of[-3.25,3.25]){b.box(x,.75,.9,.25,1.5,.32,'#c0c7c0',29);b.box(x,1.08,.98,.13,.17,.10,'#283f38',29);}
 }
 
 function southeastGroup(b){

@@ -100,6 +100,16 @@ function render(b,f){
    for(const x of[ENTRY-.12,ENTRY+.12])b.box(x,2.0,D-DEPTH+.14,.03,.48,.04,C.stone,24);
    for(const x of[ENTRY-1.32,ENTRY-.44,ENTRY+.44,ENTRY+1.32]){
     const g=new G.Geometry();for(let i=0;i<6;i++){const a=i*Math.PI/3,c=(i+1)*Math.PI/3;g.tri([x,4.01,D+.25],[x+.115*Math.cos(a),4.01+.115*Math.sin(a),D+.25],[x+.115*Math.cos(c),4.01+.115*Math.sin(c),D+.25]);}mesh('porch-hexagonal-door-pin-'+Math.round((x-ENTRY)*100),g,C.blue,6);
+    // The own close-up shows timber sides behind each blue end, not a flat disc.
+    // Preserve the original blue face; .09m body depth is fitted, with .03m
+    // embedded into the red lintel so the visible .06m projection is connected.
+    const body=new G.Geometry(),back=D+.16,front=D+.25,r=.115;
+    for(let i=0;i<6;i++){const a=i*Math.PI/3,c=(i+1)*Math.PI/3,
+     pa=[x+r*Math.cos(a),4.01+r*Math.sin(a)],pc=[x+r*Math.cos(c),4.01+r*Math.sin(c)];
+     body.quad([...pa,back],[...pc,back],[...pc,front],[...pa,front]);
+     body.tri([x,4.01,back],[...pc,back],[...pa,back]);
+    }
+    mesh('porch-hexagonal-door-pin-body-'+Math.round((x-ENTRY)*100),body,C.wood,6);
    }
   });
   group('porch-painted-beams',()=>{

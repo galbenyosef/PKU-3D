@@ -29,14 +29,35 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
  const towerCuts=face==='north'?stairCentres.map(u=>{const x=(u-la[0])/du*len;return[x-stairWidth/2,x+stairWidth/2];}):[];
  b.local(a[0],0,a[1],Math.atan2(-dz,dx),()=>group('facade-'+face,()=>{
  for(let floor=0;floor<6;floor++){const base=floor*3.2,col=floor===5?C.frame:C.wall,panel=(s,e,lo,hi)=>{let ranges=[[s,e]];for(const [cs,ce] of towerCuts)ranges=ranges.flatMap(([s,e])=>[[s,Math.min(e,cs)],[Math.max(s,ce),e]]).filter(([s,e])=>e>s);for(const [s,e] of ranges)if(e>s&&hi>lo)b.box((s+e)/2,(lo+hi)/2,-setback-.035,e-s,hi-lo,.07,col,24);};
- let openings=positions.filter(([s,e])=>!towerCuts.some(([cs,ce])=>e>cs&&s<ce)).map(([s,e])=>({s,e,bottom:base+.85,top:base+2.65})),doorIntervals=[];if(floor===0)for(const door of entrances.filter(q=>q.face===face)){const x=(door.axis===0?(door.u-la[0])/du:(door.v-la[1])/dv)*len,s=Math.max(0,x-door.width/2),e=Math.min(len,x+door.width/2);if(e>s+.15){openings=openings.filter(q=>q.e<s-.1||q.s>e+.1);openings.push({s,e,bottom:door.sill,top:3.03,door:true});doorIntervals.push([s,e]);}}
- openings.sort((a,b)=>a.s-b.s);let cursor=0;for(const q of openings){panel(cursor,q.s,base,base+3.2);panel(q.s,q.e,base,q.bottom);panel(q.s,q.e,q.top,base+3.2);const x=(q.s+q.e)/2,w=q.e-q.s,h=q.top-q.bottom,y=(q.top+q.bottom)/2;for(const xx of[q.s,q.e])b.box(xx,y,-setback-.2,.055,h,.40,C.frame,24);for(const yy of[q.bottom,q.top])b.box(x,yy,-setback-.2,w,.055,.40,C.frame,24);b.box(x,y,-setback-.43,w-.1,h-.1,.055,q.door?C.door:C.glass,5);for(const xx of[x-w*.24,x+w*.24])b.box(xx,y,-setback-.385,.05,h,.065,C.frame,24);b.box(x,q.top-.45,-setback-.385,w,.055,.065,C.frame,24);cursor=q.e;}panel(cursor,len,base,base+3.2);
+ let openings=positions.filter(([s,e])=>!towerCuts.some(([cs,ce])=>e>cs&&s<ce)).map(([s,e])=>({s,e,bottom:base+.85,top:base+2.65})),doorIntervals=[];if(floor===0)for(const door of entrances.filter(q=>q.face===face)){const x=(door.axis===0?(door.u-la[0])/du:(door.v-la[1])/dv)*len,s=Math.max(0,x-door.width/2),e=Math.min(len,x+door.width/2);if(e>s+.15){openings=openings.filter(q=>q.e<s-.1||q.s>e+.1);openings.push({s,e,bottom:door.sill,top:3.03,door:true,main:door.name==='main-south'});doorIntervals.push([s,e]);}}
+ openings.sort((a,b)=>a.s-b.s);let cursor=0;for(const q of openings){panel(cursor,q.s,base,base+3.2);panel(q.s,q.e,base,q.bottom);panel(q.s,q.e,q.top,base+3.2);const x=(q.s+q.e)/2,w=q.e-q.s,h=q.top-q.bottom,y=(q.top+q.bottom)/2;if(q.main){
+ // The 2017 south photograph shows a narrow dark entrance in a broad brick bay,
+ // not glazing across the entire two-bay hall. Exact joinery dimensions are fitted.
+ group('south-door',()=>{const dw=3.10,z=-setback-.20,metal='#4b463b',brick='#64675f';
+ for(const side of[-1,1])b.box(x+side*(w+dw)/4,y,-setback-.035,(w-dw)/2,h,.07,brick,24);
+ for(const xx of[x-dw/2,x+dw/2])b.box(xx,y,z,.075,h,.40,metal,24);
+ for(const yy of[q.bottom,q.top])b.box(x,yy,z,dw,.075,.40,metal,24);
+ // Two moving leaves, narrow fixed sidelights and a continuous upper transom.
+ const transom=q.top-.40,leaf=1.04;
+ for(const xx of[x-leaf,x,x+leaf])b.box(xx,(q.bottom+transom)/2,z+.015,.065,transom-q.bottom,.09,metal,24);
+ b.box(x,transom,z+.015,dw,.065,.09,metal,24);
+ for(const [a,c] of[[x-dw/2,x-leaf],[x-leaf,x],[x,x+leaf],[x+leaf,x+dw/2]]){
+ b.box((a+c)/2,(q.bottom+transom)/2,z-.06,c-a-.075,transom-q.bottom-.075,.045,C.door,5);
+ b.box((a+c)/2,q.bottom+.19,z+.025,c-a-.075,.30,.07,metal,24);
+ }
+ b.box(x,(transom+q.top)/2,z-.06,dw-.075,q.top-transom-.075,.045,C.door,5);
+ for(const xx of[x-.12,x+.12])b.box(xx,q.bottom+.94,z+.10,.03,.34,.04,'#afa99b',24);
+ });cursor=q.e;continue;}
+ for(const xx of[q.s,q.e])b.box(xx,y,-setback-.2,.055,h,.40,C.frame,24);for(const yy of[q.bottom,q.top])b.box(x,yy,-setback-.2,w,.055,.40,C.frame,24);b.box(x,y,-setback-.43,w-.1,h-.1,.055,q.door?C.door:C.glass,5);for(const xx of[x-w*.24,x+w*.24])b.box(xx,y,-setback-.385,.05,h,.065,C.frame,24);b.box(x,q.top-.45,-setback-.385,w,.055,.065,C.frame,24);cursor=q.e;}panel(cursor,len,base,base+3.2);
  if(balcony){let bands=[[.04,len-.04]];for(const cut of doorIntervals)bands=bands.flatMap(([s,e])=>[[s,Math.min(e,cut[0])],[Math.max(s,cut[1]),e]]).filter(([s,e])=>e>s);for(const [s,e] of bands){b.box((s+e)/2,base+.12,-.55,e-s,.22,1.1,C.frame,24);b.box((s+e)/2,base+.70,-.075,e-s,.94,.15,C.frame,24);b.box((s+e)/2,base+1.20,-.05,e-s,.06,.20,'#c3ccc0',24);for(const [ps,pe] of positions){const end=pe+.50;if(end>s&&end<e)b.box(end,base+1.72,-.55,.13,2.98,1.1,C.frame,24);}}}else b.box(len/2,base+3.1,.03,len,.16,.18,C.frame,24);
  }b.box(len/2,19.30,.12,len,.24,.52,C.frame,24);
  }));}
  b.local(O[0],0,O[1],R,()=>{
  for(const u of stairCentres)group('north-stair-'+u,()=>{for(const x of[u-stairWidth/2,u+stairWidth/2])b.box(x,9.6,-.57,.10,19.2,1.15,C.wall,24);b.box(u,19.25,-.57,stairWidth,.18,1.25,C.frame,24);for(let fl=0;fl<6;fl++){const base=fl*3.2,lo=fl===0?.3:base+1.2,hi=fl===0?3.03:base+2.35,w=fl===0?1.9:1.1,c=fl===5?C.frame:C.wall;for(const side of[-1,1])b.box(u+side*(stairWidth+w)/4,base+1.6,-1.15,(stairWidth-w)/2,3.2,.09,c,24);b.box(u,(base+lo)/2,-1.15,w,lo-base,.09,c,24);b.box(u,(hi+base+3.2)/2,-1.15,w,base+3.2-hi,.09,c,24);b.box(u,(lo+hi)/2,-.95,w-.1,hi-lo-.1,.05,C.glass,5);for(const x of[u-w/2,u+w/2])b.box(x,(lo+hi)/2,-1.08,.055,hi-lo,.22,C.frame,24);}});
  for(const q of entrances)group('entrance-'+q.name,()=>{const w=q.width,s=q.outward;if(q.name==='main-south'){b.box(q.u,.375,q.v+.35,w+.5,.75,2.9,C.stone,24);for(let k=0;k<5;k++){const h=.15*(k+1);b.box(q.u,h/2,q.v+4.0-k*.5,w+.5,h,.51,C.stone,24);}for(const x of[q.u-w/2-.18,q.u+w/2+.18]){for(let k=0;k<6;k++)b.box(x,.15*k+.52,q.v+4.25-k*.5,.065,1.04,.065,'#606c60',24);b.beam([x,1.05,q.v+4.25],[x,1.80,q.v+1.75],.055,'#606c60',24);}
+ // Shallow white fascia and end returns give the observed tiled canopy a real edge.
+ b.box(q.u,3.57,q.v+1.9,w+1,.10,.12,C.frame,24);
+ for(const x of[q.u-w/2-.5,q.u+w/2+.5])b.beam([x,3.57,q.v+1.9],[x,4.07,q.v-.75],.10,C.frame,24);
  const roof=new G.Geometry();roof.quad(vertex(q.u-w/2-.5,3.62,q.v+1.9),vertex(q.u+w/2+.5,3.62,q.v+1.9),vertex(q.u+w/2+.5,4.12,q.v-.75),vertex(q.u-w/2-.5,4.12,q.v-.75));add('037-main-south-single-slope-canopy',roof,C.roof,2,id);for(let x=q.u-w/2-.4;x<q.u+w/2+.4;x+=.28)b.beam([x,3.65,q.v+1.9],[x,4.15,q.v-.75],.025,C.tile,2);
  }else if(q.axis===1){b.box(q.u+s*.35,.15,q.v,.7,.3,w+.2,C.stone,24);b.box(q.u+s*.9,.075,q.v,.4,.15,w+.2,C.stone,24);}else{b.box(q.u,.15,q.v+s*.35,w+.2,.3,.7,C.stone,24);b.box(q.u,.075,q.v+s*.9,w+.2,.15,.4,C.stone,24);}});
  });

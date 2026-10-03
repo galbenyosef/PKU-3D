@@ -8,7 +8,7 @@ Built with **GPT-6 Astra**. All source data and modeling references are publicly
 
 **[Demo](https://sldyns.github.io/PKU-3D/)** · [中文](README.zh-CN.md) · [Releases](https://github.com/sldyns/PKU-3D/releases) · [Contributing](CONTRIBUTING.md)
 
-[![Version](https://img.shields.io/badge/version-1.2.0-8b302c)](https://github.com/sldyns/PKU-3D/releases/tag/v1.2.0)
+[![Version](https://img.shields.io/badge/version-1.3.0-8b302c)](https://github.com/sldyns/PKU-3D/releases/tag/v1.3.0)
 [![WebGL 2](https://img.shields.io/badge/rendering-WebGL%202-2f6555)](https://sldyns.github.io/PKU-3D/)
 
 </div>
@@ -81,3 +81,7 @@ Building corrections, modeling improvements and interface fixes are welcome. For
 ## License
 
 [MIT](LICENSE) for software and original documentation; [ODbL 1.0](DATA_LICENSE.md) for the OSM-derived geographic database. Third-party rights remain with their holders. See [Licensing notes](docs/LICENSING.md).
+
+## Current model status
+
+Partial refinements do not establish whole-campus fidelity or global performance acceptance. See [model scope and reference gaps](docs/development/model-status.md) and [performance status](docs/development/performance.md).

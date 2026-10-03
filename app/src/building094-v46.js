@@ -40,6 +40,27 @@ function render(b,f){
   for(const s of[-1,1]){for(let i=0;i<24;i++)for(let j=0;j<14;j++)patch(surface,x0+span*i/24,x0+span*(i+1)/24,j/14,(j+1)/14,s);
    for(let x=x0+.035;x<x1-.07;x+=.235)for(let j=0;j<14;j++)for(let k=0;k<3;k++)patch(tiles,x+k*.025,Math.min(x+(k+1)*.025,x1),j/14,(j+1)/14,s,.018+Math.sin((k+.5)*Math.PI/3)*.035);
   }tiles.detailWidth=.025;mesh('roof-'+name+'-surface',surface,C.roof,2);mesh('roof-'+name+'-tiles',tiles,C.tile,2);
+  // Close the model-local gap between the retained upturned roof boundary
+  // and its horizontal fascia. Follow existing samples and fitted materials;
+  // this does not establish real-world eave dimensions or entrance details.
+  for(const side of[-1,1]){
+   const closure=new G.Geometry();
+   for(let i=0;i<24;i++){
+    const a=point(x0+span*i/24,0,side),c=point(x0+span*(i+1)/24,0,side);
+    const q=[[a[0],eave,a[2]],[c[0],eave,c[2]],c,a];
+    if(side<0)q.reverse();closure.quad(...q);
+   }
+   // Engine.add uploads Float32 positions: near the flat middle, distinct
+   // double heights collapse. Remove only triangles with zero cached area.
+   const kept=[];
+   for(let i=0;i<closure.v.length;i+=24){
+    const a=closure.v.slice(i,i+3).map(Math.fround),c=closure.v.slice(i+8,i+11).map(Math.fround),d=closure.v.slice(i+16,i+19).map(Math.fround),
+      u=c.map((v,j)=>v-a[j]),v=d.map((n,j)=>n-a[j]),cross=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]];
+    if(cross.some(n=>n!==0))kept.push(...closure.v.slice(i,i+24));
+   }
+   closure.v=kept;
+   mesh('roof-eave-closure-'+name+'-'+(side<0?'north':'south'),closure,main?C.stone:C.wood,main?24:6);
+  }
   const gables=new G.Geometry();for(const x of[x0+.40,x1-.40])for(const s of[-1,1])for(let i=0;i<14;i++){
    const a=point(x,i/14,s),q=point(x,(i+1)/14,s),p=[[x,eave,a[2]],a,q,[x,eave,q[2]]];if((x>x0+span/2)===(s>0))p.reverse();gables.quad(...p);
   }mesh('roof-'+name+'-gable',gables,main?C.brick:C.wood,main?30:6);
@@ -76,15 +97,26 @@ function render(b,f){
    if(gallery){
     b.local(originalA[0],0,originalA[1],-Math.atan2(dz,dx),()=>{
      group('court-gallery-'+i,()=>{
-      b.box(w/2,H.floor-.10,-depth/2,w,.24,depth+.12,C.stone,24);
+      b.box(w/2,H.floor-.12,-depth/2,w,.24,depth+.12,C.stone,24);
       for(let j=0;j<=count;j++)b.cyl(w*j/count,H.base,-.12,.13,H.eave-.38-H.base,C.red,12,1,6);
       for(const y of[H.floor+.20,H.floor+.90])b.box(w/2,y,-.12,w,.08,.10,C.red,6);
       for(let x=.20;x<w;x+=.52){b.box(x,H.floor+.55,-.12,.06,.70,.08,C.red,6);b.box(x+.14,H.floor+.57,-.12,.28,.055,.08,C.red,6);}
      });
     });
-    // Recess returns close each gallery end within its existing wing.
-    face('gallery-return-'+i+'-a',originalA,a,[]);face('gallery-return-'+i+'-b',c,originalC,[]);
+    // Only the two exposed ends are capped. The aerial shows a continuous
+    // U-shaped gallery: transverse full-height caps at its bends blocked it.
+    if(i===7)face('gallery-return-'+i+'-a',originalA,a,[]);
+    if(i===5)face('gallery-return-'+i+'-b',c,originalC,[]);
    }
+  }
+  // Extend the two recessed back walls into each corner, instead of placing
+  // cross-walls across the walking route. The original polygon floor already
+  // covers these bends, and the gallery slabs now meet its 4.12 m top exactly.
+  const inset=i=>{const a=poly[i+1],c=poly[i],dx=c[0]-a[0],dz=c[1]-a[1],w=Math.hypot(dx,dz),n=[-dz/w,dx/w];return{a:[a[0]-n[0]*1.10,a[1]-n[1]*1.10],c:[c[0]-n[0]*1.10,c[1]-n[1]*1.10],d:[dx/w,dz/w]};};
+  for(const i of[5,6]){
+   const wing=inset(i),cross=inset(i+1),p=wing.a,q=cross.c,u=wing.d,v=cross.d,det=u[0]*v[1]-u[1]*v[0],t=((q[0]-p[0])*v[1]-(q[1]-p[1])*v[0])/det,m=[p[0]+t*u[0],p[1]+t*u[1]];
+   face('gallery-corner-'+i+'-wing',m,p,[]);
+   face('gallery-corner-'+i+'-cross',q,m,[]);
   }
   // Roof coordinates are independent bounded spans: three north-south roofs,
   // a shallower west crosspiece and the broader projecting south room.

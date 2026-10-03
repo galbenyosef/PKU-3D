@@ -31,6 +31,24 @@ function football(b,f){const fr=Y.ArchitectureAdapter.frame(f.geometry),w=68,d=1
    for(let y=.4;y<2.69;y+=.35)b.beam([-3.66,y,end+s*2*(1-(y-.25)/2.44)],[3.66,y,end+s*2*(1-(y-.25)/2.44)],.012,'#c7d0be',29);
   }
   b.mesh('football41-lines',g,0,0,0,1,1,1,'#e9e9d9',10);
+  // East field's photographed corner arcs; fitted 1 m radius. Clip the new
+  // annulus to the retained boundary ribbon's inner edges, avoiding coplanar overlap.
+  const corners=new G.Geometry(),clip=(poly,axis)=>{
+   const out=[];for(let i=0;i<poly.length;i++){const a=poly[i],c=poly[(i+1)%poly.length],ia=a[axis]>=.06,ic=c[axis]>=.06;
+    if(ia)out.push(a);if(ia!==ic){const t=(.06-a[axis])/(c[axis]-a[axis]);out.push(a.map((v,k)=>k===axis?.06:v+(c[k]-v)*t));}}
+   return out;
+  };
+  for(const sx of[-1,1])for(const sz of[-1,1])for(let i=0;i<32;i++){
+   const a=i*Math.PI/64,c=(i+1)*Math.PI/64;
+   const poly=clip(clip([[.94*Math.cos(a),.94*Math.sin(a)],[1.06*Math.cos(a),1.06*Math.sin(a)],[1.06*Math.cos(c),1.06*Math.sin(c)],[.94*Math.cos(c),.94*Math.sin(c)]],0),1);
+   const at=p=>[sx*(w/2-p[0]),.253,sz*(d/2-p[1])];
+   for(let j=1;j+1<poly.length;j++){const q=[at(poly[0]),at(poly[j]),at(poly[j+1])];
+    if(sx*sz>0)[q[1],q[2]]=[q[2],q[1]];
+    corners.tri(...q);
+   }
+  }
+  b.mesh('eastfield49-corner-arcs',corners,0,0,0,1,1,1,'#e9e9d9',10);
+
   for(const x of[-1,1])for(const z of[-1,1]){b.cyl(x*42,.2,z*57,.15,16,'#8a9790',10,1,29);b.box(x*42,16,z*57,3,.35,.3,'#8a9790',29);for(const dx of[-.9,0,.9])b.box(x*42+dx,16.3,z*57,.62,.62,.18,'#d9e0d5',29);}
  });return true;
 }

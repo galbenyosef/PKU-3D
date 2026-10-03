@@ -20,24 +20,42 @@ function render(b,f){
  function wall(name,a,c,holes=[]){const width=Math.hypot(c[0]-a[0],c[1]-a[1]),r=-Math.atan2(c[1]-a[1],c[0]-a[0]);b.local(a[0],0,a[1],r,()=>{
   const levels=[H.base,H.stone,H.eave,...holes.flatMap(q=>[q.lo,q.hi])].filter((v,i,a)=>a.indexOf(v)===i).sort((a,c)=>a-c);
   group(name+'-wall',()=>{for(let j=1;j<levels.length;j++){const lo=levels[j-1],hi=levels[j],cuts=holes.filter(q=>q.lo<=lo+1e-8&&q.hi>=hi-1e-8).sort((a,c)=>a.x-c.x);let end=0;
-   const piece=(s,e)=>{if(e>s+1e-6)b.box((s+e)/2,(lo+hi)/2,-.16,e-s,hi-lo,.32,hi<=H.stone?C.stone:C.wall,24);};
+   // Extend only the existing bottom stone pieces to fixed ground; retain their tops and openings.
+   const bottom=Math.abs(lo-H.base)<1e-8?-.01:lo;
+   const piece=(s,e)=>{if(e>s+1e-6)b.box((s+e)/2,(bottom+hi)/2,-.16,e-s,hi-bottom,.32,hi<=H.stone?C.stone:C.wall,24);};
    for(const q of cuts){piece(end,q.x-q.w/2);end=q.x+q.w/2;}piece(end,width);
   }});
   group(name+'-windows',()=>holes.filter(q=>!q.door).forEach(window));
   group(name+'-trim',()=>{for(const yy of[3.42,6.74])b.box(width/2,yy,.02,width,.09,.10,C.wall,24);b.box(width/2,6.9,.025,width,.21,.13,C.red,6);});
-  group(name+'-doors',()=>{for(const q of holes.filter(q=>q.door)){b.box(q.x,(q.lo+q.hi)/2,-.07,q.w,q.hi-q.lo,.05,C.dark,5);for(const xx of[q.x-q.w/2,q.x,q.x+q.w/2])b.box(xx,(q.lo+q.hi)/2,.035,.085,q.hi-q.lo+.10,.18,C.red,6);for(const yy of[q.lo,q.hi])b.box(q.x,yy,.035,q.w+.1,.09,.18,C.red,6);}});
+  group(name+'-doors',()=>{for(const q of holes.filter(q=>q.door)){const lo=name==='east-photo'?H.base+.16:q.lo;b.box(q.x,(lo+q.hi)/2,-.07,q.w,q.hi-lo,.05,C.dark,5);for(const xx of[q.x-q.w/2,q.x,q.x+q.w/2])b.box(xx,(lo+q.hi)/2,.035,.085,q.hi-lo+.10,.18,C.red,6);for(const yy of[lo,q.hi])b.box(q.x,yy,.035,q.w+.1,.09,.18,C.red,6);}});
  });}
  b.local(O[0],0,O[1],R,()=>{
   mesh('base-original-polygon',G.polygon(poly,H.base),C.stone);mesh('ceiling-original-polygon',G.polygon(poly,H.eave-.14),C.wall);
   const southWidth=Math.hypot(poly[2][0]-poly[1][0],poly[2][1]-poly[1][1]);
   const south=Array.from({length:2},(_,floor)=>[.25,.75].map(t=>({x:southWidth*t,w:2.52,lo:floor?4.2:1.05,hi:floor?6.5:3.08}))).flat();
   wall('south-photo',poly[1],poly[2],south);
+  // The south-window close photograph shows a second narrow rectangular frame
+  // within each tall glazed light. Retain the original primary mullions and
+  // lower lights; the obscured east windows do not inherit this detail.
+  b.local(poly[1][0],0,poly[1][1],-Math.atan2(poly[2][1]-poly[1][1],poly[2][0]-poly[1][0]),()=>{
+   group('south-window-inner-frames',()=>{for(const q of south){
+    const h=q.hi-q.lo,lo=q.lo+h*.25+.11,hi=q.hi-.11,w=q.w/3-.22;
+    for(let i=0;i<3;i++){const x=q.x-q.w/2+q.w*(i+.5)/3;
+     for(const xx of[x-w/2,x+w/2])b.box(xx,(lo+hi)/2,-.027,.032,hi-lo+.032,.045,C.red,6);
+     for(const y of[lo,hi])b.box(x,y,-.027,w,.032,.045,C.red,6);
+    }
+   }});
+  });
   // Four east positions are a proportional fit to three partly visible groups;
   // exact obscured window rhythm remains unverified. The canopy itself is visible.
   const eastWidth=Math.hypot(poly[3][0]-poly[2][0],poly[3][1]-poly[2][1]),fractions=[.16,.39,.63,.86];
   const east=fractions.map(t=>({x:eastWidth*t,w:2.30,lo:4.2,hi:6.5}));
   east.push(...fractions.map((t,i)=>({x:eastWidth*t,w:i===2?1.85:2.30,lo:i===2?H.base:1.05,hi:3.08,door:i===2})));
   wall('east-photo',poly[2],poly[3],east);wall('north-unverified',poly[3],poly[0]);
+  // Join the fitted door sill to the existing porch top, without changing its
+  // height or the door head. The stone threshold bridges the recessed glazing
+  // and wall thickness; this is model continuity, not a surveyed elevation.
+  group('east-threshold',()=>b.box(W-.16,H.base+.08,D-eastWidth*.63,.32,.16,1.95,C.stone,24));
   // West edge is shared with 111: no exterior wall, glazing, door or porch.
   group('corners',()=>{for(const [x,z]of [[W,D],[W,0],[0,D]])b.box(x,3.92,z,.23,5.92,.23,C.red,6);});
   group('east-canopy',()=>{const z=D-eastWidth*.63;b.box(W+1.08,3.19,z,2.18,.22,3.35,C.stone,24);for(const dz of[-1.48,1.48])b.box(W+2.01,1.64,z+dz,.15,3.04,.15,C.stone,24);b.box(W+1.03,H.base+.08,z,2.06,.16,3.35,C.stone,24);});

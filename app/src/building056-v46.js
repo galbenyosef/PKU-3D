@@ -31,6 +31,17 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=p=>{c
       panel(cursor,a,lo,hi);panel(a,c,lo,low);panel(a,c,high,hi);
       group('openings-'+fl,()=>{b.box(x,y,-.16,w-.12,h-.12,.045,C.glass,5);for(const u of[a,c])b.box(u,y,-.035,.09,h,.22,frame,24);for(const v of[low,high])b.box(x,v,-.035,w,.09,.22,frame,24);
        const transom=high-.62;b.box(x,transom,-.065,w-.10,.075,.10,frame,24);
+       if(door&&side===0)group('narrow-stone-portal',()=>{
+        // Own close photograph: gray stone lintel/jamb border, pale foot
+        // blocks, and a bronze centre division in the upper transom.
+        // Dimensions are photo-fitted; the provisional north direction stays.
+        for(const u of[a-.14,c+.14]){
+         b.box(u,(low+high)/2,.035,.28,high-low,.24,'#aeb0a4',24);
+         b.box(u,low+.48,.065,.38,.96,.30,C.stone,24);
+        }
+        b.box(x,high+.17,.035,w+.56,.34,.24,'#aeb0a4',24);
+        b.box(x,(transom+high)/2,-.065,.075,high-transom,.10,frame,24);
+       });
        if(door){for(const u of[x-w*.29,x+w*.29])b.box(u,(low+transom)/2,-.065,.075,transom-low,.10,frame,24);b.box(x,(low+transom)/2,-.065,.06,transom-low,.10,frame,24);for(const u of[x-.16,x+.16])b.box(u,1.76,.025,.028,.42,.04,'#c4c5b9',9);}
        else{for(const u of(flanking?[]:[x-w*.23,x+w*.23]))b.box(u,(low+transom)/2,-.065,.065,transom-low,.10,frame,24);b.box(x,(transom+high)/2,-.065,.065,high-transom,.10,frame,24);if(flanking)b.box(x,low+.50,-.08,w-.12,.95,.09,'#557d75',24);else b.box(x,low-.06,.035,w+.18,.12,.34,C.stone,24);}
       });

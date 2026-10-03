@@ -5,9 +5,14 @@ function playwright(){try{return require('playwright');}catch{}return require(pa
 const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
 const index=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const scripts=[...index.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m=>m[1]).filter(p=>!/(?:assets|reference-gallery|engine|app-v29|materials|material-detail|water-detail|pedestrians-v46|scene-cache46|scene-package46)\.js$/.test(p));
+// Load the real decoder capability without changing geometry/atlas digests.
+const loadScripts=[...index.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m=>m[1]).filter(p=>scripts.includes(p)||p==='src/engine.js');
 const atlasSourceHash=hash(Buffer.from(JSON.stringify(scripts.filter(p=>!p.endsWith('/visibility.js')).map(file=>[file,hash(fs.readFileSync(path.join(root,file)))]))));
-const digest=crypto.createHash('sha256');for(const file of [...scripts,'tools/scene-collector46.js','tools/bake-scene46.cjs']){digest.update(file);digest.update(fs.readFileSync(path.join(root,file)));}
+const {atlasInputHash}=require('./atlas-input879.cjs');
+const atlasInputHash879=atlasInputHash(root,scripts);
+const digest=crypto.createHash('sha256');for(const file of [...scripts,'tools/scene-collector46.js','tools/bake-scene46.cjs','tools/atlas-input879.cjs']){digest.update(file);digest.update(fs.readFileSync(path.join(root,file)));}
 const baselineConfig=path.join(root,'data/scene-atlas-baseline46.json');if(fs.existsSync(baselineConfig)){const value=fs.readFileSync(baselineConfig);digest.update(value);digest.update(fs.readFileSync(path.join(root,JSON.parse(value).path)));}
+const derivedConfig=path.join(root,'data/scene-atlas-derived879.json');if(fs.existsSync(derivedConfig)){const value=fs.readFileSync(derivedConfig);digest.update(value);digest.update(fs.readFileSync(path.join(root,JSON.parse(value).path)));}
 const sourceHash=digest.digest('hex'),manifestPath=path.join(out,'manifest.json');
 if(!process.argv.includes('--force')&&fs.existsSync(manifestPath)){
  const m=JSON.parse(fs.readFileSync(manifestPath));
@@ -15,13 +20,13 @@ if(!process.argv.includes('--force')&&fs.existsSync(manifestPath)){
 }
 fs.mkdirSync(out,{recursive:true});
 const temp=fs.mkdtempSync(path.join(out,'.bake-')),chunks=[],meshes=[],buckets=[],meshByHash=new Map(),bucketHashes=[];
-let payload=[],payloadBytes=0,kind='mesh',meta,doneResolve,doneReject,buildStats;
+let payload=[],payloadBytes=0,kind='mesh',packingWidths=[4,32],meta,doneResolve,doneReject,buildStats;
 const done=new Promise((a,b)=>{doneResolve=a;doneReject=b;});
 function flush(){
  if(!payloadBytes)return;
  const raw=Buffer.concat(payload,payloadBytes);let compressed=zlib.gzipSync(raw,{level:6}),shuffle=0;
  // Reversible byte shuffling is selected only when it makes this chunk smaller.
- for(const stride of[4,32]){const arranged=Buffer.allocUnsafe(raw.length);let q=0;for(let lane=0;lane<stride;lane++)for(let i=lane;i<raw.length;i+=stride)arranged[q++]=raw[i];const zipped=zlib.gzipSync(arranged,{level:6});if(zipped.length<compressed.length){compressed=zipped;shuffle=stride;}}
+ for(const stride of packingWidths){const arranged=Buffer.allocUnsafe(raw.length);let q=0;for(let lane=0;lane<stride;lane++)for(let i=lane;i<raw.length;i+=stride)arranged[q++]=raw[i];const zipped=zlib.gzipSync(arranged,{level:6});if(zipped.length<compressed.length){compressed=zipped;shuffle=stride;}}
  const n=chunks.length,key=hash(compressed).slice(0,24),file='chunk-'+key+'.bin.gz',fallback='chunk-'+key+'.js';
  fs.writeFileSync(path.join(temp,file),compressed);
  fs.writeFileSync(path.join(temp,fallback),'YY.SceneCache46.receive('+JSON.stringify(key)+','+JSON.stringify(compressed.toString('base64'))+');');
@@ -76,6 +81,12 @@ const server=http.createServer(async(req,res)=>{
     const signature=hash(v),identity=signature+':'+h.detailWidth;
     let mi=meshByHash.get(identity);
     if(mi===undefined){mi=meshes.length;meshByHash.set(identity,mi);const compact=indexed(v);meshes.push({hash:signature,detailWidth:h.detailWidth,vertexCount:h.vertices/8,uniqueVertexCount:compact.uniqueVertices||h.vertices/8,indexType:compact.indexType||null,ranges:h.instances===28?ranges(v):null});const f=path.join(temp,'mesh-'+mi+'.raw');fs.writeFileSync(f,compact.vertices);const ix=compact.indices?path.join(temp,'mesh-'+mi+'.indices'):null;if(ix)fs.writeFileSync(ix,compact.indices);meshBlobs.push({file:f,indices:ix});}
+    // Static single-instance water bounds are metadata only; vertex bytes stay exact.
+    if(h.instances===28&&d.readFloatLE(80)===4){
+     const lo=[Infinity,Infinity,Infinity],hi=[-Infinity,-Infinity,-Infinity];
+     for(let j=0;j<v.length;j+=32)for(let k=0;k<3;k++){const x=v.readFloatLE(j+k*4);lo[k]=Math.min(lo[k],x);hi[k]=Math.max(hi[k],x);}
+     meshes[mi].waterBounds=[...lo,...hi];
+    }
     const i=buckets.length,file=path.join(temp,'instances-'+i+'.raw');fs.writeFileSync(file,Buffer.concat([d,s]));instanceBlobs.push({file,dataBytes:d.length});
     buckets.push({key:h.key,mesh:mi,count:h.instances/28,dataHash:hash(d),spatialHash:hash(s)});bucketHashes.push({key:h.key,vertexHash:signature,dataHash:hash(d)});
    }else if(name==='done'){buildStats=JSON.parse(data);doneResolve();}
@@ -83,7 +94,7 @@ const server=http.createServer(async(req,res)=>{
    res.writeHead(200);res.end('ok');return;
   }
   if(url.pathname==='/__bake.html'){
-   res.writeHead(200,{'Content-Type':'text/html;charset=utf-8'});res.end('<!doctype html><meta charset="utf-8">'+scripts.map(s=>'<script src="/'+s+'"></script>').join('')+'<script src="/tools/scene-collector46.js"></script>');return;
+   res.writeHead(200,{'Content-Type':'text/html;charset=utf-8'});res.end('<!doctype html><meta charset="utf-8">'+loadScripts.map(s=>'<script src="/'+s+'"></script>').join('')+'<script src="/tools/scene-collector46.js"></script>');return;
   }
   const file=path.resolve(root,'.'+decodeURIComponent(url.pathname));if(!file.startsWith(root+path.sep))throw Error('Invalid asset path');
   const stat=await fsp.stat(file);res.writeHead(200,{'Content-Type':file.endsWith('.js')?'text/javascript; charset=utf-8':'application/octet-stream','Content-Length':stat.size});fs.createReadStream(file).pipe(res);
@@ -97,13 +108,36 @@ const server=http.createServer(async(req,res)=>{
   await p.goto('http://127.0.0.1:'+port+'/__bake.html',{timeout:120000});
   const[result]=await Promise.all([p.evaluate(()=>YY.collectScene46()),done]);console.log('Collected original scene:',result);
   await browser.close();browser=null;
-  for(let i=0;i<meshBlobs.length;i++){const q=meshBlobs[i];meshes[i].buffer=append(fs.readFileSync(q.file),'mesh');fs.unlinkSync(q.file);if(q.indices){meshes[i].indices=append(fs.readFileSync(q.indices),'mesh');fs.unlinkSync(q.indices);}}flush();
+  // Keep each stream aligned to its actual record width. Interleaved index
+  // bytes otherwise break vertex byte lanes, weakening lossless compression.
+  // Mesh IDs, vertex order, index order and all original hashes stay unchanged.
+  for(const stream of ['vertices','uint16','uint32']){
+   packingWidths=stream==='uint16'?[2,4,32]:[4,32];
+   for(let i=0;i<meshBlobs.length;i++){
+    const q=meshBlobs[i],vertex=stream==='vertices';if(!vertex&&meshes[i].indexType!==stream)continue;
+    const file=vertex?q.file:q.indices;if(!file)continue;
+    meshes[i][vertex?'buffer':'indices']=append(fs.readFileSync(file),'mesh');fs.unlinkSync(file);
+   }flush();
+  }
+  packingWidths=[4,32];
   for(let i=0;i<instanceBlobs.length;i++){const q=instanceBlobs[i],raw=fs.readFileSync(q.file),ref=append(raw,'instances');buckets[i].data={...ref,length:q.dataBytes/4};buckets[i].spatial={chunk:ref.chunk,offset:ref.offset+q.dataBytes,length:(raw.length-q.dataBytes)/4};fs.unlinkSync(q.file);}flush();
+  // Reuse the previous atlas only when its drawing inputs and full file hash
+  // match. Unrelated packing changes must not rerasterize unchanged glyphs.
+  let atlasReused=false;
+  if(fs.existsSync(manifestPath)){
+   const previous=JSON.parse(fs.readFileSync(manifestPath));
+   if(previous.atlasSourceHash===atlasSourceHash&&previous.atlasSha256){
+    const file=path.join(out,previous.atlas);
+    if(fs.existsSync(file)){const bytes=fs.readFileSync(file);if(hash(bytes)!==previous.atlasSha256)throw Error('Previous lettering atlas checksum mismatch');fs.writeFileSync(path.join(temp,'sign-atlas.png'),bytes);atlasReused=true;}
+   }
+  }
   // Retain the original atlas for unchanged drawing inputs, including exact glyph antialiasing.
   const atlasBaselinePath=path.join(root,'data/scene-atlas-baseline46.json');
-  if(fs.existsSync(atlasBaselinePath)){const baseline=JSON.parse(fs.readFileSync(atlasBaselinePath));if(baseline.sourceHash===atlasSourceHash){const original=fs.readFileSync(path.join(root,baseline.path));if(hash(original)!==baseline.sha256)throw Error('Original lettering atlas checksum mismatch');fs.writeFileSync(path.join(temp,'sign-atlas.png'),original);}}
+  if(fs.existsSync(atlasBaselinePath)){const baseline=JSON.parse(fs.readFileSync(atlasBaselinePath));if(baseline.sourceHash===atlasSourceHash){const original=fs.readFileSync(path.join(root,baseline.path));if(hash(original)!==baseline.sha256)throw Error('Original lettering atlas checksum mismatch');fs.writeFileSync(path.join(temp,'sign-atlas.png'),original);atlasReused=true;}}
+  // An independently bound input key may retain the same PNG across non-drawing limits edits.
+  if(!atlasReused&&fs.existsSync(derivedConfig)){const derived=JSON.parse(fs.readFileSync(derivedConfig));if(derived.version===1&&derived.inputHash===atlasInputHash879){const original=fs.readFileSync(path.join(root,derived.path));if(hash(original)!==derived.sha256)throw Error('Derived lettering atlas checksum mismatch');fs.writeFileSync(path.join(temp,'sign-atlas.png'),original);}}
   const atlas='sign-atlas-'+hash(fs.readFileSync(path.join(temp,'sign-atlas.png'))).slice(0,24)+'.png';fs.renameSync(path.join(temp,'sign-atlas.png'),path.join(temp,atlas));
-  const manifest={...meta,version:2,sourceHash,meshes,buckets,chunks,buildStats,atlas};
+  const manifest={...meta,version:3,normalTransformFormat194:2,sourceHash,meshes,buckets,chunks,buildStats,atlas,atlasSourceHash,atlasSha256:hash(fs.readFileSync(path.join(temp,atlas)))};
   const rawVertices=meshes.reduce((s,m)=>s+m.vertexCount*32,0),instances=buckets.reduce((s,b)=>s+b.count,0),triangles=buckets.reduce((s,b)=>s+b.count*meshes[b.mesh].vertexCount/3,0);
   if(instances!==meta.stats.instances||triangles!==meta.stats.triangles)throw Error('Cached geometry counts differ from original scene');
   manifest.packedStats={originalBuckets:buckets.length,uniqueMeshes:meshes.length,originalVertexBytes:rawVertices,vertexBytes:meshes.reduce((s,m)=>s+m.uniqueVertexCount*32,0),indexBytes:meshes.reduce((s,m)=>s+(m.indices?m.vertexCount*(m.indexType==='uint16'?2:4):0),0),compressedBytes:chunks.reduce((s,c)=>s+c.bytes,0),rawBytes:chunks.reduce((s,c)=>s+c.rawBytes,0)};

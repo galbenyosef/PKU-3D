@@ -30,7 +30,29 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
  add('050-east-court-paving',F.surface({type:'Polygon',coordinates:[loop(33.12,6.834,42.222,12.45)]},.07),'#b2b8ac',24,id);
  b.local(O[0],0,O[1],R,()=>{
  for(const s of parts)group(s.key+'-ridge',()=>{const along=s.axis==='x',lo=along?s.x0:s.z0+(s.northHip?(s.x1-s.x0)/2:0),hi=along?s.x1:s.z1,mid=along?(s.z0+s.z1)/2:(s.x0+s.x1)/2,n=Math.ceil((hi-lo)/.30);for(let i=0;i<n;i++){const a=lo+(hi-lo)*i/n,c=lo+(hi-lo)*(i+1)/n,q=along?[(a+c)/2,mid]:[mid,(a+c)/2],y=profile(s,...q);if(parts.some(o=>o!==s&&within(o,q)&&profile(o,...q)>y+.025))continue;const q0=along?[a,mid]:[mid,a],q1=along?[c,mid]:[mid,c];b.beam([q0[0],profile(s,...q0)+.075,q0[1]],[q1[0],profile(s,...q1)+.075,q1[1]],.11,C.tile,25);}if(s.axis==='z'){const v=s.z1;for(let i=0;i<40;i++){const a=s.x0+(s.x1-s.x0)*i/40,c=s.x0+(s.x1-s.x0)*(i+1)/40;b.beam([a,profile(s,a,v)+.05,v],[c,profile(s,c,v)+.05,v],.07,C.tile,25);}}});
- function facade(key,u,v,length,rot,top,count,doorIndex=-1,base=.48,porch=false){b.local(u,0,v,rot,()=>group(key,()=>{const w=length/count,panel=(a,c,lo,hi)=>{if(c>a&&hi>lo)b.box((a+c)/2,(lo+hi)/2,-.09,c-a,hi-lo,.18,C.wall,30);};let cursor=0;for(let k=0;k<count;k++){const mid=(k+.5)*w,door=k===doorIndex,ww=Math.min(door?2.2:1.85,w*.66),a=mid-ww/2,c=mid+ww/2,lo=door?base:base+.6,hi=top-.4;panel(cursor,a,base,top);panel(a,c,base,lo);panel(a,c,hi,top);const cy=(lo+hi)/2;for(const x of[a,c])b.box(x,cy,-.01,.08,hi-lo,.22,C.red,24);for(const y of[lo,hi])b.box(mid,y,-.01,ww,.08,.22,C.red,24);b.box(mid,cy,-.14,ww-.1,hi-lo-.08,.04,C.glass,5);for(let x=a+.28;x<c;x+=.29)b.box(x,cy,-.10,.033,hi-lo,.04,C.red,24);for(let y=lo+.25;y<hi;y+=.31)b.box(mid,y,-.10,ww,.033,.04,C.red,24);b.box(mid,cy,-.08,.07,hi-lo,.05,C.red,24);if(door)b.box(mid,base+.26,-.04,ww-.1,.48,.06,C.red,24);cursor=c;}panel(cursor,length,base,top);b.box(length/2,.24,-.12,length,.48,.45,C.stone,24);b.box(length/2,top-.09,.04,length,.18,.35,C.red,24);for(let i=0;i<=count;i++){const x=Math.max(.08,Math.min(length-.08,i*w));b.cyl(x,base,porch?.55:.15,.105,top-base-.15,C.red,10,1,24);}b.box(length/2,top+.08,.13,length,.12,.5,C.blue,24);
+ function facade(key,u,v,length,rot,top,count,doorIndex=-1,base=.48,porch=false){b.local(u,0,v,rot,()=>group(key,()=>{const w=length/count,panel=(a,c,lo,hi)=>{if(c>a&&hi>lo)b.box((a+c)/2,(lo+hi)/2,-.09,c-a,hi-lo,.18,C.wall,30);};let cursor=0;for(let k=0;k<count;k++){const mid=(k+.5)*w,door=k===doorIndex,ww=Math.min(door?2.2:1.85,w*.66),a=mid-ww/2,c=mid+ww/2,lo=door?base:base+.6,hi=top-.4;panel(cursor,a,base,top);panel(a,c,base,lo);panel(a,c,hi,top);const cy=(lo+hi)/2;for(const x of[a,c])b.box(x,cy,-.01,.08,hi-lo,.22,C.red,24);for(const y of[lo,hi])b.box(mid,y,-.01,ww,.08,.22,C.red,24);if(door&&key==='court-center-south')group('bamboo-door',()=>{
+ // OIR entrance photograph: solid red lower leaves, tall clear upper lights,
+ // and a distinct lattice head. Door count and proportions remain fitted;
+ // the photographed doorway's precise hall location is still provisional.
+ const rail=lo+.79,head=hi-.63,leaf=ww/4;
+ for(let j=0;j<4;j++){
+  const l=a+j*leaf,r=l+leaf,x=(l+r)/2;
+  b.box(x,(lo+rail)/2,-.065,leaf-.055,rail-lo-.055,.12,C.red,24);
+  b.box(x,(rail+head)/2,-.14,leaf-.11,head-rail-.10,.04,C.glass,5);
+  for(const y of[rail,head])b.box(x,y,-.025,leaf,.075,.17,C.red,24);
+  b.box(l,(lo+head)/2,-.015,.065,head-lo,.20,C.red,24);
+ }
+ // Two separate head lights; the fine head lattice never crosses the leaves.
+ for(const side of[-1,1]){
+  const x=mid+side*ww/4;
+  b.box(x,(head+hi)/2,-.14,ww/2-.10,hi-head-.08,.04,C.glass,5);
+  for(const offset of[-ww/6,0,ww/6])b.box(x+offset,(head+hi)/2,-.08,.032,hi-head,.05,C.red,24);
+ }
+ b.box(mid,(head+hi)/2,-.025,.075,hi-head,.17,C.red,24);
+ b.box(mid,head+(hi-head)/2,-.08,ww,.035,.05,C.red,24);
+ // Timber-lined opening returns connect the forward frame to recessed panes.
+ for(const x of[a+.035,c-.035])b.box(x,(lo+hi)/2,-.095,.07,hi-lo,.22,C.red,24);
+});else{b.box(mid,cy,-.14,ww-.1,hi-lo-.08,.04,C.glass,5);for(let x=a+.28;x<c;x+=.29)b.box(x,cy,-.10,.033,hi-lo,.04,C.red,24);for(let y=lo+.25;y<hi;y+=.31)b.box(mid,y,-.10,ww,.033,.04,C.red,24);b.box(mid,cy,-.08,.07,hi-lo,.05,C.red,24);if(door)b.box(mid,base+.26,-.04,ww-.1,.48,.06,C.red,24);} cursor=c;}panel(cursor,length,base,top);b.box(length/2,.24,-.12,length,.48,.45,C.stone,24);b.box(length/2,top-.09,.04,length,.18,.35,C.red,24);for(let i=0;i<=count;i++){const x=Math.max(.08,Math.min(length-.08,i*w));b.cyl(x,base,porch?.55:.15,.105,top-base-.15,C.red,10,1,24);}b.box(length/2,top+.08,.13,length,.12,.5,C.blue,24);
  const support=new G.Geometry(),n=Math.ceil(length/.16),co=Math.cos(rot),si=Math.sin(rot),point=(q,depth)=>[u+q*co+depth*si,v-q*si+depth*co],height=p=>Math.max(top,...parts.filter(s=>within(s,p)).map(s=>profile(s,...p)));
  for(let j=0;j<n;j++){const q0=length*j/n,q1=length*(j+1)/n,a=point(q0,-.09),c=point(q1,-.09);support.quad(vertex(a[0],top-.02,a[1]),vertex(c[0],top-.02,c[1]),vertex(c[0],height(c)-.012,c[1]),vertex(a[0],height(a)-.012,a[1]));}add('050-'+key+'-wall-roof-contact',support,C.wall,30,id);
  }));}

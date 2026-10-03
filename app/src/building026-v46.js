@@ -23,21 +23,22 @@ function inset(r,d){
 function render(b,f,add){
  const id=f.properties.pickId,p=plan(f);b.id=id;let count=0;
  function mass(name,q,u0,u1,v0,v1,y,h,col=C.brick){
-  const g=patch(q,u0,u1,v0,v1);add('026-'+name+'-'+count++,F.walls(g,y,h),col,24,id);add('026-cap-'+count++,F.surface(g,h),C.roof,22,id);
+  const g=patch(q,u0,u1,v0,v1);add('026-'+name+'-'+count++,F.walls(g,y,h),col,name.startsWith('west-')?18:24,id);add('026-cap-'+count++,F.surface(g,h),C.roof,22,id);
  }
  function face(a,c,fn){const dx=c[0]-a[0],dz=c[1]-a[1],l=Math.hypot(dx,dz);b.local(a[0],0,a[1],Math.atan2(-dz,dx),()=>fn(l));}
  function win(x,y,w,h,z=0){
   b.box(x,y,z,w+.15,h+.15,.10,C.frame,29);b.box(x,y,z+.065,w,h,.035,C.glass,28);
   if(w>1.2)b.box(x,y,z+.10,.065,h,.05,C.frame,29);b.box(x,y+h*.23,z+.10,w,.065,.05,C.frame,29);
  }
- function curtain(x,width,height,z=0,columns=2){
+ function curtain(x,width,height,z=0,columns=2,doorTop=null){
   b.box(x,height/2+.15,z,width,height,.14,C.glass,28);
-  for(let k=0;k<=Math.ceil(height/1.6);k++)b.box(x,.15+k*height/Math.ceil(height/1.6),z+.10,width,.08,.09,C.frame,29);
+  for(let k=0;k<=Math.ceil(height/1.6);k++)b.box(x,k===1&&doorTop!==null?doorTop:.15+k*height/Math.ceil(height/1.6),z+.10,width,.08,.09,C.frame,29);
   for(let k=0;k<=columns;k++)b.box(x-width/2+k*width/columns,height/2+.15,z+.11,.085,height,.09,C.frame,29);
  }
- function shaft(x,width,height,depth){
+ function shaft(x,width,height,depth,doorTop=null){
   // A volume: front, two glass sides, glass top and edge frames. 1.2m depth is fitted.
-  curtain(x,width,height,depth);
+  curtain(x,width,height,depth,2,doorTop);
+  if(doorTop!==null)b.box(x,.075,depth/2,width,.15,depth+.16,C.stone,24);
   for(const s of [-1,1]){
    b.box(x+s*width/2,height/2+.15,depth/2,.10,height,depth,C.glass,28);
    for(let k=0;k<=Math.ceil(height/1.6);k++)b.box(x+s*width/2,.15+k*height/Math.ceil(height/1.6),depth/2,.09,.08,depth,C.frame,29);
@@ -80,9 +81,27 @@ function render(b,f,add){
   }
   shaft(len*.075,2.7,14.1,.9);shaft(len*.88,2.7,14.1,.9);
   const x=len*(entry0+entry1)/2,w=len*(entry1-entry0)*.92;
-  b.box(x,4.3,.9,w,.18,2.1,C.frame,29);for(let j=0;j<5;j++)b.box(x,.1+j*.12,1.65-j*.33,w,.20,.9,C.stone,10);
+  b.box(x,4.3,.9,w,.18,2.1,C.frame,29);
+  // Keep the former outer stair extent and top level; connect solid treads
+  // to the recessed door instead of leaving thin floating slabs.
+  const front=point(p.west,0,.26),back=point(p.west,.135,.26),dx=p.west[3][0]-p.north[0][0],dz=p.west[3][1]-p.north[0][1];
+  const recess=-((back[0]-front[0])*(-dz/len)+(back[1]-front[1])*(dx/len));
+  b.box(x,.34,(.45-recess)/2,w,.68,.45+recess,C.stone,10);
+  for(let j=0;j<5;j++){const h=.136*(j+1);b.box(x,h/2,2.10-(j+.5)*.33,w,h,.33,C.stone,10);}
  });
- face(point(p.west,.135,.16),point(p.west,.135,.36),len=>curtain(len/2,len*.83,3.7));
+ face(point(p.west,.135,.16),point(p.west,.135,.36),len=>{
+  // Photo5 establishes framed entrance glazing and an upper transom. Leaf
+  // widths and sidelights are fitted, not measured from the oblique photo.
+  const x=len/2,w=len*.83,bottom=.68,top=3.85,transom=3.13,leaf=Math.min(1.2,w*.22),z=.10;
+  b.box(x,(top+transom)/2,0,w,.72,.14,C.glass,28);
+  for(const side of [-1,1]){
+   b.box(x+side*leaf/2,(bottom+transom)/2,0,leaf-.055,transom-bottom-.06,.14,C.glass,28);
+   const sideWidth=w/2-leaf;
+   b.box(x+side*(leaf+sideWidth/2),(bottom+transom)/2,0,sideWidth-.055,transom-bottom-.06,.14,C.glass,28);
+  }
+  for(const dx of [-w/2,-leaf,0,leaf,w/2])b.box(x+dx,(bottom+top)/2,z,.07,top-bottom,.09,C.frame,29);
+  for(const y of [bottom,transom,top])b.box(x,y,z,w,.07,.09,C.frame,29);
+ });
  // Courtyard east face runs S -> N: long glazing -> projecting shaft -> recess -> second shaft.
  face(p.west[2],p.west[1],len=>{
   for(let i=0;i<16;i++){const u=(i+.5)/16,x=u*len;
@@ -92,7 +111,8 @@ function render(b,f,add){
   for(const u of [.17,.23])curtain(len*u,2.2,9.8,.12);
   // 2011 photographer images 133179/412905 show broad double-height glass north of the recess.
   curtain(len*.71,len*.15,5.35,.12,4);
-  shaft(len*.33,2.75,14.35,1.2);shaft(len*.91,2.7,14.15,1.2);
+  // The southern courtyard shaft has a full-height paired entrance below its transom.
+  shaft(len*.33,2.75,14.35,1.2,2.55);shaft(len*.91,2.7,14.15,1.2);
  });
  face(point(p.west,.79,.56),point(p.west,.79,.40),len=>curtain(len/2,len*.8,4.8));
  face(p.west[3],p.west[2],len=>{curtain(len*.62,len*.51,10.2,.12);for(const u of [.15,.35,.65,.85])win(u*len,12.4,1.8,2.1);});

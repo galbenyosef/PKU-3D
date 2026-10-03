@@ -8,6 +8,19 @@ const world=(u,v)=>[O[0]+u*CO+v*SI,O[1]-u*SI+v*CO],local=p=>[(p[0]-O[0])*CO-(p[1
 const planX=x=>13.250513+(x-428)/(1736-428)*(66.829616-13.250513),wingY=y=>(y-392)/(799-392)*17.047877;
 const entrances=[{name:'electrical-room',u:planX(794.5),v:24.7756,width:1.45,sill:.3,service:true},{name:'unit-east',u:planX(1369.5),v:24.7767,width:1.85,sill:.3},{name:'southwest-hall',u:6.30,v:24.774914,width:3.4,sill:.45}];
 const stairBays=[[744,846],[1318,1421]].map(([s,e])=>[planX(s),planX(e)]);
+// Fit only the short gap to the existing south footway. Its width and centreline
+// stay source data; the apron and its 0.025m stair-side level are model fits.
+function hallApproach(road){
+ if(!road||road.geometry.type!=='LineString'||!(road.properties.width>0))return null;
+ const q=entrances[2],outer=q.v+1.5+.18+(Math.round(q.sill/.15)-1)*.36+.37/2,us=[q.u-(q.width+.3)/2,q.u+(q.width+.3)/2],ribbon=Y.Geo.ribbon(road.geometry.coordinates,road.properties.width,.12,false).v;let best=null;
+ for(let i=0;i<ribbon.length;i+=48)for(const [j,k]of[[0,8],[40,16]]){
+  const a=local([ribbon[i+j],ribbon[i+j+2]]),c=local([ribbon[i+k],ribbon[i+k+2]]),du=c[0]-a[0];if(Math.abs(du)<1e-8)continue;
+  const ts=us.map(u=>(u-a[0])/du);if(ts.some(t=>t<0||t>1))continue;
+  const vs=ts.map(t=>a[1]+t*(c[1]-a[1]));if(vs.some(v=>!Number.isFinite(v)||v<=outer+.01||v>outer+4))continue;
+  const score=vs[0]+vs[1];if(!best||score<best.score)best={front:us.map(u=>world(u,outer)),edge:us.map((u,k)=>world(u,vs[k])),score};
+ }
+ return best;
+}
 function render(b,f,add){const id=f.properties.pickId;b.id=id;
  function group(name,fn){const old=b.e.add;b.e.add=function(k,...args){return old.call(this,'099-'+name+'-'+k,...args);};try{fn();}finally{b.e.add=old;}}
  const cells=xs=>xs.slice(1).map((e,i)=>[xs[i],e]);
@@ -70,6 +83,13 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
    for(const x of [s,door.u,e])b.box(x,1.7,v1-.2,.05,2.5,.08,C.frame,6);
    for(const y of [.45,2.95])b.box(door.u,y,v1-.2,door.width,.05,.08,C.frame,6);
   });
+  // The plan-supported hall door is recessed: join its existing frame to the
+  // front wall and landing. Return depths/materials remain display fits.
+  group('hall-door-returns',()=>{const q=entrances[2],back=q.v-.28,front=q.v+.04,z=(back+front)/2,d=front-back;
+   for(const x of [q.u-q.width/2-.04,q.u+q.width/2+.04])b.box(x,1.705,z,.08,2.55,d,C.wall,24);
+   b.box(q.u,3.01,z,q.width,.08,d,C.wall,24);
+   b.box(q.u,q.sill-.05,z,q.width,.10,d,C.stone,24);
+  });
   group('south-upper-balconies',()=>{for(const q of entrances.slice(0,2))for(let floor=1;floor<6;floor++){
    const y=floor*H.floor+.12,w=3.72,depth=1.28,z=q.v+depth/2;
    b.box(q.u,y-.08,z,w,.16,depth+.02,C.stone,24);
@@ -84,8 +104,10 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;
  for(const [s,e] of stairBays){const v=10.34;facade(world(e,v),world(s,v),'north-stair',()=>[{s:.65,e:e-s-.65}]);
   b.local(O[0],0,O[1],R,()=>group('north-stair-sides',()=>{for(const u of [s,e])b.box(u,H.wall/2,(v+11.398734)/2,.08,H.wall,11.398734-v,C.wall,24);b.box((s+e)/2,H.wall,(v+11.398734)/2,e-s,.12,11.398734-v,C.roof,24);}));
  }
+ const approach=hallApproach(Y.CAMPUS?.features.find(f=>f.properties.id==='way/628032110'));
+ if(approach){const g=new Y.Geo.Geometry();g.quad([approach.front[0][0],.025,approach.front[0][1]],[approach.edge[0][0],.12,approach.edge[0][1]],[approach.edge[1][0],.12,approach.edge[1][1]],[approach.front[1][0],.025,approach.front[1][1]]);add('099-hall-road-apron',g,C.stone,7,id);}
  return{strategy:'building099-v46',floors:6,heightAbout20mIn2025Tender:true,estimatedHeight:true,sourceOutline:true,lowSouthwestHall:true,southUnitEntrances:1,principalPlanEntrances:2,electricalRoomDoors:1,groundPlanEntrances:3,southUpperBalconyStacks:2,southUpperBalconyLevels:5,westWingBalconies:true,northStairProjections:2,fullFacadeVerified:false,currentRenovationVerified:false,planDate:2018};
 }
 A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};
-Y.Building099={id:ID,render,world,local,heights:H,entrances,stairBays};
+Y.Building099={id:ID,render,world,local,heights:H,entrances,stairBays,hallApproach};
 })(YY);

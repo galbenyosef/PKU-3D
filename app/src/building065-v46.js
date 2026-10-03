@@ -36,10 +36,25 @@ function render(b,f){b.id=f.properties.pickId;
     for(const q of holes){wall(cursor,q.x-q.w/2,lo,hi);cursor=q.x+q.w/2;}wall(cursor,width,lo,hi);
    }
    for(const q of openings)if(!q.door)group('window',()=>window(q.x,q.lo,q.hi,q.w));
+   // Official exterior panorama: only the two ground windows beside the east
+   // return door are verified with horizontal security grilles. Do not spread
+   // this treatment to the unobserved repeated elevations.
+   if(mode==='return')for(const q of openings.filter(q=>!q.door))group('return-window-grille',()=>{
+    const x0=q.x-q.w/2+.08,x1=q.x+q.w/2-.08,lo=q.lo+.10,hi=q.hi-.08;
+    for(const x of[x0,x1])b.box(x,(lo+hi)/2,.088,.024,hi-lo,.030,C.dark,9);
+    for(let y=lo;y<=hi+.001;y+=.21)b.box((x0+x1)/2,y,.090,x1-x0,.018,.030,C.dark,9);
+   });
    // Broad grey brick strips alternate with pale panels; the museum return
    // has blank upper panels, as photographed, rather than invented windows.
    const piers=mode==='return'?[.50,3.53,7.90,10.22]:[.45,...bays.slice(0,-1).map((v,i)=>(v+bays[i+1])/2),width-.45];
-   for(const u of piers){b.box(u,(H.base+H.wall)/2,.021,.91,H.wall-H.base,.43,C.brick,30);}
+   for(const u of piers){
+    if(mode!=='return'){b.box(u,(H.base+H.wall)/2,.021,.91,H.wall-H.base,.43,C.brick,30);continue;}
+    // The fitted brick strip must not cover the photographed adjacent window.
+    for(let j=1;j<levels.length;j++){const lo=levels[j-1],hi=levels[j];let spans=[[u-.455,u+.455]];
+     for(const q of openings.filter(q=>q.lo<hi&&q.hi>lo))spans=spans.flatMap(([a,c])=>[[a,Math.min(c,q.x-q.w/2)],[Math.max(a,q.x+q.w/2),c]]).filter(([a,c])=>c-a>1e-7);
+     for(const [a,c] of spans)b.box((a+c)/2,(lo+hi)/2,.021,c-a,hi-lo,.43,C.brick,30);
+    }
+   }
    for(const y of[.32,3.12,4.28,5.21,7.52]){
     // Panel joints stop at brick strips and real door/window apertures.
     const cuts=[...piers.map(x=>({x,w:.94})),...openings.filter(q=>q.lo<y+.03&&q.hi>y-.03)].sort((a,b)=>a.x-b.x);let c=0;

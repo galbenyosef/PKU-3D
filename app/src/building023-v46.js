@@ -38,9 +38,9 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
   if(face==='west-outer')source=[...cells([0,6.28,12.56,18.84],.94),[19.1,22.5,.30],[22.5,26.6,.32],[26.6,29.9,.36]];
   const positions=source.map(([s,e,ratio])=>{const ax=horizontal?0:1,d=horizontal?du:dv,t0=(s-la[ax])/d*len,t1=(e-la[ax])/d*len,mid=(t0+t1)/2,w=Math.abs(t1-t0)*ratio;return[mid-w/2,mid+w/2];}).map(([s,e])=>[Math.max(.15,s),Math.min(len-.15,e)]).filter(([s,e])=>e-s>.4).sort((a,c)=>a[0]-c[0]);
   b.local(a[0],0,a[1],Math.atan2(-dz,dx),()=>group('facade-'+face,()=>{
-   const panel=(x0,x1,y0,y1)=>{if(x1>x0&&y1>y0)b.box((x0+x1)/2,(y0+y1)/2,-.035,x1-x0,y1-y0,.07,(y0>=16&&(face==='south'||face==='west-outer'))?'#d8d9d2':C.wall,24);};
+   const panel=(x0,x1,y0,y1)=>{if(x1>x0&&y1>y0)b.box((x0+x1)/2,(y0+y1)/2,-.035,x1-x0,y1-y0,.07,(y0>=16&&(face==='south'||face==='west-outer'))?'#d8d9d2':C.wall,(face==='south'||face==='west-outer')&&y0<16?18:24);};
    for(let floor=0;floor<6;floor++){const base=floor*H.floor;let openings=positions.map(([s,e])=>{const v=la[1]+(s+e)/2/len*dv,balcony=face==='south'||(face==='west-outer'&&v<18.84);return{s,e,bottom:base+(balcony?.18:.84),top:base+(balcony?2.94:2.70),door:false,balcony};});
-    if(floor===0)for(const door of entrances.filter(q=>q.face===face)){const x=(door.axis===0?(door.u-la[0])/du:(door.v-la[1])/dv)*len,s=Math.max(0,x-door.width/2),e=Math.min(len,x+door.width/2);if(e>s+.15){openings=openings.filter(q=>q.e<s-.12||q.s>e+.12);openings.push({s,e,bottom:door.sill,top:3.03,door:true});}}
+    if(floor===0)for(const door of entrances.filter(q=>q.face===face)){const x=(door.axis===0?(door.u-la[0])/du:(door.v-la[1])/dv)*len,s=Math.max(0,x-door.width/2),e=Math.min(len,x+door.width/2);if(e>s+.15){openings=openings.filter(q=>q.e<s-.12||q.s>e+.12);openings.push({s,e,bottom:door.sill,top:3.03,door:true,doorName:door.name});}}
     openings.sort((a,c)=>a.s-c.s);let cursor=0;
     for(const q of openings){panel(cursor,q.s,base,base+H.floor);panel(q.s,q.e,base,q.bottom);panel(q.s,q.e,q.top,base+H.floor);const w=q.e-q.s,h=q.top-q.bottom,y=(q.top+q.bottom)/2,x=(q.s+q.e)/2,depth=q.door?.34:q.balcony?1.35:.55;
      if(q.balcony){
@@ -48,21 +48,37 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
        for(const xx of [q.s,q.e])b.box(xx,y,-depth/2,.13,h,depth,white,24);
        for(const yy of [base+.16,base+2.99])b.box(x,yy,-depth/2,w,.14,depth,white,24);
        b.box(x,base+.69,-.055,w,1.02,.13,white,24);b.box(x,base+1.24,-.025,w+.05,.09,.20,white,24);
-       b.box(x,base+1.56,-depth-.015,w,2.82,.045,brick,24);
+       b.box(x,base+1.56,-depth-.015,w,2.82,.045,brick,floor<5?18:24);
        const count=face==='west-outer'?2:1,gw=w/count*.76,gh=1.86,gy=base+1.77;
        for(let j=0;j<count;j++){const cx=q.s+w*(j+.5)/count;b.box(cx,gy,-depth+.04,gw,gh,.05,C.glass,5);
-        for(const xx of [cx-gw/2,cx,cx+gw/2])b.box(xx,gy,-depth+.08,.055,gh,.07,white,6);
-        for(const yy of [gy-gh/2,gy+gh/2,base+2.12])b.box(cx,yy,-depth+.08,gw,.055,.07,white,6);}
-       if(floor===0)for(let gx=q.s+.14;gx<q.e-.08;gx+=.18)b.box(gx,base+2.08,.015,.03,1.58,.035,white,6);
+        for(const xx of [cx-gw/2,cx,cx+gw/2])b.box(xx,gy,-depth+.08,.055,gh,.07,white,37);
+        for(const yy of [gy-gh/2,gy+gh/2,base+2.12])b.box(cx,yy,-depth+.08,gw,.055,.07,white,37);}
+       if(floor===0)for(let gx=q.s+.14;gx<q.e-.08;gx+=.18)b.box(gx,base+2.08,.015,.03,1.58,.035,white,37);
+      });cursor=q.e;continue;
+     }
+     if(q.doorName==='west-side'){
+      // Official 2020 SW photograph: muted painted frame, upper transom and
+      // opaque lower leaf panels. Subdivision heights and paint tone are fitted.
+      group('photo-west-door',()=>{const paint='#777b64',glass='#647f79',transom=q.top-.48,kick=q.bottom+.38;
+       for(const xx of [q.s,q.e])b.box(xx,y,-depth/2,.045,h,depth,C.wall,18);
+       for(const yy of [q.bottom,q.top])b.box(x,yy,-depth/2,w,.045,depth,C.wall,18);
+       b.box(x,(transom+q.top)/2,-depth,w-.12,q.top-transom-.08,.05,glass,5);
+       for(const cx of [x-w/4,x+w/4]){
+        b.box(cx,(kick+transom)/2,-depth,w/2-.08,transom-kick-.06,.05,glass,5);
+        b.box(cx,(q.bottom+kick)/2,-depth+.025,w/2-.08,kick-q.bottom-.06,.065,paint,37);
+       }
+       for(const xx of [q.s+.045,q.e-.045])b.box(xx,y,-depth+.06,.075,h,.09,paint,37);
+       b.box(x,(q.bottom+transom)/2,-depth+.065,.065,transom-q.bottom,.09,paint,37);
+       for(const yy of [q.bottom+.035,kick,transom,q.top-.035])b.box(x,yy,-depth+.065,w,.065,.09,paint,37);
       });cursor=q.e;continue;
      }
      // Returns and recessed glazing form real apertures, without extruded continuous corridors.
      for(const xx of [q.s,q.e])b.box(xx,y,-depth/2,.045,h,depth,C.frame,24);
      for(const yy of [q.bottom,q.top])b.box(x,yy,-depth/2,w,.045,depth,C.frame,24);
      b.box(x,y,-depth,w-.08,h-.06,.055,q.door?C.door:C.glass,5);
-     for(const xx of [q.s+.05,x,q.e-.05])b.box(xx,y,-depth+.05,.045,h,.07,C.frame,6);
-     for(const yy of [q.bottom+.035,q.top-.035])b.box(x,yy,-depth+.05,w,.055,.07,C.frame,6);
-     if(!q.door)b.box(x,base+1.95,-depth+.055,w,.035,.07,C.frame,6);
+     for(const xx of [q.s+.05,x,q.e-.05])b.box(xx,y,-depth+.05,.045,h,.07,C.frame,!q.door&&(face==='south'||face==='west-outer')?37:6);
+     for(const yy of [q.bottom+.035,q.top-.035])b.box(x,yy,-depth+.05,w,.055,.07,C.frame,!q.door&&(face==='south'||face==='west-outer')?37:6);
+     if(!q.door)b.box(x,base+1.95,-depth+.055,w,.035,.07,C.frame,!q.door&&(face==='south'||face==='west-outer')?37:6);
      cursor=q.e;
     }
     panel(cursor,len,base,base+H.floor);b.box(len/2,base+3.14,.025,len,.12,.16,C.frame,24);
@@ -73,13 +89,14 @@ function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,
  // South main lobby has its own broad outside stair; the other plan-labelled exits remain secondary.
  b.local(O[0],0,O[1],R,()=>{for(const q of entrances)group('entrance-'+q.name,()=>{
  const w=q.width,s=q.outward;
- if(q.name==='main-south'){b.box(q.u,3.22,q.v+1.05,w+.8,.14,2.2,C.frame,24);b.box(q.u,.375,q.v+.60,w+.6,.75,1.2,C.stone,24);for(let k=0;k<5;k++){const h=.15*(k+1);b.box(q.u,h/2,q.v+3.45-k*.5,w+.6,h,.51,C.stone,24);}}
+ if(q.name==='main-south'){b.box(q.u,3.22,q.v+1.05,w+.8,.14,2.2,C.frame,24);b.box(q.u,.375,q.v+.60,w+.6,.75,1.2,C.stone,24);for(let k=0;k<5;k++){const h=.15*(k+1);b.box(q.u,h/2,q.v+3.705-(k+.5)*.501,w+.6,h,.501,C.stone,24);}}
  else if(q.name==='west-side'){
-  b.box(q.u-.55,.375,q.v,1.1,.75,w+.3,C.stone,24);for(let k=0;k<5;k++){const h=.15*(k+1);b.box(q.u-3.10+k*.5,h/2,q.v,.51,h,w+.3,C.stone,24);}
+  b.box(q.u-.55,.375,q.v,1.1,.75,w+.3,C.stone,24);for(let k=0;k<5;k++){const h=.15*(k+1);b.box(q.u-3.355+(k+.5)*.451,h/2,q.v,.451,h,w+.3,C.stone,24);}
   b.box(q.u-.65,3.13,q.v,1.4,.15,w+.8,C.frame,24);
   for(const edge of [-1,1]){b.box(q.u-.65,3.31,q.v+edge*(w/2+.4),1.4,.30,.10,C.frame,24);
-   for(let k=0;k<5;k++){const x=q.u-3.10+k*.5,h=.15*(k+1);b.box(x,h+.43,q.v+edge*(w/2+.10),.04,.86,.04,C.frame,6);}
-   b.beam([q.u-3.10,1.02,q.v+edge*(w/2+.10)],[q.u-1.10,1.62,q.v+edge*(w/2+.10)],.04,C.frame,6);}
+   for(let k=0;k<5;k++){const x=q.u-3.355+(k+.5)*.451,h=.15*(k+1);b.box(x,h+.43,q.v+edge*(w/2+.10),.04,.86,.04,'#969c97',37);}
+   const z=q.v+edge*(w/2+.10);b.beam([q.u-3.1295,1.01,z],[q.u-1.3255,1.61,z],.04,'#969c97',37);
+   b.beam([q.u-1.3255,1.61,z],[q.u-.15,1.61,z],.04,'#969c97',37);b.box(q.u-.15,1.18,z,.04,.86,.04,'#969c97',37);}
  }
  else if(q.axis===0){b.box(q.u,.15,q.v+s*.35,w+.25,.3,.7,C.stone,24);b.box(q.u,.075,q.v+s*.88,w+.25,.15,.38,C.stone,24);}
  else{b.box(q.u+s*.35,.15,q.v,.7,.3,w+.25,C.stone,24);b.box(q.u+s*.88,.075,q.v,.38,.15,w+.25,C.stone,24);}

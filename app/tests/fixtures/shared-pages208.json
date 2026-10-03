@@ -1,0 +1,241 @@
+{
+  "format": 1,
+  "sourceHash": "7beada18eab19de85872d26991080521ef00eee59daa6a959441e36c020359dc",
+  "pages": [
+    [
+      {
+        "key": "074-roof-0",
+        "mesh": {
+          "hash": "8c792f2a7bb663787a1c86d9c749c062494d326ddafae1c5d63a2220c61adc22",
+          "detailWidth": 0,
+          "vertexCount": 3,
+          "uniqueVertexCount": 3,
+          "indexType": null,
+          "ranges": null,
+          "buffer": {
+            "chunk": 49,
+            "offset": 2163872,
+            "length": 24
+          }
+        },
+        "bucket": {
+          "key": "074-roof-0",
+          "mesh": 3525,
+          "count": 1,
+          "dataHash": "d6b6cd9fe452231c6e2e3091a2f2dd42b94864fc106f69acc9dd441f97a3e3fd",
+          "spatialHash": "ad91885f86034c293e4448d4b6dcb91851da0cd58f2131860dbf79757cc30ea0",
+          "data": {
+            "chunk": 84,
+            "offset": 1581096,
+            "length": 28
+          },
+          "spatial": {
+            "chunk": 84,
+            "offset": 1581208,
+            "length": 5
+          }
+        },
+        "vertex": "vHTvQgsXXkG8VCDEBxajvpVfcj+YlT49AAAAAAAAAABcD/NCCxdeQTs/HcQHFqO+lV9yP5iVPj0AAIA/AAAAAKmY/UIAAIBBFgMfxAcWo76VX3I/mJU+PQAAgD8AAIA/",
+        "indices": null,
+        "data": "AACAPwAAAAAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAAAAAACAP+fm5j75+Pg+6ejoPgAAgD8AAJhBAICHQwAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPw=="
+      },
+      {
+        "key": "074-roof-1",
+        "mesh": {
+          "hash": "c1da9fca4c4e7dfebcdb3867fdb14b35f62f914849b8c9ca80f12e5286073900",
+          "detailWidth": 0,
+          "vertexCount": 6,
+          "uniqueVertexCount": 5,
+          "indexType": "uint16",
+          "ranges": null,
+          "buffer": {
+            "chunk": 49,
+            "offset": 2163968,
+            "length": 40
+          },
+          "indices": {
+            "chunk": 71,
+            "offset": 6898696,
+            "length": 3
+          }
+        },
+        "bucket": {
+          "key": "074-roof-1",
+          "mesh": 3526,
+          "count": 1,
+          "dataHash": "d6b6cd9fe452231c6e2e3091a2f2dd42b94864fc106f69acc9dd441f97a3e3fd",
+          "spatialHash": "52ffae74a6135f26f650c1114e41d4b5c60cac10cbb75c80c1f55af4cef8fc40",
+          "data": {
+            "chunk": 84,
+            "offset": 1581228,
+            "length": 28
+          },
+          "spatial": {
+            "chunk": 84,
+            "offset": 1581340,
+            "length": 5
+          }
+        },
+        "vertex": "XA/zQgsXXkE7Px3EGMA8PZVfcj+PHqM+AAAAAAAAAADH6xxDCxdeQdmGHsQYwDw9lV9yP48eoz4AAIA/AAAAABPbFUNq/39BgdgfxBjAPD2VX3I/jx6jPgAAgD8AAIA/E9sVQ2r/f0GB2B/EGMA8PZVfcj+PHqM+AACAPwAAAACpmP1CAACAQRYDH8QYwDw9lV9yP48eoz4AAIA/AACAPw==",
+        "indices": "AAABAAIAAAADAAQA",
+        "data": "AACAPwAAAAAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAAAAAACAP+fm5j75+Pg+6ejoPgAAgD8AAJhBAICHQwAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPw=="
+      }
+    ],
+    [
+      {
+        "key": "077-roof-0",
+        "mesh": {
+          "hash": "f2177510dd268fcb5ad94ff46403e85c7e5c8db1a4122d4e30ef0a64c8f51388",
+          "detailWidth": 0,
+          "vertexCount": 3,
+          "uniqueVertexCount": 3,
+          "indexType": null,
+          "ranges": null,
+          "buffer": {
+            "chunk": 49,
+            "offset": 2222048,
+            "length": 24
+          }
+        },
+        "bucket": {
+          "key": "077-roof-0",
+          "mesh": 3551,
+          "count": 1,
+          "dataHash": "62077033fe39f36929ff278f32cc4fc9b6e5df67e8b750b13cb969bf2d0b2c49",
+          "spatialHash": "88bad7edc5993921c60e2232003ad593f9afd091b17288a2119a20d6f528939b",
+          "data": {
+            "chunk": 84,
+            "offset": 1837968,
+            "length": 28
+          },
+          "spatial": {
+            "chunk": 84,
+            "offset": 1838080,
+            "length": 5
+          }
+        },
+        "vertex": "9L0FQ9cXXkFiwAbE0Bmjvplfcj9kwT09AAAAAAAAAAA3iQdD1xdeQeGqA8TQGaO+mV9yP2TBPT0AAIA/AAAAAL/ODEMAAIBBu24FxNAZo76ZX3I/ZME9PQAAgD8AAIA/",
+        "indices": null,
+        "data": "AACAPwAAAAAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAAAAAACAP+fm5j75+Pg+6ejoPgAAgD8AAJhBAACJQwAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPw=="
+      },
+      {
+        "key": "077-roof-1",
+        "mesh": {
+          "hash": "de09f4217904a8d520ab5366ec28de5f49ded908f31c50545b20d72b2fb05a17",
+          "detailWidth": 0,
+          "vertexCount": 6,
+          "uniqueVertexCount": 5,
+          "indexType": "uint16",
+          "ranges": null,
+          "buffer": {
+            "chunk": 49,
+            "offset": 2222144,
+            "length": 40
+          },
+          "indices": {
+            "chunk": 71,
+            "offset": 6900628,
+            "length": 3
+          }
+        },
+        "bucket": {
+          "key": "077-roof-1",
+          "mesh": 3552,
+          "count": 1,
+          "dataHash": "62077033fe39f36929ff278f32cc4fc9b6e5df67e8b750b13cb969bf2d0b2c49",
+          "spatialHash": "3d02fb6b352a6a06e55fda4b1b58c270aedab6edfb26097b22409560b1f88867",
+          "data": {
+            "chunk": 84,
+            "offset": 1838100,
+            "length": 28
+          },
+          "spatial": {
+            "chunk": 84,
+            "offset": 1838212,
+            "length": 5
+          }
+        },
+        "vertex": "N4kHQ9cXXkHhqgPEAcA8PZlfcj96HqM+AAAAAAAAAABQ7SpD1xdeQX/yBMQBwDw9mV9yP3oeoz4AAIA/AAAAAL3cI0N8/39BH0QGxAHAPD2ZX3I/eh6jPgAAgD8AAIA/vdwjQ3z/f0EfRAbEAcA8PZlfcj96HqM+AACAPwAAAAC/zgxDAACAQbtuBcQBwDw9mV9yP3oeoz4AAIA/AACAPw==",
+        "indices": "AAABAAIAAAADAAQA",
+        "data": "AACAPwAAAAAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAAAAAACAP+fm5j75+Pg+6ejoPgAAgD8AAJhBAACJQwAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPw=="
+      },
+      {
+        "key": "077-roof-2",
+        "mesh": {
+          "hash": "1782fb600d59244bdcff523f8f07e810cc898283adb46995f0d0affb5d808d8a",
+          "detailWidth": 0,
+          "vertexCount": 3,
+          "uniqueVertexCount": 3,
+          "indexType": null,
+          "ranges": null,
+          "buffer": {
+            "chunk": 49,
+            "offset": 2222304,
+            "length": 24
+          }
+        },
+        "bucket": {
+          "key": "077-roof-2",
+          "mesh": 3553,
+          "count": 1,
+          "dataHash": "62077033fe39f36929ff278f32cc4fc9b6e5df67e8b750b13cb969bf2d0b2c49",
+          "spatialHash": "68e8c53e2adc76ef187e8f7dd01d75f8919a79f4f4b1d131f516fcce92294f61",
+          "data": {
+            "chunk": 84,
+            "offset": 1838232,
+            "length": 28
+          },
+          "spatial": {
+            "chunk": 84,
+            "offset": 1838344,
+            "length": 5
+          }
+        },
+        "vertex": "UO0qQ9cXXkF/8gTEORqjPplfcj+7qj29AAAAAAAAAABOIilD1xdeQfAHCMQ5GqM+mV9yP7uqPb0AAIA/AAAAAL3cI0N8/39BH0QGxDkaoz6ZX3I/u6o9vQAAgD8AAIA/",
+        "indices": null,
+        "data": "AACAPwAAAAAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAAAAAACAP+fm5j75+Pg+6ejoPgAAgD8AAJhBAACJQwAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPw=="
+      },
+      {
+        "key": "077-roof-3",
+        "mesh": {
+          "hash": "d1e5b88ebd54b5ff82fd481f8bf57f91e672c2a8803ec1844261754c93bc1d1b",
+          "detailWidth": 0,
+          "vertexCount": 6,
+          "uniqueVertexCount": 5,
+          "indexType": "uint16",
+          "ranges": null,
+          "buffer": {
+            "chunk": 49,
+            "offset": 2222400,
+            "length": 40
+          },
+          "indices": {
+            "chunk": 71,
+            "offset": 6900640,
+            "length": 3
+          }
+        },
+        "bucket": {
+          "key": "077-roof-3",
+          "mesh": 3554,
+          "count": 1,
+          "dataHash": "62077033fe39f36929ff278f32cc4fc9b6e5df67e8b750b13cb969bf2d0b2c49",
+          "spatialHash": "bc0aa2728432de38b5e0ae32540ffa3c46ed78393a328657015f9785ce2490ff",
+          "data": {
+            "chunk": 84,
+            "offset": 1838364,
+            "length": 28
+          },
+          "spatial": {
+            "chunk": 84,
+            "offset": 1838476,
+            "length": 5
+          }
+        },
+        "vertex": "TiIpQ9cXXkHwBwjEa7U8vZlfcj+rHqO+AAAAAAAAAAD0vQVD1xdeQWLABsRrtTy9mV9yP6seo74AAIA/AAAAAL/ODEMAAIBBu24FxGu1PL2ZX3I/qx6jvgAAgD8AAIA/v84MQwAAgEG7bgXEa7U8vZlfcj+rHqO+AACAPwAAAAC93CNDfP9/QR9EBsRrtTy9mV9yP6seo74AAIA/AACAPw==",
+        "indices": "AAABAAIAAAADAAQA",
+        "data": "AACAPwAAAAAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAAAAAACAP+fm5j75+Pg+6ejoPgAAgD8AAJhBAACJQwAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPw=="
+      }
+    ]
+  ]
+}
