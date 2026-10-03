@@ -72,11 +72,13 @@ node_modules/
 !/app/tests/building111-details.test.cjs
 !/app/tests/ceramic-uv162.test.cjs
 !/app/tests/deferred-vao170.test.cjs
+!/app/tests/first-person-ground-entry.test.cjs
 !/app/tests/instance-transfer46.test.cjs
 !/app/tests/jianzhai200-details.test.cjs
 !/app/tests/material-routing46.test.cjs
 !/app/tests/observation-framing.test.cjs
 !/app/tests/pedestrian-program-prewarm.test.cjs
+!/app/tests/program-readiness.test.cjs
 !/app/tests/provoking-vertex46.test.cjs
 !/app/tests/reflection-plane46.test.cjs
 !/app/tests/reflection-scissor.test.cjs

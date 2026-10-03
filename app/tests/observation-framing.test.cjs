@@ -21,14 +21,20 @@ test('view changes fit long wings without inheriting a blanket mobile distance',
  assert.ok(front>side*1.5);assert.ok(front<60*2.05*2.5);
 });
 
-function interaction({width=1440,height=1000,observation,displayBounds,isolate=0,panelLeft=1120,panelTop=540}={}){
+function interaction({width=1440,height=1000,observation,displayBounds,isolate=0,panelLeft=1120,panelTop=540,reducedMotion=false}={}){
  const elements=new Map(),el=id=>{if(!elements.has(id))elements.set(id,{hidden:false,getBoundingClientRect:()=>({left:panelLeft,top:panelTop})});return elements.get(id);};const feature={properties:{id:'test/long-wing',pickId:7,kind:'building',bounds:[-30,-6,70,25],centre:[20,9.5],height:12,frontAngle46:.4,frontElevation46:.31,...(observation===undefined?{}:{frontObservation46:observation}),...(displayBounds===undefined?{}:{displayBounds46:displayBounds})}};
- const c={Math,Number,Array,selected:7,by:new Map([[7,feature]]),state:{isolate},orbit:{},planView:{},innerWidth:width,innerHeight:height,Y:{Landscape42:{elevation:()=>2}},YY:{},$ :el,root:{classList:{contains:()=>true}},document:{querySelector:()=>({getBoundingClientRect:()=>({bottom:78})})},drawPlan(){},changeMode(){}};vm.createContext(c);
+ const c={Math,Number,Array,selected:7,by:new Map([[7,feature]]),state:{isolate},orbit:{target:[-20,0,30],distance:2250,yaw:0,elevation:1.05},planView:{},innerWidth:width,innerHeight:height,Y:{Landscape42:{elevation:()=>2}},YY:{},$ :el,root:{classList:{contains:()=>true}},document:{querySelector:()=>({getBoundingClientRect:()=>({bottom:78})})},drawPlan(){},changeMode(next){c.browseCamera.cancel();c.mode=next;}};vm.createContext(c);
+ let now=0;
+ const helperStart=source.indexOf("/* Time-based orbit transitions."),helperEnd=source.indexOf("/* Campus viewer */",helperStart);assert(helperStart>=0&&helperEnd>helperStart);
+ vm.runInContext(source.slice(helperStart,helperEnd),c);
+ c.browseCamera=new c.YY.BrowseCamera(c.orbit,{clock:()=>now,immediate:()=>reducedMotion});
+ // The public buttons call the actual animated wrapper, which now precedes the pose calculators.
+ for(const name of ["focusFeature","architectureView"]){const line=source.split("\n").find(line=>line.startsWith(`function ${name}(`));assert(line);vm.runInContext(line,c);}
  vm.runInContext(source.slice(source.indexOf('function frontObservation46('),source.indexOf('function changeMode(')),c);
  vm.runInContext(source.slice(source.indexOf('function camera(){'),source.indexOf('function el(')),c);
  vm.runInContext('function bounds(f){return f.properties.bounds}function point(f){return f.properties.centre}',c);
  const buttons=source.slice(source.indexOf("$('front-view').onclick="),source.indexOf("$('ne-view').onclick="));vm.runInContext(buttons,c);
- return{c,feature,click:id=>{el(id).onclick();return JSON.parse(JSON.stringify(c.orbit));}};
+ return{c,feature,click:id=>{el(id).onclick();if(!reducedMotion)assert(c.browseCamera.goal,'actual wrapper must create a transition');for(let frames=0;c.browseCamera.goal&&frames<240;frames++){now+=16;c.browseCamera.step(now);}assert.equal(c.browseCamera.goal,null,'transition must settle');return JSON.parse(JSON.stringify(c.orbit));}};
 }
 const observation={target:[-18,3,11],bounds:[-23,2,9,-13,8,13],yaw:1.6,elevation:.29};
 function assertScreenFit(c,box){const view=c.camera(),o=c.orbit,sy=Math.sin(o.yaw),cy=Math.cos(o.yaw),se=Math.sin(o.elevation),ce=Math.cos(o.elevation),aspect=c.innerWidth/c.innerHeight,cx=c.innerWidth*(1-(view.offsetX||0))/2,centerY=c.innerHeight*(1-(view.offsetY||0))/2,mobile=c.innerWidth<=650,rect=c.$('detail').getBoundingClientRect(),right=mobile?c.innerWidth-16:rect.left-16,bottom=mobile?rect.top-12:c.innerHeight-60;
@@ -88,4 +94,9 @@ test('invalid rear metadata falls back to whole-building rear view without borro
   const h=interaction({observation});h.feature.properties.backObservation46=q;
   assert.deepEqual(h.click('back-view'),interaction({observation}).click('back-view'));
  }
+});
+
+// Exercise the same actual wrappers in immediate accessibility mode as in animated mode.
+test('reduced motion view buttons arrive at identical framing without queued movement',()=>{
+ for(const id of viewButtons){const smooth=interaction({observation,displayBounds}),immediate=interaction({observation,displayBounds,reducedMotion:true});assert.deepEqual(immediate.click(id),smooth.click(id));assert.equal(immediate.c.browseCamera.goal,null);}
 });

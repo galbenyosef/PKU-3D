@@ -355,11 +355,17 @@ class Engine{
  // Share identical stage sources only during the initial program batch.
  // Linked programs own their executables; release all temporary stages afterward.
  compilePrograms(deferValidation=false,preparePeople=false){
+  if(this.disposed||this.gl.isContextLost())throw Error('Scene loading was interrupted');
+  this.releaseProgramStages();
+  for(const key of ['main','glass','membrane','ceramic','foliage','shadow','skyProg','particles','post','peopleShadow'])if(this[key]){this.gl.deleteProgram(this[key].p);this[key]=null;}
+  this.programError=null;this.programsReady=false;
+  this.parallelShaderCompile=this.gl.getExtension('KHR_parallel_shader_compile');
   this.shaderCache=new Map();this.programBatch=[];
   try{this.main=this.program(VERT,FRAG);this.glass=this.program(VERT,GLASSFRAG);this.membrane=this.program(VERT,MEMBRANEFRAG);this.ceramic=this.program(CERAMICVERT,CERAMICFRAG);this.foliage=this.program(FOLIAGEVERT,FOLIAGEFRAG);this.shadow=this.program(VERT,SHADOWF);this.skyProg=this.program(SKYV,SKYF);this.particles=this.program(PARTICLEV,PARTICLEF);this.post=this.program(SKYV,POSTF);
    if(preparePeople&&Y.Pedestrians46?.createShadowProgram)this.peopleShadow=Y.Pedestrians46.createShadowProgram(this);
    this.pendingPrograms={shaders:[...this.shaderCache.values()],programs:this.programBatch};
   }catch(error){
+   this.programError=error;
    for(const shader of this.shaderCache.values())this.gl.deleteShader(shader);
    for(const key of ['main','glass','membrane','ceramic','foliage','shadow','skyProg','particles','post','peopleShadow'])if(this[key]){this.gl.deleteProgram(this[key].p);this[key]=null;}throw error;
   }finally{this.shaderCache=null;this.programBatch=null;}
@@ -367,17 +373,61 @@ class Engine{
   // driver work. Startup must call finishPrograms before publishing readiness.
   if(!deferValidation)this.finishPrograms();
  }
+ // Completion queries do not force shader compilation to finish on the main
+ // thread. Keep one timer for this finite startup batch, including hidden tabs.
+ waitForPrograms({timeoutMs=60000,pollMs=16}={}){
+  if(this.programWait)return this.programWait.promise;
+  const interrupted=()=>{const error=Error('Scene loading was interrupted');error.name='AbortError';return error;};
+  if(this.disposed||this.gl.isContextLost())return Promise.reject(interrupted());
+  if(this.programError)return Promise.reject(this.programError);
+  if(!this.pendingPrograms)return this.programsReady?Promise.resolve():Promise.reject(Error('Shader programs have not been compiled'));
+  const pending=this.pendingPrograms,extension=this.parallelShaderCompile;
+  const deadline=performance.now()+Math.max(1,Math.min(60000,Number(timeoutMs)||60000));
+  const delay=Math.max(1,Math.min(100,Number(pollMs)||16));
+  let resolve,reject,timer=null,settled=false;
+  const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});
+  const settle=(error)=>{
+   if(settled)return;settled=true;clearTimeout(timer);
+   if(this.programWait===wait)this.programWait=null;
+   if(error){this.programError=error;reject(error);}else resolve();
+  };
+  const wait={promise,cancel:()=>settle(interrupted())};this.programWait=wait;
+  const poll=()=>{
+   timer=null;
+   try{
+    if(this.disposed||this.gl.isContextLost()||this.pendingPrograms!==pending)throw interrupted();
+    if(extension){
+     const complete=pending.programs.every(p=>this.gl.getProgramParameter(p,extension.COMPLETION_STATUS_KHR));
+     if(!complete){
+      if(performance.now()>=deadline)throw Error('Shader compilation timed out');
+      timer=setTimeout(poll,delay);return;
+     }
+    }
+    // Unsupported contexts retain the existing synchronous validation. On the
+    // extension path all programs are complete before any compile/link query.
+    this.programWait=null;this.finishPrograms();settle();
+   }catch(error){
+    settle(error);this.releaseProgramStages();
+   }
+  };
+  timer=setTimeout(poll,0);
+  return promise;
+ }
  finishPrograms(){
-  if(this.disposed)throw Error('Scene loading was interrupted');
+  if(this.disposed||this.gl.isContextLost())throw Error('Scene loading was interrupted');
+  if(this.programError)throw this.programError;
   const pending=this.pendingPrograms;if(!pending)return;
   try{
    for(const shader of pending.shaders)if(!this.gl.getShaderParameter(shader,this.gl.COMPILE_STATUS))throw Error(this.gl.getShaderInfoLog(shader));
    for(const p of pending.programs)if(!this.gl.getProgramParameter(p,this.gl.LINK_STATUS))throw Error(this.gl.getProgramInfoLog(p));
-  }catch(error){for(const key of ['main','glass','membrane','ceramic','foliage','shadow','skyProg','particles','post','peopleShadow'])if(this[key]){this.gl.deleteProgram(this[key].p);this[key]=null;}throw error;}
+   this.programsReady=true;
+  }catch(error){this.programError=error;for(const key of ['main','glass','membrane','ceramic','foliage','shadow','skyProg','particles','post','peopleShadow'])if(this[key]){this.gl.deleteProgram(this[key].p);this[key]=null;}throw error;}
   finally{this.releaseProgramStages();}
  }
  releaseProgramStages(){
+  this.programWait?.cancel();
   if(!this.pendingPrograms)return;
+  if(!this.programsReady&&!this.programError){this.programError=Error('Scene loading was interrupted');this.programError.name='AbortError';}
   for(const shader of this.pendingPrograms.shaders)this.gl.deleteShader(shader);
   this.pendingPrograms=null;
  }

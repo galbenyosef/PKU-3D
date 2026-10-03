@@ -1,8 +1,8 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
-const root=path.resolve(__dirname,'..'),c=vm.createContext({YY:{M:require('../src/math.js')},performance});
+const root=process.env.PKU_APP_ROOT||path.resolve(__dirname,'..'),c=vm.createContext({YY:{M:require(path.join(root,'src/math.js'))},performance,setTimeout,clearTimeout});
 for(const file of ['visibility.js','engine.js'])vm.runInContext(fs.readFileSync(path.join(root,'src',file),'utf8'),c);
 function compiler(failCompile=0,failLink=0){let shaderId=0,programId=0;const shaders=[],programs=[],events=[];
- const gl={VERTEX_SHADER:1,FRAGMENT_SHADER:2,COMPILE_STATUS:3,LINK_STATUS:4,
+ const gl={getExtension(){return null;},isContextLost(){return false;},VERTEX_SHADER:1,FRAGMENT_SHADER:2,COMPILE_STATUS:3,LINK_STATUS:4,
  createShader(type){const x={id:++shaderId,type,deleted:0};shaders.push(x);return x;},shaderSource(s,src){s.source=src;},compileShader(){events.push('compile');},getShaderParameter(s){events.push('shader-status');return s.id!==failCompile;},getShaderInfoLog(){return 'compile failure';},deleteShader(s){s.deleted++;},
  createProgram(){const p={id:++programId,deleted:0,attached:new Set()};programs.push(p);return p;},attachShader(p,s){p.attached.add(s);},detachShader(p,s){assert.equal(p.deleted,0,'detach before deleting the program');p.attached.delete(s);},linkProgram(){events.push('link');},getProgramParameter(p){events.push('program-status');return p.id!==failLink;},getProgramInfoLog(){return 'link failure';},deleteProgram(p){assert.equal(p.attached.size,0);p.deleted++;}};
  const e=Object.create(c.YY.Engine.prototype);e.gl=gl;return{e,shaders,programs,events};
@@ -29,20 +29,20 @@ test('instance metadata can compile before mesh upload, but readiness still requ
  assert.throws(()=>e.preparedInstances({key:'mesh'},new Float32Array(1),spatial),/Incomplete/);assert.equal(b.data,data);
  e.disposed=true;assert.throws(()=>e.preparedInstances({key:'mesh'},data,spatial),/interrupted/);
 });
-function resources(Y){const source=fs.readFileSync(path.join(root,'src/app-v29.js'),'utf8').match(/async function loadRenderResources\(next,onProgress,prepared\)\{[\s\S]*?\n\}/)[0];const run=new Function('Y',source+';return loadRenderResources;')(Y);return(next,...args)=>{next.loadScan1119??=async()=>{};return run(next,...args);};}
+function resources(Y){const source=fs.readFileSync(path.join(root,'src/app-v29.js'),'utf8').match(/async function loadRenderResources\(next,onProgress,prepared\)\{[\s\S]*?\n\}/)[0];const run=new Function('Y',source+';return loadRenderResources;')(Y);return(next,...args)=>{next.loadScan1119??=async()=>{};next.waitForPrograms??=async()=>{};return run(next,...args);};}
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return{promise,resolve,reject};}
-test('scan textures also gate readiness and all three resources settle before failure cleanup',async()=>{
- for(const failed of [null,'texture','scene','scan']){
-  const jobs={texture:deferred(),scene:deferred(),scan:deferred()},error=new Error(failed||'unused'),events=[];
+test('all four startup branches gate readiness and settle before failure cleanup',async()=>{
+ for(const failed of [null,'texture','scene','scan','programs']){
+  const jobs={texture:deferred(),scene:deferred(),scan:deferred(),programs:deferred()},error=new Error(failed||'unused'),events=[];
   const load=resources({SCENE_PACKAGE46:{},SceneCache46:{load:()=>jobs.scene.promise}});
   let settled=false;
-  const ready=load({loadMaterials:()=>jobs.texture.promise,loadScan1119:()=>jobs.scan.promise,finishPrograms(){events.push('validate');}});
+  const ready=load({loadMaterials:()=>jobs.texture.promise,loadScan1119:()=>jobs.scan.promise,waitForPrograms(){events.push('program-wait');return jobs.programs.promise;}});
   const checked=ready.then(()=>{settled=true;assert.equal(failed,null);},e=>{settled=true;assert.equal(e,error);});
   if(failed)jobs[failed].reject(error);
   const pending=Object.keys(jobs).filter(k=>k!==failed);
   for(const name of pending.slice(0,-1))jobs[name].resolve({});
-  await new Promise(resolve=>setImmediate(resolve));assert.equal(settled,false);assert.deepEqual(events,[]);
-  jobs[pending.at(-1)].resolve({});await checked;assert.deepEqual(events,failed?[]:['validate']);
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(settled,false);assert.deepEqual(events,['program-wait']);
+  jobs[pending.at(-1)].resolve({});await checked;assert.deepEqual(events,['program-wait']);
  }
 });
 test('texture and scene startup overlap, with readiness waiting for both',async()=>{
@@ -94,10 +94,14 @@ test('deferred shader failures cannot pass readiness and cancelled stages releas
  const {e,shaders,events}=compiler();e.compilePrograms(true);e.disposed=true;e.releaseProgramStages();e.releaseProgramStages();
  assert.ok(shaders.every(s=>s.deleted===1));assert.throws(()=>e.finishPrograms(),/interrupted/);assert.equal(events.includes('shader-status'),false);
 });
-test('readiness validates deferred programs only after both uploads settle',async()=>{
- const texture=deferred(),scene=deferred(),events=[];
- const load=resources({SCENE_PACKAGE46:{},SceneCache46:{load:()=>scene.promise}});
- const ready=load({loadMaterials:()=>texture.promise,finishPrograms(){events.push('validate');}});
- scene.resolve({});await Promise.resolve();await Promise.resolve();assert.deepEqual(events,[]);
- texture.resolve();await ready;assert.deepEqual(events,['validate']);
+test('program readiness overlaps uploads but every completion order gates scene publication',async()=>{
+ for(const last of ['texture','scene','programs']){
+  const jobs={texture:deferred(),scene:deferred(),programs:deferred()},events=[],expected={};let settled=false;
+  const load=resources({SCENE_PACKAGE46:{},SceneCache46:{load(){events.push('scene');return jobs.scene.promise;}}});
+  const ready=load({loadMaterials(){events.push('texture');return jobs.texture.promise;},waitForPrograms(){events.push('program-wait');return jobs.programs.promise;}}).then(value=>{settled=true;return value;});
+  await Promise.resolve();assert.deepEqual(events,['texture','program-wait','scene']);
+  for(const name of Object.keys(jobs))if(name!==last)jobs[name].resolve(expected);
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(settled,false,last+' still gates readiness');
+  jobs[last].resolve(expected);assert.equal(await ready,expected);assert.equal(settled,true);
+ }
 });

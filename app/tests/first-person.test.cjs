@@ -39,3 +39,60 @@ test('route scrub captures requested progress before pause updates the controls'
  const c=vm.createContext({$:()=>node,route,routeDistance:40,pauseTravel:()=>{node.value='200'},moveAlong:()=>{},syncWalkUI:()=>{}});
  vm.runInContext('handler='+assignment,c);c.handler();near(c.routeDistance,199.8);
 });
+
+// Execute the maintained tick and event handlers with a real walker and GPU gate;
+// only DOM, rAF scheduling and GL fence completion are simulated.
+const engineSource=fs.readFileSync('app/src/engine.js','utf8');
+function navigationClock({gpuBusy=false}={}){
+ const {walk}=setup(),events=new Map();let renders=0;
+ const line=prefix=>{const found=source.split('\n').find(s=>s.startsWith(prefix));assert(found,`Missing viewer hook: ${prefix}`);return found;};
+ const engine={software:false,shadowDirty:false,frameFences:[],
+  gl:{TIMEOUT_EXPIRED:1,clientWaitSync:f=>f.ready?2:1,deleteSync(){}},
+  render(){renders++;this.frameFences.push({ready:!gpuBusy});assert(this.frameFences.length<=2,'GPU queue must remain bounded');}};
+ const context=vm.createContext({
+  ready:true,mode:'3d',animation:true,last:0,lastDraw:0,lastInput:null,labelTick:0,frameRequest:0,lastVisualKey:'',labelsPending:false,
+  state:{firstPerson:true,time:0,routeEdges:new Set()},keys:new Set(),walker:walk,engine,noWalkRoute:new Set(),
+  route:null,routePlaying:false,routeDistance:0,walkDetached:false,
+  document:{hidden:false,querySelectorAll:()=>[],addEventListener:(name,callback)=>events.set(name,callback)},
+  window:{addEventListener:(name,callback)=>events.set(name,callback)},root:{querySelector:()=>null},canvas:{width:800,height:600},
+  requestAnimationFrame:()=>1,camera:()=>walk.camera(),$:()=>({hidden:true}),browseCamera:{step(){},cancel(){}},
+  syncWalkUI(){},syncWalkPosition(){},drawLabels(){},moveAlong(){},say(){}
+ });
+ const gate=engineSource.match(/ frameAvailable\(\)\{[\s\S]*?\n \}/);assert(gate,'Missing GPU frame gate');
+ engine.frameAvailable=vm.runInContext('({'+gate[0]+'}).frameAvailable',context);
+ const start=source.indexOf('function tick(now){'),end=source.indexOf('\nasync function loadRenderResources',start);assert(start>=0&&end>start);
+ vm.runInContext([
+  line('function pauseTravel(){'),line('function stopWalkInput(){'),
+  line("window.addEventListener('blur'"),line("document.addEventListener('visibilitychange'"),source.slice(start,end)
+ ].join('\n'),context);
+ return {context,walk,step:now=>context.tick(now),emit:name=>events.get(name)(),get renders(){return renders;}};
+}
+
+test('viewer navigation preserves one-second walking distance at 10, 15, 20 and 60 Hz',()=>{
+ for(const hz of [10,15,20,60]){
+  const f=navigationClock();f.context.keys.add('KeyW');
+  for(let i=0;i<=hz;i++)f.step(100+i*1000/hz);
+  near(-f.walk.position[1],2.1);
+ }
+});
+
+test('blur and hidden events discard held input and elapsed time even without a hidden rAF',()=>{
+ for(const event of ['blur','visibilitychange']){
+  const f=navigationClock();f.context.keys.add('KeyW');f.step(100);f.step(110);near(-f.walk.position[1],.021);
+  f.context.routePlaying=true;
+  if(event==='visibilitychange')f.context.document.hidden=true;
+  f.emit(event);assert.equal(f.context.keys.size,0);assert.equal(f.context.routePlaying,false);
+  // No background rAF is delivered. A fresh press before the first resumed tick
+  // must not inherit the interval before blur/hidden; the next tick moves normally.
+  f.context.document.hidden=false;f.context.keys.add('KeyW');f.step(10000);near(-f.walk.position[1],.021);
+  f.step(10010);near(-f.walk.position[1],.042);
+ }
+});
+
+test('two in-flight GPU frames do not stop navigation or accumulate a recovery jump',()=>{
+ const f=navigationClock({gpuBusy:true});f.context.keys.add('KeyW');
+ for(let i=0;i<=60;i++)f.step(100+i*1000/60);
+ assert.equal(f.renders,2);assert.equal(f.context.engine.frameFences.length,2);near(-f.walk.position[1],2.1);
+ for(const fence of f.context.engine.frameFences)fence.ready=true;
+ f.step(1120);assert.equal(f.renders,3);near(-f.walk.position[1],2.142);
+});

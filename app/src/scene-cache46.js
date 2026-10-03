@@ -155,6 +155,7 @@ function unshuffle(buffer,width,little=new Uint8Array(new Uint32Array([1]).buffe
   const m=Y.SCENE_PACKAGE46;if(!m||(m.version!==2&&m.version!==3)||(m.version===3&&(![1,2].includes(m.normalTransformFormat194)||![1,2].includes(Y.Engine.normalTransformFormat194)||Y.Engine.normalTransformFormat194<m.normalTransformFormat194)))throw Error('Prepared scene manifest is missing or incompatible');
   const started=performance.now(),base=new URL(m.base,document.baseURI).href;
   const pool=prepared||warmup(),workers=pool.workers;let cursor=0,completed=0;
+  try{
   const chunks=m.chunks.map(()=>({meshes:[],indices:[],buckets:[]}));
   m.meshes.forEach((mesh,index)=>{chunks[mesh.buffer.chunk].meshes.push({mesh,index});if(mesh.indices)chunks[mesh.indices.chunk].indices.push({mesh,index});});
   m.buckets.forEach(bucket=>chunks[bucket.data.chunk].buckets.push(bucket));
@@ -168,7 +169,6 @@ function unshuffle(buffer,width,little=new Uint8Array(new Uint32Array([1]).buffe
    worker.onerror=e=>reject(Error(e.message||'Scene decoder failed'));
    worker.postMessage({index,url:base+chunk.file,encoded,prefetchURL,rawBytes:chunk.rawBytes,shuffle:chunk.shuffle,sha256:chunk.sha256,buckets:chunks[index].buckets.map(record=>({...record,detailWidth:m.meshes[record.mesh].detailWidth||0}))});
   });
-  try{
    const takeIndex=()=>cursor<order.length?order[cursor++]:null,first=workers.map(takeIndex);
    await Promise.all(workers.map(async(worker,wi)=>{
     let reserved=first[wi];

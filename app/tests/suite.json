@@ -14,6 +14,7 @@
     "material-routing46.test.cjs",
     "observation-framing.test.cjs",
     "pedestrian-program-prewarm.test.cjs",
+    "program-readiness.test.cjs",
     "provoking-vertex46.test.cjs",
     "reflection-plane46.test.cjs",
     "reflection-scissor.test.cjs",
@@ -56,6 +57,7 @@
     "eastfield338.test.cjs",
     "research-entrance338.test.cjs",
     "research2-atrium338.test.cjs",
+    "first-person-ground-entry.test.cjs",
     "first-person.test.cjs",
     "studentcenter195-side-stairs.test.cjs"
   ],
