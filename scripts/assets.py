@@ -33,6 +33,11 @@ def inputs():
     base = ROOT / SOURCE / 'assets'
     # Reference photos and downloaded provider maps remain local.
     files = {base / p for p in ('materials-display.jpg', 'scene-atlas-baseline46.png')}
+    # Cached builds hash the retained atlas input as well as the current scene
+    # atlas. They can differ after a bake; both are needed in a fresh checkout.
+    derived = ROOT / SOURCE / 'data/scene-atlas-derived879.json'
+    if derived.exists():
+        files.add(ROOT / SOURCE / json.loads(derived.read_text())['path'])
     # Pin the existing cache as well as its build inputs. A fresh checkout can
     # use the exact delivered scene without baking on a different GPU/font set.
     cache = base / 'runtime-v46/scene'

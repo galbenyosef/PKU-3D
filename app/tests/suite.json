@@ -39,9 +39,26 @@
     "winter-foliage255.test.cjs",
     "yannan268-details.test.cjs",
     "yannan268-platform331.test.cjs",
-    "yannan268-stairs201.test.cjs"
+    "yannan268-stairs201.test.cjs",
+    "perimeter335.test.cjs",
+    "perimeter336-south.test.cjs",
+    "perimeter336-east.test.cjs",
+    "perimeter336-north.test.cjs",
+    "economics249-perimeter336.test.cjs",
+    "perimeter337-qiu.test.cjs",
+    "perimeter337-vehicle-gates.test.cjs",
+    "perimeter337-southwest.test.cjs",
+    "dorm45-canopy338.test.cjs",
+    "resource-hotel338.test.cjs",
+    "qiu-roof338.test.cjs",
+    "union338.test.cjs",
+    "dorm45-basement-region338.test.cjs",
+    "eastfield338.test.cjs",
+    "research-entrance338.test.cjs",
+    "research2-atrium338.test.cjs"
   ],
   "packagingTests": [
-    "runtime-scene-package284.test.py"
+    "runtime-scene-package284.test.py",
+    "assets-roundtrip.test.py"
   ]
 }

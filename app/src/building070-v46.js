@@ -65,7 +65,8 @@ function render(b,f){b.id=f.properties.pickId;
   mesh('atrium-floor',G.polygon(p,.15),C.stone,21);
   group('atrium-frame',()=>{const grid=new G.Geometry();
    for(let axis=0;axis<2;axis++){const lo=Math.min(...p.map(q=>q[axis])),hi=Math.max(...p.map(q=>q[axis]));for(let k=lo+1.4;k<hi;k+=2.05){const strip=clip(clip(p,axis,k,true),axis,k+.12,false);for(let j=1;j<strip.length-1;j++)grid.tri(...[strip[0],strip[j+1],strip[j]].map(v=>[v[0],height(...v)+.038,v[1]]));}}
-   grid.detailWidth=.12;mesh('atrium-grid',grid,C.frame,9);
+   // Structural glazing grid: retain the complete mesh when individual bars are subpixel.
+   mesh('atrium-grid',grid,C.frame,9);
    for(let i=0;i<3;i++){const a=p[i],c=p[(i+1)%3];b.beam([a[0],height(...a)+.07,a[1]],[c[0],height(...c)+.07,c[1]],.11,C.frame,9);}
   });
   const a=p[0],c=p[2],len=Math.hypot(c[0]-a[0],c[1]-a[1]),count=Math.ceil(len/2.4);

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.0
+
+- Refine campus perimeter walls and gateways, including the South Gate and adjacent station, North Qiu Gate, Southeast Gate and Southwest Gate returns.
+- Add the Research Building 1 courtyard entrance and Building 45 bicycle canopy; retain the Research Building 2 glazing grid in aerial views.
+- Restore the independent Resource Hotel and the university union Xiaobailou location and building mass, with evidence limits documented.
+- Correct Qiu gymnasium roof curves and the two east-west pitches on the East sports field; refine the northern climbing wall and canopy.
+- Mark the supported southeast region of 45A basement access without inventing an exact stair or doorway.
+- Include the retained atlas input as well as the current output atlas in the asset package, so a fresh checkout can validate and build the delivered scene.
+- Publish the matching lossless prebuilt scene and updated portable tests. All six incremental performance checks pass the original thresholds; three original frozen-reference gaps remain unresolved.
+
 ## 1.3.0
 
 - Reference-backed campus building, courtyard, entrance and landscape refinements, including Shaoyuan, Yannan Garden and the West Gate.

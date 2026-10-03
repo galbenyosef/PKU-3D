@@ -1,6 +1,6 @@
 {
   "name": "pku-3d",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "description": "Interactive 3D model of Peking University, built with GPT-6 Astra using publicly available data",
   "scripts": {

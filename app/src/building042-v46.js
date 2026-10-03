@@ -1,25 +1,27 @@
-/* Resources group: independent flat-roof segments; only west annex's one floor and south door are verified. */
+/* Resources group: source ring retained; the west annex has a separate street-view fitted extension. */
 (function(Y){'use strict';
 const F=Y.Footprints,G=Y.Geo,A=Y.Architecture30,previous=A.render,ID='way/240832252';
 const O=[164.069,740.678],R=Math.atan2(7.606,222.494),CO=Math.cos(R),SI=Math.sin(R);
 const world=(u,v)=>[O[0]+u*CO+v*SI,O[1]-u*SI+v*CO],local=p=>[(p[0]-O[0])*CO-(p[1]-O[1])*SI,(p[0]-O[0])*SI+(p[1]-O[1])*CO];
-// Bounds follow this source ring's six north-edge steps, not any neighbouring building.
-const segments=[{name:'west-annex',lo:-1,hi:15.594,h:3.7,rows:1,roof:'#898f86'},
-{name:'west-main',lo:15.594,hi:72.2,h:13.2,rows:4,roof:'#baa28b'},
+// The single-storey annex is west of the mapped main-block outline. Registered
+// street views locate its door near x=155, not the former x=172. These are
+// display fits, not surveyed dimensions or changes to the original map ring.
+const segments=[{name:'west-annex',lo:-16,hi:0,h:3.7,rows:1,roof:'#898f86'},
+{name:'west-main',lo:0,hi:72.2,h:13.2,rows:4,roof:'#baa28b'},
 {name:'middle-west',lo:72.2,hi:94.35,h:6.4,rows:2,roof:'#929a90'},
 {name:'middle-centre',lo:94.35,hi:121.75,h:3.8,rows:1,roof:'#8b948b'},
 {name:'middle-east',lo:121.75,hi:143.2,h:6.4,rows:2,roof:'#959d92'},
 {name:'east-main',lo:143.2,hi:224,h:14.0,rows:4,roof:'#a3aaa0'}];
-const entrance={u:7.8,v:0,width:2.5,sill:.45,face:'south',annexOnly:true};
+const entrance={u:-9.05,v:0,width:2.5,sill:.45,face:'south',annexOnly:true};
 function clip(poly,k,greater){const out=[];for(let i=0;i<poly.length;i++){const a=poly[i],c=poly[(i+1)%poly.length],ai=greater?a[0]>=k:a[0]<=k,ci=greater?c[0]>=k:c[0]<=k;if(ai)out.push(a);if(ai!==ci){const t=(k-a[0])/(c[0]-a[0]);out.push(a.map((x,j)=>x+t*(c[j]-x)));}}return out;}
 // The 2024 west-annex photo resolves brick piers and broad red jambs, not main-block doors.
 function pierMortar(){const g=new G.Geometry(),half=.22,back=-.17,front=.33,t=.008,row=.17;
 const face=(x0,x1,y0,y1,z)=>g.quad([x0,y0,z],[x1,y0,z],[x1,y1,z],[x0,y1,z]);
 for(let y=row;y<3.7;y+=row){face(-half,half,y-t/2,y+t/2,front+.003);for(const x of[-half,half])g.quad([x,y-t/2,back],[x,y-t/2,front],[x,y+t/2,front],[x,y+t/2,back]);}
 for(let i=0;i<Math.ceil(3.7/row);i++){const lo=i*row+t/2,hi=Math.min(3.7,(i+1)*row-t/2);for(const x of(i%2?[-.11,.11]:[0]))face(x-t/2,x+t/2,lo,hi,front+.004);for(const x of[-half,half]){const z=i%2?.08:-.05;g.quad([x,lo,z-t/2],[x,lo,z+t/2],[x,hi,z+t/2],[x,hi,z-t/2]);}}return g;}
-function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,v)=>{const p=world(u,v);return[p[0],y,p[1]];},ring=F.polygons(f.geometry)[0][0],raw=ring.map(local),positive=F.area(ring)>0;
+function render(b,f,add){const id=f.properties.pickId;b.id=id;const vertex=(u,y,v)=>{const p=world(u,v);return[p[0],y,p[1]];},sourceRing=F.polygons(f.geometry)[0][0],ring=[world(0,0),...sourceRing.slice(2,-1),sourceRing[0],world(0,-8.5),world(-16,-8.5),world(-16,0),world(0,0)],polygons=[[ring]],raw=ring.map(local),positive=F.area(ring)>0;
 function group(name,fn){const old=b.e.add;b.e.add=function(k,...args){return old.call(this,'042-'+name+'-'+k,...args);};try{fn();}finally{b.e.add=old;}}
-for(const q of segments){const roof=new G.Geometry();for(const pg of F.polygons(f.geometry))for(const tri of F.capTriangles(pg)){let p=clip(clip(tri.map(local),q.lo,true),q.hi,false);for(let k=1;k<p.length-1;k++)roof.tri(...[p[0],p[k],p[k+1]].map(p=>vertex(p[0],q.h,p[1])));}add('042-flat-roof-'+q.name,roof,q.roof,24,id);
+for(const q of segments){const roof=new G.Geometry();for(const pg of polygons)for(const tri of F.capTriangles(pg)){let p=clip(clip(tri.map(local),q.lo,true),q.hi,false);for(let k=1;k<p.length-1;k++)roof.tri(...[p[0],p[k],p[k+1]].map(p=>vertex(p[0],q.h,p[1])));}add('042-flat-roof-'+q.name,roof,q.roof,24,id);
 for(let i=1;i<ring.length;i++){let a=ring[i-1],c=ring[i];if(positive)[a,c]=[c,a];let la=local(a),lc=local(c),du=lc[0]-la[0];let lo=0,hi=1;if(Math.abs(du)<1e-9){if(la[0]<q.lo||la[0]>q.hi)continue;}else{const ts=[(q.lo-la[0])/du,(q.hi-la[0])/du].sort((a,b)=>a-b);lo=Math.max(0,ts[0]);hi=Math.min(1,ts[1]);if(hi<=lo)continue;}const start=la.map((x,j)=>x+(lc[j]-x)*lo),end=la.map((x,j)=>x+(lc[j]-x)*hi);a=world(...start);c=world(...end);const dx=c[0]-a[0],dz=c[1]-a[1],len=Math.hypot(dx,dz);if(len<.01)continue;const south=Math.abs(start[1])+Math.abs(end[1])<.1,station=q.name==='west-annex'&&south,rotation=Math.atan2(-dz,dx);
 b.local(a[0],0,a[1],rotation,()=>group(q.name+'-facade-'+i,()=>{
 const wall=station?'#77796f':'#b2b5a8',frame=station?'#9b3b2d':'#77877f',floor=q.h/q.rows;
@@ -55,4 +57,5 @@ for(let u=-1.9;u<2;u+=.24){b.box(x+u,3.75,.42,.12,.14,.5,'#355b47',24);b.box(x+u
 return{strategy:'building042-v46',flatRoofSegments:6,westAnnexFloors:1,westMainTotalFloors:null,eastMainTotalFloors:null,westAnnexSouthDoorVerified:true,mainEntrancesVerified:false,heightMeasured:false};
 }
 A.render=function(b,f,add){return f.properties.id===ID?render(b,f,add):previous(b,f,add);};Y.Building042={id:ID,render,world,local,segments,entrance,pierMortar};
+const f=Y.CAMPUS.features.find(f=>f.properties.id===ID);if(f){const p=f.properties,q=world(entrance.u,0);p.displayBounds46=[147.5,0,714.374,386.563,14,744];p.frontObservation46={target:[q[0],2.15,q[1]+.65],bounds:[q[0]-3.1,0,q[1]-1.1,q[0]+3.1,4.5,q[1]+2.5],yaw:R,elevation:.16};p.architecture={...p.architecture,summary:'南门旁一层西配楼为驿站；主楼沿街向东延伸'};p.scopeNote='驿站西配楼按多角度街景补至主楼西侧，入口及门前短阶靠近南门东翼；原始地图楼组轮廓保留，配楼范围与高度为参考拟合、非实测。主楼未见门口细部仍待证。';}
 })(YY);

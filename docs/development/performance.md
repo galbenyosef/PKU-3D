@@ -2,18 +2,18 @@
 
 ## Current result
 
-The maintained scene retains full model detail, original image resolution, shadows, reflections and antialiasing. It does **not** meet the original frozen performance reference in three metrics. The most recent formal comparison follows the Yannan Garden No. 55 platform repair; it is not a claim that this repair improves performance.
+The maintained scene retains full model detail, original image resolution, shadows, reflections and antialiasing. The latest comparison covers the research-building entrance and glazing-grid correction, dormitory canopy, Resource Hotel, union building mass, Qiu roof and east sports field. All six incremental checks remain within the original thresholds; three of six checks against the original frozen reference fail. This is not a performance-improvement claim.
 
 | Metric | Change from preceding maintained scene | Change from frozen reference | Frozen result |
 | --- | ---: | ---: | --- |
-| First-frame submission time | −3.663647% | +11.403301% | Fail |
-| GPU-ready time | −3.417324% | −10.674191% | Pass |
-| Reported heap | −0.037007% | +2.849589% | Pass |
-| Campus FPS | +0.175763% | −15.716023% | Fail |
-| Lake FPS | +0.007976% | −27.715539% | Fail |
-| Lake main-thread median time | −0.746268% | −19.526628% | Pass |
+| First-frame submission time | -1.151% | +20.096% | Fail |
+| GPU-ready time | -1.345% | -15.200% | Pass |
+| Reported heap | +5.488% | +4.893% | Pass |
+| Campus FPS | +1.448% | -21.523% | Fail |
+| Lake FPS | -1.034% | -26.711% | Fail |
+| Lake main-thread median time | -0.847% | -25.595% | Pass |
 
-All six incremental checks passed; only three of six frozen-reference checks passed. Keep these separate. Heap API precision, shared browser processes and unobserved external GPU activity limit interpretation. Values are measurements from the retained comparison, not portable device promises or isolated causal estimates. Physical-phone and whole-campus fidelity acceptance remain open.
+The incremental result and the three-of-six frozen result remain separate. First-frame submission, campus FPS and lake FPS remain unresolved global gaps. Both this and the preceding comparison passed three frozen checks; these runs do not establish a causal speedup or slowdown from the geometry changes alone. Heap API precision, shared browser processes and unobserved external GPU activity limit interpretation. All 24 phases completed with stable inputs, the registered environment decision and owned-process cleanup. Values are measurements from the retained comparison, not portable device promises. Physical-phone and whole-campus fidelity acceptance remain open.
 
 ## Delivered cost reductions
 

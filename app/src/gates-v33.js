@@ -104,7 +104,7 @@ function south(b){
  }
  b.box(0,5.88,.15,7.15,1.06,.65,'#28332e',10);
  b.lettering('北京大学',0,5.90,.492,5.8,.73,0,'#c0a764');
- for(const side of[-1,1]){
+ b.local(0,0,7.4,0,()=>{for(const side of[-1,1]){
   // The photographed inner wing has a window beside the outer relief panel.
   b.box(side*11.3,1.61,0,7.6,3.22,1.05,stone,10);
   b.box(side*11.3,3.31,0,7.9,.18,2.1,trim,10);
@@ -117,6 +117,13 @@ function south(b){
   for(const y of[.49,2.77])b.box(side*12.48,y,.665,4.46,.10,.13,trim,10);
   for(const x of[10.20,14.76])b.box(side*x,1.63,.665,.10,2.37,.13,trim,10);
  }
+ });
+ // The low wings stand forward of the column line. Side returns enclose the
+ // passage without moving the mapped outer access-control node.
+ for(const side of[-1,1]){b.box(side*7.50,1.61,3.7,.38,3.22,6.5,stone,10);b.box(side*7.50,3.31,3.7,.53,.18,6.5,trim,10);}
+ // Gold circular side emblems are visible on the dark fascia; their illegible
+ // internal relief is not invented.
+ for(const side of[-1,1]){b.box(side*5.5,5.88,.15,1.96,1.06,.65,'#28332e',10);const g=b.geo('south336-fascia-roundel',()=>{const g=new Y.Geo.Geometry();for(let i=0;i<48;i++){const a=i*Math.PI/24,c=(i+1)*Math.PI/24;g.quad([Math.cos(a)*.28,Math.sin(a)*.28,0],[Math.cos(c)*.28,Math.sin(c)*.28,0],[Math.cos(c)*.24,Math.sin(c)*.24,0],[Math.cos(a)*.24,Math.sin(a)*.24,0]);}return g;});b.mesh('south336-fascia-roundel',g,side*5.5,5.9,.486,1,1,1,'#b59b58',29);b.box(side*5.5,5.28,.15,2.0,.16,.70,trim,10);}
  // Historical right-hand pedestrian leaf: rectilinear silver bars and open square motif.
  // The left leaf is obscured in this reference and is not invented by mirroring.
  b.local(6.43,0,-.10,Math.PI*.68,()=>{
@@ -159,7 +166,7 @@ function provisional(b,p){
  if(p.tags.access==='no')rail(b,-width/2,width/2);else{rail(b,-width/2,-width/2+1.1);rail(b,width/2-1.1,width/2);}
 }
 function render(b,f){const p=f.properties;if(p.id==='node/1422005424')return {profile:'existing-west-gate-building'};
- const q=f.geometry.coordinates,r=p.id==='node/380722026'?0:p.id==='node/2485149510'?-Math.PI/2:Math.PI/2;
+ const q=p.id==='node/380722026'?[f.geometry.coordinates[0]+1.2,f.geometry.coordinates[1]-13.4]:f.geometry.coordinates,r=p.id==='node/380722026'?0:p.id==='node/2485149510'?-Math.PI/2:Math.PI/2;
  const old=[b.origin,b.rotation,b.id,b.anim];b.origin=[q[0],.12,q[1]];b.rotation=r;b.id=p.pickId;b.anim=0;
  try{if(p.id==='node/2748949454')east(b);else if(p.id==='node/380722026')south(b);else if(p.id==='node/6018578781')southeast(b);else if(['node/380742837','node/10729924621'].includes(p.id))qiuUnverified(b,p);else provisional(b,p);}finally{[b.origin,b.rotation,b.id,b.anim]=old;}
  return {profile:({'node/2748949454':'east-paired-quepillars-photo2025','node/380722026':'south-flat-canopy-photo2020','node/6018578781':'southeast-pedestrian-canopy-photo2023'})[p.id]||'entrance-layout-provisional'};
@@ -171,7 +178,7 @@ for(const f of Y.CAMPUS.features.filter(f=>f.properties.kind==='gate')){
  p.height=7.4;p.architecture={summary:'按 2025 年正面照片重建高低门柱、翼墙与拱形步行入口。'};
  p.scopeNote='平面沿用公开地图点位；门柱尺寸、跨度及背面细部为照片拟合，未实测。';
  p.references=[{title:'东门正面照片 · N509FZ · 2025 · CC BY-SA 4.0',url:'https://commons.wikimedia.org/wiki/File:East_gate_of_Peking_University_(20250605110404).jpg'},...(p.references||[])];
- }else if(p.id==='node/380722026'){p.height=7.6;p.architecture={summary:'按 2020 年正面照片重建四柱平顶门、中央匾额和低翼墙。'};p.scopeNote='点位沿用公开地图；跨度、高度和门后设施为照片拟合，临时迎新布置未计入。';p.references=[{title:'南门正面 · 新京报 · 2020-09-01',url:'https://m.bjnews.com.cn/detail/159892572315716.html'}];}else if(p.id==='node/6018578781'){p.height=3.8;p.displayRadius=23;p.architecture={summary:'南北两组蓝色弧形雨棚，每组设三条闸机通道。'};p.scopeNote='南北通道有校方文字记录；每组三条通道按使用者现场反馈，间距和尺寸为拟合。照片仅覆盖单组。';p.references=[{title:'东南门步行入口 · 新京报图 / 半岛都市报转载 · 2023-12-23',url:'https://www.sohu.com/a/746480932_355158'}];}else if(p.id!=='node/1422005424'){p.height=2.5;p.scopeNote='入口点位来自公开地图；外形仍待清晰实拍核对。';if(['node/380742837','node/10729924621'].includes(p.id)){p.architecture={summary:'已撤下无依据的石墩和门扇；暂保留入口位置。'};p.scopeNote='未取得能对应此点位的清晰邱门实拍，当前仅表示开口，尚未完成外观复原。';}}
+ }else if(p.id==='node/380722026'){p.height=7.6;p.architecture={summary:'四柱平顶门楼后退于外侧门控，两侧低翼墙前出；以注册街景校正与驿站的关系。'};p.frontObservation46={target:[125.591,3.65,736.0],bounds:[110.1,0,732.3,141.1,7.6,742.5],yaw:0,elevation:.16};p.displayBounds46=[110.1,0,732.3,141.1,7.6,748.0];p.scopeNote='原地图门点保留；门楼与翼墙的位置另按2023街景及正射影像显示拟合；跨度、高度、回墙和开启姿态非实测，当前通行安排未核。';p.references=[{title:'南门正面 · 新京报 · 2020-09-01',url:'https://m.bjnews.com.cn/detail/159892572315716.html'}];}else if(p.id==='node/6018578781'){p.height=3.8;p.displayRadius=23;p.architecture={summary:'南北两组蓝色弧形雨棚，每组设三条闸机通道。'};p.scopeNote='南北通道有校方文字记录；每组三条通道按使用者现场反馈，间距和尺寸为拟合。照片仅覆盖单组。';p.references=[{title:'东南门步行入口 · 新京报图 / 半岛都市报转载 · 2023-12-23',url:'https://www.sohu.com/a/746480932_355158'}];}else if(p.id!=='node/1422005424'){p.height=2.5;p.scopeNote='入口点位来自公开地图；外形仍待清晰实拍核对。';if(['node/380742837','node/10729924621'].includes(p.id)){p.architecture={summary:'已撤下无依据的石墩和门扇；暂保留入口位置。'};p.scopeNote='未取得能对应此点位的清晰邱门实拍，当前仅表示开口，尚未完成外观复原。';}}
 }
 Y.Gates33={render};
 })(YY);

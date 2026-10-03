@@ -77,22 +77,36 @@ P.qiuGymnasium=function(p,w,d){
  const radius=a=>Math.min(A/Math.max(1e-9,Math.abs(Math.cos(a))),B/Math.max(1e-9,Math.abs(Math.sin(a))));
  // Parameterize normalized radius AFTER rotation. This is bijective in the
  // rectangle: inverse t=(r-inner)/(radius(theta)-inner), then undo twist.
- const a0=Math.atan2(-B,A),twist=t=>2.15*Math.pow(1-t,1.4);
+ // 338 north-up ArcGIS fit: ridge ends lie on the east/west edges,
+ // not the NE/SW corners. From the NE-side start, the ridge curls across
+ // the north half towards the west side of the glazed centre (negative
+ // x/z angle). Preserve both full leaves, their UVs, tessellation and dome.
+ // Outline/height remain photo fits, not measured structural dimensions.
+ const a0=Math.atan2(-B*.64,A);
+ // Photo-fit ridge: tangent to the central west rim, sweeping smoothly
+ // across the north half and ending horizontally on the east side edge.
+ // Construct the ridge first; a rectangle radius must not define its curve.
+ const ridge=t=>{const v=1-t;return[-inner*v*v*v-3*inner*v*v*t-3*A*.05*v*t*t+A*t*t*t,-3*B*.60*v*v*t-3*B*.64*v*t*t-B*.64*t*t*t];};
+ const ridgeAngle=t=>{const p=ridge(t);return Math.atan2(p[1],p[0]);};
+ const twist=t=>ridgeAngle(t)-a0;
+ const fraction=t=>{const p=ridge(t),a=Math.atan2(p[1],p[0]);return(Math.hypot(...p)-inner)/(radius(a)-inner);};
+ const radialSamples=Array.from({length:4097},(_,i)=>fraction(i/4096));
+ const inverseFraction=u=>{let lo=0,hi=4096;while(hi-lo>1){const k=(lo+hi)>>1;if(radialSamples[k]<u)lo=k;else hi=k;}return(lo+(u-radialSamples[lo])/(radialSamples[hi]-radialSamples[lo]))/4096;};
  const pointCache=new Map();
  const point=(leaf,s,t)=>{
   const key=leaf+','+s+','+t;if(pointCache.has(key))return pointCache.get(key);
-  const a=a0+leaf*PI+s*PI,angle=a+twist(t),r=inner+(radius(angle)-inner)*t;
+  const a=a0+leaf*PI+s*PI,angle=a+twist(t),r=inner+(radius(angle)-inner)*fraction(t);
   const q=[r*Math.cos(angle),20.6+4.6*Math.pow(1-t,1.4)+4.2*Math.pow(1-s,2)*(.64+.36*t),r*Math.sin(angle)];pointCache.set(key,q);return q;};
  const quad=(g,a,b,c,d)=>{if(M.cross(M.sub(b,a),M.sub(c,a))[1]<0)g.quad(d,c,b,a);else g.quad(a,b,c,d);};
  for(let leaf=0;leaf<2;leaf++){
   const key='qiu26-roof-'+leaf+'-'+w+'-'+d,g=this.geo(key,()=>{const g=new G.Geometry(),S=96,T=48,normals=new Map();
    const normal=(s,t)=>{const key=s+','+t;if(normals.has(key))return normals.get(key);const e=.0001,a=M.sub(point(leaf,Math.min(1,s+e),t),point(leaf,Math.max(0,s-e),t)),b=M.sub(point(leaf,s,Math.min(1,t+e)),point(leaf,s,Math.max(0,t-e)));let n=M.norm(M.cross(a,b));if(n[1]<0)n=M.mul(n,-1);normals.set(key,n);return n;};
-   for(let j=0;j<T;j++)for(let i=0;i<S;i++){let uv=[[i/S,j/T],[(i+1)/S,j/T],[(i+1)/S,(j+1)/T],[i/S,(j+1)/T]],q=uv.map(v=>point(leaf,...v)),n=uv.map(v=>normal(...v));if(M.cross(M.sub(q[1],q[0]),M.sub(q[2],q[0]))[1]<0){q.reverse();n.reverse();uv.reverse();}const emit=(a,b,c)=>g.tri(q[a],q[b],q[c],[uv[a],uv[b],uv[c]],[n[a],n[b],n[c]]);if(M.cross(M.sub(q[2],q[0]),M.sub(q[3],q[0]))[1]<0){emit(0,1,3);emit(1,2,3);}else{emit(0,1,2);emit(0,2,3);}}return g;});
+   for(let j=0;j<T;j++)for(let i=0;i<S;i++){let uv=[[i/S,j/T],[(i+1)/S,j/T],[(i+1)/S,(j+1)/T],[i/S,(j+1)/T]],q=uv.map(v=>point(leaf,...v)),n=uv.map(v=>normal(...v));if(M.cross(M.sub(q[1],q[0]),M.sub(q[2],q[0]))[1]<0){q.reverse();n.reverse();uv.reverse();}const emit=(a,b,c)=>{if(M.cross(M.sub(q[b],q[a]),M.sub(q[c],q[a]))[1]<0)[b,c]=[c,b];g.tri(q[a],q[b],q[c],[uv[a],uv[b],uv[c]],[n[a],n[b],n[c]]);};if(M.cross(M.sub(q[2],q[0]),M.sub(q[3],q[0]))[1]<0){emit(0,1,3);emit(1,2,3);}else{emit(0,1,2);emit(0,2,3);}}return g;});
   this.mesh(key,g,0,0,0,1,1,1,'#aaaead',43,2);
   const crest=this.geo(key+'-crest',()=>{const g=new G.Geometry();for(let j=0;j<96;j++){let a=point(leaf,0,j/96),b=point(leaf,0,(j+1)/96),c=[b[0],b[1]-(2.688+1.512*(j+1)/96),b[2]],e=[a[0],a[1]-(2.688+1.512*j/96),a[2]];g.quad(a,b,c,e);}return g;});this.mesh(key+'-crest',crest,0,0,0,1,1,1,'#858e8e',24,2.04);
   // Thin standing seams follow a parallel construction grid; no dark fan.
   const seams=this.geo(key+'-seams28',()=>{const g=new G.Geometry();g.detailWidth=.028;
-   const sample=(x,z)=>{const rr=Math.hypot(x,z),theta=Math.atan2(z,x),t=(rr-inner)/(radius(theta)-inner),an=theta-twist(Math.min(1,Math.max(0,t)));if(t<.03||t>1)return null;
+   const sample=(x,z)=>{const rr=Math.hypot(x,z),theta=Math.atan2(z,x),u=(rr-inner)/(radius(theta)-inner),t=inverseFraction(u),an=theta-twist(t);if(u<0||u>1||t<.03)return null;
     let ang=an-a0;ang=(ang%TAU+TAU)%TAU;const l=ang>=PI?1:0,ss=(ang-l*PI)/PI;if(l!==leaf)return null;
     return [x,20.76+4.6*Math.pow(1-t,1.4)+4.2*(1-ss)*(1-ss)*(.64+.36*t),z];};
    for(let x=-A+.3;x<A;x+=.66)for(let z=-B;z<B-.8;z+=.85){const a=sample(x-.014,z),b=sample(x+.014,z),c=sample(x+.014,z+.84),d=sample(x-.014,z+.84);if(a&&b&&c&&d&&Math.abs(a[1]-d[1])<1.2)quad(g,a,b,c,d);}return g;});

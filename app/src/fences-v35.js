@@ -32,13 +32,14 @@ function plan(D){const roads=D.features.filter(f=>f.properties.kind==='road'&&f.
   // Put a minimum 3 m pedestrian opening on the outer edge nearest a mapped path.
   if(!campus){let best=Infinity;for(let i=1;i<ring.length;i++){const a=ring[i-1],c=ring[i],n=Math.ceil(Math.hypot(c[0]-a[0],c[1]-a[1])/2);for(let j=0;j<n;j++){const q=[a[0]+(c[0]-a[0])*(j+.5)/n,a[1]+(c[1]-a[1])*(j+.5)/n];for(const road of roads)for(let k=1;k<road.geometry.coordinates.length;k++){const d=F.distSegment(q,road.geometry.coordinates[k-1],road.geometry.coordinates[k]);if(d<best){best=d;entrance=q;}}}}}
   for(let i=1;i<ring.length;i++){const a=ring[i-1],c=ring[i];if((p.id==='way/880624094'&&i===2)||(p.id==='way/880624093'&&i===4))continue;const path={},len=Math.hypot(c[0]-a[0],c[1]-a[1]),n=Math.max(1,Math.ceil(len/2.4));
-   for(let j=0;j<n;j++){const at=t=>[a[0]+(c[0]-a[0])*t,a[1]+(c[1]-a[1])*t],aa=at(j/n),cc=at((j+1)/n),q=at((j+.5)/n),half=len/n/2;
+   for(let j=0;j<n;j++){const at=t=>[a[0]+(c[0]-a[0])*t,a[1]+(c[1]-a[1])*t],aa=at(j/n),cc=at((j+1)/n),q=at((j+.5)/n),half=len/n/2,style=campus?(Y.Perimeter336East?.style(q)??Y.Perimeter335?.style(q)):null;
+    if(style==='building-frontage')continue;
     // 765's unequal blue shelters and north booth extend beyond the generic 7 m opening.
     // This fitted display clearance belongs only to that entrance, not every campus gate.
-    if(campus&&gates.some(g=>Math.hypot(q[0]-g.geometry.coordinates[0],q[1]-g.geometry.coordinates[1])<(g.properties.id==='node/2748949454'?20:g.properties.id==='node/380722026'?16:g.properties.id==='node/6018578781'?13:g.properties.id==='node/3087450720'?11:7)+half))continue;
+    if(campus&&gates.some(g=>Math.hypot(q[0]-g.geometry.coordinates[0],q[1]-g.geometry.coordinates[1])<(Y.Perimeter335?.clearance(g)??(g.properties.id==='node/2748949454'?20:g.properties.id==='node/380722026'?16:g.properties.id==='node/6018578781'?13:g.properties.id==='node/3087450720'?11:7))+half))continue;
     if(entrance&&Math.hypot(q[0]-entrance[0],q[1]-entrance[1])<2+half)continue;
-    if(roads.some(r=>r.geometry.coordinates.slice(1).some((v,k)=>F.distSegment(q,r.geometry.coordinates[k],v)<Math.max(1.4,(r.properties.width||3)/2)+half)))continue;
-    runs.push(track({a:aa,c:cc,height:h,mesh,source:p.id,pickId:campus?0:p.pickId,campus},path));
+    if(style!=='masonry'&&style!=='rubble'&&style!=='tiled-wall'&&roads.some(r=>r.geometry.coordinates.slice(1).some((v,k)=>F.distSegment(q,r.geometry.coordinates[k],v)<Math.max(1.4,(r.properties.width||3)/2)+half)))continue;
+    runs.push(track({a:aa,c:cc,height:h,mesh,source:p.id,pickId:campus?0:p.pickId,campus,...(style?{style}:{})},path));
    }
   }
  }
@@ -48,7 +49,7 @@ function plan(D){const roads=D.features.filter(f=>f.properties.kind==='road'&&f.
  // One continuous shared boundary, with two small pedestrian entries.
  for(const [left,right]of [[230.3,360.2],[363.2,363.795]]){
  const path={},n=Math.ceil((right-left)/2.4);for(let j=0;j<n;j++){const a=left+(right-left)*j/n,c=left+(right-left)*(j+1)/n;runs.push(track({a:[a,z(a)],c:[c,z(c)],height:3.8,mesh:true,source:'shared-basketball-football-v36',pickId:football.properties.pickId,campus:false},path));}}
- return withoutAnimalAInterior(runs,D);
+ return withoutAnimalAInterior(Y.Perimeter336North?Y.Perimeter336North.replaceRuns(runs,D):runs,D);
 }
 // Compare the complete Float32 instance submitted for a post, including signed
 // zero. Only consecutive runs on the same original straight path may share it.
@@ -72,6 +73,13 @@ function render(b,D){const runs=plan(D),old=[b.origin,b.rotation,b.id,b.anim];b.
  b.mesh('sports36-apron',gg,0,0,0,1,1,1,'#7c9d8b',11);
  let previousRun=null,previousPost=null;
  for(const s of runs){b.id=s.pickId;const len=Math.hypot(s.c[0]-s.a[0],s.c[1]-s.a[1]),r=Math.atan2(-(s.c[1]-s.a[1]),s.c[0]-s.a[0]);b.local((s.a[0]+s.c[0])/2,.16,(s.a[1]+s.c[1])/2,r,()=>{
+  if(s.style==='tiled-wall'){Y.Perimeter336East.tiledWall(b,len,s);previousPost=null;return;}
+  if(s.style==='north-rail'){Y.Perimeter336North.renderRail(b,len,s);previousPost=null;return;}
+  if(s.style==='rubble'){Y.Perimeter335.rubble(b,len,s);previousPost=null;return;}
+  if(s.style==='masonry'){
+   Y.Perimeter335.masonry(b,len);
+   previousPost=null;return;
+  }
   const col=s.mesh?'#49675c':'#4b5b51';
   const adjacent=previousRun&&paths.get(s)===paths.get(previousRun)&&s.source===previousRun.source&&s.a[0]===previousRun.c[0]&&s.a[1]===previousRun.c[1];
   post(b,-len/2,s.height,col,adjacent?previousPost:null);previousPost=post(b,len/2,s.height,col,null);
@@ -79,7 +87,7 @@ function render(b,D){const runs=plan(D),old=[b.origin,b.rotation,b.id,b.anim];b.
   if(s.campus)b.box(0,.13,0,len,.26,.34,'#a8aca0',10);
   const spacing=s.mesh?.22:.18,n=Math.ceil(len/spacing);for(let j=1;j<n;j++)b.box(-len/2+len*j/n,s.height/2,0,s.mesh?.018:.035,s.height-.16,s.mesh?.018:.035,col,29);
   if(s.mesh)for(let y=.44;y<s.height-.13;y+=.25)b.box(0,y,0,len,.015,.015,col,29);
- });previousRun=s;}}finally{[b.origin,b.rotation,b.id,b.anim]=old;}return runs;
+ });previousRun=s;}Y.Perimeter335?.renderConnections(b,D,runs);}finally{[b.origin,b.rotation,b.id,b.anim]=old;}return runs;
 }
 Y.Fences35={plan,render};
 })(YY);

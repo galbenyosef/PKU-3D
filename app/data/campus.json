@@ -28809,7 +28809,7 @@
         "updated": "2022-12-16",
         "url": "https://www.openstreetmap.org/way/783033431",
         "confidence": "coordinate-reference-not-survey",
-        "scopeNote": "原始 OSM 参考轮廓，本轮未逐点校准。",
+        "scopeNote": "北部后翼按原始地图轮廓收回，保留小东门巷道；南端圆厅与西侧入口保持原位。尺寸为显示拟合，非实测。",
         "centre": [
           243.2305,
           -397.30899999999997
@@ -82222,6 +82222,234 @@
             ]
           ]
         ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "manual/union-white-building338",
+        "pickId": 1339,
+        "name": "北京大学工会（小白楼）",
+        "label": "北京大学工会 · 小白楼",
+        "displayName": "北京大学工会 · 小白楼",
+        "kind": "building",
+        "category": "校园服务",
+        "tags": {
+          "building": "yes",
+          "name": "北京大学工会（小白楼）"
+        },
+        "aliases": [
+          "北京大学工会",
+          "校工会",
+          "工会小白楼",
+          "小白楼"
+        ],
+        "centre": [
+          -154.16,
+          481.4
+        ],
+        "bounds": [
+          -169.05,
+          474.44,
+          -139.27,
+          488.36
+        ],
+        "envelopeMetres": [
+          29.78,
+          13.92
+        ],
+        "height": 7,
+        "floors": 2,
+        "heightSource": "两层体量与7米总高为显示拟合，非测绘",
+        "roofTreatment": "flat",
+        "source": "PKU union official locator and public source imagery",
+        "url": "https://gh.pku.edu.cn/info/1018/14612.htm",
+        "candidate32": true,
+        "confidence": "official-identity-image-registered-candidate",
+        "scopeNote": "官方鸟瞰图与家园食堂、31楼及燕南园相对位置核对；屋顶包络按公开卫星图配准。影像元数据日期2026-01-11，源绝对精度8.47米，另有视差；墙脚偏移、7米总高与立面均为显示拟合，门窗数量和入口轴位未核准。燕南园62号为东侧独立院屋；老生物楼仅是工会旧办公地点。",
+        "references": [
+          {
+            "title": "校工会：小白楼新址鸟瞰定位图（2024-03-06）",
+            "url": "https://gh.pku.edu.cn/info/1018/14612.htm",
+            "note": "正文明确校工会新址；已查看带箭头鸟瞰图，与家园东北、31楼西北的白色矩形屋面对应。"
+          },
+          {
+            "title": "校工会：迎新春校园定向健步走（2024-01-12）",
+            "url": "https://gh.pku.edu.cn/info/1078/14539.htm",
+            "note": "正文明确小白楼新址与北侧广场；院落照片仅显示局部白墙、灰砖附房。"
+          },
+          {
+            "title": "校工会：工会后小院画展（2024-06-04）",
+            "url": "https://gh.pku.edu.cn/info/1030/15719.htm",
+            "note": "地点为家园食堂北、燕南园南侧入口；已查看官方院落照片。"
+          },
+          {
+            "title": "北大新闻网：工会小白楼会议（2026-04-01）",
+            "url": "https://news.pku.edu.cn/xwzh/cf6ca481c3794df998e0566d83befa0d.htm",
+            "note": "2026年3月30日会议地点为工会小白楼一层，支持持续用途。"
+          },
+          {
+            "title": "北大基建工程部：小白楼工会用房装修（2023-06-19）",
+            "url": "https://jjgcb.pku.edu.cn/zbtb/zbgg/1059jjgcb151034.htm",
+            "note": "装修面积766.67平方米不作为建筑占地面积。"
+          },
+          {
+            "title": "Esri World Imagery：屋顶包络",
+            "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
+            "note": "该处元数据为2026-01-11、Vantor WV02、0.5米分辨率、8.47米绝对精度；人工屋顶描边另含视差，不是测绘。"
+          }
+        ],
+        "architecture": {
+          "strategy": "union338",
+          "summary": "工会小白楼 · 白色平顶体量",
+          "style": "modern",
+          "detail": "白色矩形小楼与浅色平屋面；未核准门窗与入口，不推定其数量、位置。",
+          "description": "官方鸟瞰图与家园食堂、31楼及燕南园相对位置核对；屋顶包络按公开卫星图配准。影像元数据日期2026-01-11，源绝对精度8.47米，另有视差；墙脚偏移、7米总高与立面均为显示拟合，门窗数量和入口轴位未核准。燕南园62号为东侧独立院屋；老生物楼仅是工会旧办公地点。",
+          "limits": "仅身份与相邻建筑位置有官方支持；高度、墙脚及立面未测。"
+        },
+        "union338": {
+          "identityVerified": true,
+          "roofEnvelopeMeasured": false,
+          "heightMeasured": false,
+          "entranceVerified": false,
+          "facadeVerified": false
+        }
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -169.05,
+              474.44
+            ],
+            [
+              -139.27,
+              474.44
+            ],
+            [
+              -139.27,
+              488.36
+            ],
+            [
+              -169.05,
+              488.36
+            ],
+            [
+              -169.05,
+              474.44
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -373.86,
+              644.1
+            ],
+            [
+              -366.6,
+              741.04
+            ],
+            [
+              -305.22,
+              736.49
+            ],
+            [
+              -306.8,
+              715.37
+            ],
+            [
+              -341.29,
+              717.93
+            ],
+            [
+              -346.96,
+              642.11
+            ],
+            [
+              -373.86,
+              644.1
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "way/240825484",
+        "pickId": 1338,
+        "kind": "building",
+        "name": "资源宾馆",
+        "label": "资源宾馆",
+        "aliases": [
+          "北京资源燕园宾馆",
+          "北大资源宾馆",
+          "Resource Hotel"
+        ],
+        "category": "生活",
+        "centre": [
+          -356.76,
+          691.5
+        ],
+        "bounds": [
+          -373.86,
+          642.11,
+          -305.22,
+          741.04
+        ],
+        "renderBounds46": [
+          -375,
+          640,
+          -304,
+          743
+        ],
+        "height": 32.4,
+        "floors": 6,
+        "envelopeMetres": [
+          61.54,
+          97.21
+        ],
+        "source": "OpenStreetMap / 北京大学 / public historical exterior and registered aerial",
+        "url": "https://www.openstreetmap.org/way/240825484",
+        "references": [
+          "https://www.openstreetmap.org/way/240825484",
+          "https://isdplus.pku.edu.cn/ORIENTATION/zwb/lhqdzb1/zsap.htm",
+          "https://jjgcb.pku.edu.cn/zbtb/zbgg/1059jjgcb152055.htm",
+          "https://www.iinhotel.com/45593",
+          "https://pavo.elongstatic.com/i/tHotel800_600/nw_000dhe3d.jpg",
+          "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer"
+        ],
+        "confidence": "coordinate-reference-not-survey",
+        "heightSource": "六层主体及南端屋顶塔按历史照片与六层使用记录拟合；米制高度未经测绘。",
+        "scopeNote": "西南门外颐和园路1号，独立于南门资源东/西楼。恢复漏纳OSM轮廓，不改变校园边界或确认当前酒店营业状态。",
+        "architecture": {
+          "summary": "L形资源宾馆 · 西侧灰瓦檐与南端双层屋顶塔",
+          "strategy": "resource-hotel338",
+          "description": "原始地图L形外环，西长翼和南短翼围合东侧开放院地。",
+          "limits": "历史照片证明浅墙红塔与灰瓦屋顶；层高、门窗开间和背面细节为显示拟合。卫星图为屋顶包络，非墙脚测量；不加入未确认设备和院内附属棚。"
+        },
+        "frontObservation46": {
+          "target": [
+            -365,
+            15,
+            702
+          ],
+          "bounds": [
+            -375,
+            0,
+            641,
+            -304,
+            33,
+            743
+          ],
+          "yaw": -1.496044188514443,
+          "elevation": 0.12
+        }
       }
     }
   ],

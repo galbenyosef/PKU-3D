@@ -80,6 +80,10 @@ Development photographs, videos and research records are excluded from Git and r
 
 ## Model status and audits
 
+See [campus building and sports details](development/campus-details.md) for research-building entrances, dormitory canopies and basement access, the union building, Resource Hotel, Qiu roof and East sports field.
+
+See [campus perimeter](development/perimeter.md) for the wall, street frontage and entrance distinctions, source views and remaining boundary gaps.
+
 See [model status and reference gaps](development/model-status.md) for the delivered scope, named unresolved details and deferred objects. Partial repairs are not whole-building acceptance. Chronological research notes and machine-specific performance records remain in the local evidence archive.
 
 Run `npm run audit:entrances` to compare actual baked building dispatch with the architecture inventory. It checks the scene source hash and rejects stale caches or duplicate IDs. Renderer presence does not establish entrance fidelity; photographic registration and visual inspection remain separate requirements.
