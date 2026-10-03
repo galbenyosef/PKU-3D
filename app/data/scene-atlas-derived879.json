@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "inputHash": "1acc9a7d05e911f800c053508eb403c0dcf24fc17803d234a3e18fdee7a9d1aa",
-  "path": "assets/runtime-v46/scene/sign-atlas-0a7ac3361faf6afa0d605da5.png",
-  "sha256": "0a7ac3361faf6afa0d605da5c41ff866535edf00b4149555fb9b3c9673cb8ab4",
-  "note": "Retain original lettering PNG after verifying independent canvas drawing tapes, text slots and lettering UV records with and without the latest perimeter modules. Geometry-only helper canvases initialize but never draw; added gates and wall returns emit no text."
+  "inputHash": "d587397eb60d01515864233d6f384fc3b93914afc5d2255bf613e77888f4959a",
+  "path": "assets/runtime-v46/scene/sign-atlas-01a45f62171de3743bd16457.png",
+  "sha256": "01a45f62171de3743bd1645738013bf940139048fa26e6662e8ddfcc4ff99566",
+  "note": "Preserve the validated lettering PNG across rendering-only changes. All 579 atlas-producing inputs retain their original order and bytes; atmosphere and reflection footprint helpers do not participate in atlas drawing."
 }

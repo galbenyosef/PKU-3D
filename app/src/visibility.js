@@ -125,5 +125,76 @@
   if(runStart>=0)out.set(data.subarray(runStart,runEnd),offset+runOutput*28);
   result.count=count;result.culled=culled;return result;
  }
- Y.Visibility={essentialMaterials:Object.freeze([...essential]),keepDetail,keepSurfaceDetail,prepare,bounds,sphereVisible,compile,prepareSingle,select};
+
+ // Immutable compiled-bucket snapshot. Rebuild after compilation or scene changes.
+ // Nodes bound centers and radii separately: this preserves the selector's scalar
+ // radius convention even for non-unit planes. No group/instance tests change.
+ // The optional epoch is an explicit owner guarantee: compiled geometry and
+ // Map membership/order are immutable until the owner invalidates that epoch.
+ // Generic public mutable Maps never acquire an index implicitly.
+ function* buildBucketIndexSteps(buckets,epoch){
+  if(!epoch||!(buckets instanceof Map)||buckets[Symbol.iterator]!==Map.prototype[Symbol.iterator])return null;
+  const entries=[],fallback=[],bands=new Map();let i=0;
+  for(const entry of buckets){
+   entries.push(entry);const b=entry[1],c=b.coarse,p=b.maxPart;
+   if(!c||![c[0],c[1],c[2],c[3],p].every(Number.isFinite)||c[3]<0||p<0)fallback.push(i);
+   else{
+    const a=[c[0],c[1],c[2]],z=a.slice();let r=c[3],valid=true;
+    if(b.singleSphere){const q=b.spatial;
+     if(!q||![q[0],q[1],q[2],q[3]].every(Number.isFinite)||q[3]<0)valid=false;
+     else{for(let j=0;j<3;j++){a[j]=Math.min(a[j],q[j]);z[j]=Math.max(z[j],q[j]);}r=Math.max(r,q[3]);}
+    }
+    if(!valid)fallback.push(i);
+    else{const band=Math.floor(Math.log2(Math.max(r,1)));if(!bands.has(band))bands.set(band,[]);bands.get(band).push({i,a,z,r,p});}
+   }
+   i++;if((i&63)===0)yield;
+  }
+  function* split(rs){
+   const a=[Infinity,Infinity,Infinity],z=[-Infinity,-Infinity,-Infinity];let r=0,p=0,k=0;
+   for(const v of rs){for(let j=0;j<3;j++){a[j]=Math.min(a[j],v.a[j]);z[j]=Math.max(z[j],v.z[j]);}r=Math.max(r,v.r);p=Math.max(p,v.p);if((++k&63)===0)yield;}
+   const node={a,z,r,p};yield;
+   if(rs.length<=12)node.ids=rs.map(v=>v.i);
+   else{
+    let axis=0;for(let j=1;j<3;j++)if(z[j]-a[j]>z[axis]-a[axis])axis=j;
+    const middle=a[axis]/2+z[axis]/2;let left=[],right=[];k=0;
+    for(const v of rs){(v.a[axis]<middle?left:right).push(v);if((++k&63)===0)yield;}
+    // Extremely skewed/identical centers split by ordinal, in bounded batches.
+    if(Math.min(left.length,right.length)<rs.length/8){left=[];right=[];for(let n=0;n<rs.length;n++){(n<rs.length/2?left:right).push(rs[n]);if((n&63)===63)yield;}}
+    node.left=yield* split(left);node.right=yield* split(right);
+   }
+   return node;
+  }
+  const children=[],a=[Infinity,Infinity,Infinity],z=[-Infinity,-Infinity,-Infinity];
+  for(const rs of bands.values()){const child=yield* split(rs);children.push(child);for(let j=0;j<3;j++){a[j]=Math.min(a[j],child.a[j]);z[j]=Math.max(z[j],child.z[j]);}yield;}
+  return {epoch,buckets,size:buckets.size,entries,fallback,root:{a,z,children}};
+ }
+ function buildBucketIndex(buckets,epoch){const steps=buildBucketIndexSteps(buckets,epoch);let step;do{step=steps.next();}while(!step.done);return step.value;}
+ function indexedBuckets(index,buckets,planes,state,epoch){
+  // Exotic public inputs retain their original indexed/iterator semantics.
+  if(!epoch||!index||index.epoch!==epoch||index.buckets!==buckets||index.size!==buckets.size||buckets[Symbol.iterator]!==Map.prototype[Symbol.iterator]||!Array.isArray(planes)||planes[Symbol.iterator]!==Array.prototype[Symbol.iterator]||typeof state.explode!=='number'||!Number.isFinite(state.explode))return buckets;
+  for(let k=0;k<planes.length;k++){const p=planes[k];if(!(Array.isArray(p)||ArrayBuffer.isView(p))||![p[0],p[1],p[2],p[3]].every(Number.isFinite))return buckets;}
+  const root=index.root;
+  if(root&&planes.every(p=>p[0]*(p[0]<0?root.z[0]:root.a[0])+p[1]*(p[1]<0?root.z[1]:root.a[1])+p[2]*(p[2]<0?root.z[2]:root.a[2])+p[3]>=0))return buckets;
+  const ids=index.fallback.slice(),explode=Math.abs(state.explode);
+  function visit(node){
+   if(!node)return;
+   if(node.children){for(const child of node.children)visit(child);return;}
+   const r=node.r+explode*node.p;
+   for(let k=0;k<planes.length;k++){
+    const p=planes[k],x=p[0]*(p[0]<0?node.a[0]:node.z[0]),y=p[1]*(p[1]<0?node.a[1]:node.z[1]),z=p[2]*(p[2]<0?node.a[2]:node.z[2]),d=x+y+z+p[3];
+    // Outward roundoff allowance; overflow/ambiguous arithmetic never rejects.
+    const error=32*Number.EPSILON*(Math.abs(x)+Math.abs(y)+Math.abs(z)+Math.abs(p[3])+Math.abs(r)+1);
+    if(Number.isFinite(d)&&Number.isFinite(r)&&Number.isFinite(error)&&d < -r-error)return;
+   }
+   if(node.ids)ids.push(...node.ids);else{visit(node.left);visit(node.right);}
+  }
+  visit(index.root);if(ids.length>buckets.size*.7)return buckets;
+  // Restore Map order with a compact bitset rather than sorting thousands of
+  // candidates. Empty 32-bucket spans cost one scalar word, not a bucket visit.
+  const bits=new Uint32Array(Math.ceil(index.size/32)),ordered=[];
+  for(const i of ids)bits[i>>>5]|=1<<(i&31);
+  for(let word=0;word<bits.length;word++){let mask=bits[word];while(mask){const bit=31-Math.clz32(mask&-mask);ordered.push(index.entries[word*32+bit]);mask=(mask&(mask-1))>>>0;}}
+  return ordered;
+ }
+ Y.Visibility={buildBucketIndex,buildBucketIndexSteps,indexedBuckets,essentialMaterials:Object.freeze([...essential]),keepDetail,keepSurfaceDetail,prepare,bounds,sphereVisible,compile,prepareSingle,select};
 })(YY);

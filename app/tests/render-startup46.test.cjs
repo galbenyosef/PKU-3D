@@ -1,6 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const root=process.env.PKU_APP_ROOT||path.resolve(__dirname,'..'),c=vm.createContext({YY:{M:require(path.join(root,'src/math.js'))},performance,setTimeout,clearTimeout});
 for(const file of ['visibility.js','engine.js'])vm.runInContext(fs.readFileSync(path.join(root,'src',file),'utf8'),c);
+const programNames=['main','glass','membrane','ceramic','foliage','stone','mapped','ground','shadow','skyProg','particles','post'];
 function compiler(failCompile=0,failLink=0){let shaderId=0,programId=0;const shaders=[],programs=[],events=[];
  const gl={getExtension(){return null;},isContextLost(){return false;},VERTEX_SHADER:1,FRAGMENT_SHADER:2,COMPILE_STATUS:3,LINK_STATUS:4,
  createShader(type){const x={id:++shaderId,type,deleted:0};shaders.push(x);return x;},shaderSource(s,src){s.source=src;},compileShader(){events.push('compile');},getShaderParameter(s){events.push('shader-status');return s.id!==failCompile;},getShaderInfoLog(){return 'compile failure';},deleteShader(s){s.deleted++;},
@@ -8,12 +9,12 @@ function compiler(failCompile=0,failLink=0){let shaderId=0,programId=0;const sha
  const e=Object.create(c.YY.Engine.prototype);e.gl=gl;return{e,shaders,programs,events};
 }
 test('initial programs share identical stages, then release every temporary shader exactly once',()=>{
- const {e,shaders,programs}=compiler();e.compilePrograms();assert.equal(programs.length,9);assert.equal(shaders.length,14);assert.equal(e.shaderCache,null);assert.ok(e.membrane);
+ const {e,shaders,programs}=compiler();e.compilePrograms();assert.equal(programs.length,12);assert.deepEqual(programNames.map(name=>e[name].p),programs);assert.equal(shaders.length,17);assert.equal(e.shaderCache,null);assert.ok(e.membrane);
  // Ceramic uses its own vertex stage; the remaining identical stages stay shared.
- assert.equal(shaders.filter(s=>s.type===e.gl.VERTEX_SHADER).length,5);assert.equal(shaders.filter(s=>s.type===e.gl.FRAGMENT_SHADER).length,9);
+ assert.equal(shaders.filter(s=>s.type===e.gl.VERTEX_SHADER).length,5);assert.equal(shaders.filter(s=>s.type===e.gl.FRAGMENT_SHADER).length,12);
  assert.equal(new Set(shaders.map(s=>s.type+'\0'+s.source)).size,shaders.length);
  assert.ok(shaders.every(s=>s.deleted===1));assert.ok(programs.every(p=>!p.deleted&&!p.attached.size));
- e.program('dynamic vertex','dynamic fragment');assert.equal(shaders.length,16);assert.ok(shaders.every(s=>s.deleted===1));
+ e.program('dynamic vertex','dynamic fragment');assert.equal(shaders.length,19);assert.ok(shaders.every(s=>s.deleted===1));
 });
 test('compile and link failures release partial programs and shared stages without invalid detach calls',()=>{
  for(const [compile,link]of [[3,0],[0,3]]){const {e,shaders,programs}=compiler(compile,link);assert.throws(()=>e.compilePrograms(),/failure/);assert.equal(e.shaderCache,null);assert.ok(shaders.every(s=>s.deleted===1));assert.ok(programs.every(p=>p.deleted===1));}
@@ -67,7 +68,7 @@ test('uncached scene construction remains available and propagates errors',async
 });
 
 test('initial program batch submits every link before synchronizing shader status',()=>{
- const {e,events}=compiler();e.compilePrograms();assert.equal(events.filter(x=>x==='link').length,9);
+ const {e,events}=compiler();e.compilePrograms();assert.equal(events.filter(x=>x==='link').length,12);
  assert.ok(events.lastIndexOf('link')<events.indexOf('shader-status'));
  assert.ok(events.lastIndexOf('shader-status')<events.indexOf('program-status'));assert.equal(e.programBatch,null);
 });
@@ -81,9 +82,9 @@ test('renderer construction failure releases decoders started before it',async()
 
 test('deferred compilation issues links without blocking status queries and validates once',()=>{
  const {e,events,shaders}=compiler();e.compilePrograms(true);
- assert.equal(events.filter(x=>x==='link').length,9);assert.equal(events.includes('shader-status'),false);
+ assert.equal(events.filter(x=>x==='link').length,12);assert.equal(events.includes('shader-status'),false);
  assert.ok(shaders.every(s=>s.deleted===0));e.finishPrograms();e.finishPrograms();
- assert.equal(events.filter(x=>x==='program-status').length,9);assert.ok(shaders.every(s=>s.deleted===1));
+ assert.equal(events.filter(x=>x==='program-status').length,12);assert.ok(shaders.every(s=>s.deleted===1));
 });
 test('deferred shader failures cannot pass readiness and cancelled stages release once',async()=>{
  for(const [compile,link]of [[3,0],[0,3]]){

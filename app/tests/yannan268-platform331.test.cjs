@@ -3,7 +3,7 @@ const APP=path.resolve(__dirname,'..');
 function capture(){
  const ctx=vm.createContext({console,document:{createElement:()=>({getContext:()=>new Proxy({measureText:s=>({width:s.length*20})},{get:(o,k)=>o[k]||(()=>{})})})}});vm.runInContext('var YY={}',ctx);
  for(const n of [...fs.readFileSync(APP+'/index.html','utf8').matchAll(/script src="src\/(.*?)\.js"/g)].map(m=>m[1])){if(n==='scene-v29')break;vm.runInContext(fs.readFileSync(APP+'/src/'+n+'.js','utf8'),ctx,{filename:n});}
- const Y=ctx.YY,f=Y.CAMPUS.features.find(f=>f.properties.pickId===268),out=[],e={buckets:new Map(),stats:{instances:0}};
+ const Y=ctx.YY,f=Y.CAMPUS.features.find(f=>f.properties.pickId===268),out=[],e={buckets:new Map(),stats:{instances:0},invalidateBucketIndex:Y.Engine.prototype.invalidateBucketIndex};
  const b=new Y.Builder({add(k,g,m,c,p,uv){Y.Engine.prototype.add.call(e,k,g,m,c,p,uv);const v=e.buckets.get(k).geometry.v,pts=[];for(let i=0;i<v.length;i+=8)pts.push(Y.M.apply(m,[...v.slice(i,i+3),1]).slice(0,3));out.push({k,c,p:Array.from(p),pts,bb:[0,1,2].map(a=>[Math.min(...pts.map(p=>p[a])),Math.max(...pts.map(p=>p[a]))])});}});
  Y.Landscape42.withElevation(b,f,()=>Y.Architecture30.render(b,f,(k,g,c,mat,id)=>b.e.add(k,g,Y.M.identity(),c,[mat,id,0,0])));return{out,M:Y.M};
 }

@@ -22,6 +22,14 @@ The incremental result and the three-of-six frozen result remain separate. First
 - Deferred builder data, shared geometry pages and conservative visibility handling retain ordinary fallback paths. Context recovery, lazy photos and local-file/offline behavior remain supported.
 - Reflection scissoring and conservative reflection culling retain full-resolution targets and fall back where bounds cannot prove a safe restriction.
 
+## Runtime maintenance contracts
+
+Shader completion may overlap decoding and uploads, but the ready barrier still includes every scene, texture and program resource. Failure cleanup waits for independent work to settle; context loss cancels pending waits. The two-worker decoder and two-frame GPU queue remain bounded. Navigation consumes elapsed input time before the GPU queue check, and reduced-motion preferences disable browse-camera transitions.
+
+The idle-built bucket index requires an Engine-owned epoch. External raw-data or bucket-order edits must invalidate it and refresh derived bounds and visibility caches; uncertain cases retain the original ordered scan. Water-footprint culling likewise falls back when a safe restriction cannot be established. Material 0/6/21 specialization preserves the shared sampling and lighting equations.
+
+These paths retain model detail, original image resolution, shadows, reflection resolution and cadence, antialiasing, instance/transparent order, lossless caches and offline/context-recovery behavior. Changing scene inputs still requires `npm run build:scene`; a cached runtime build cannot validate stale geometry.
+
 ## Validation protocol
 
 Validate modified geometry and interactions in actual desktop and narrow-screen WebGL views. For rendering-path changes, compare matching cameras, state, ordered instance streams and final pixels where equivalence is expected. Include real context recovery and offline loading; unit tests do not replace these checks.

@@ -1,5 +1,16 @@
 /* Yanyuan WebGL2 renderer; original scene assets remain local. */
 (function(Y){'use strict';const M=Y.M;
+// Clear-day art direction operates on irradiance before the shared display map.
+// Keep night, rain, haze, snow and inspection lighting on their existing values.
+// daylightGrade: 0 retains the previous look; 1 is the bounded candidate strength.
+function applyDaylightGrade(state,day,sky,ground,sun){
+ if(state.weather!==0||state.isolate||day<=.25)return 0;
+ const strength=Number.isFinite(state.daylightGrade)?M.clamp(state.daylightGrade,0,1):1;
+ const phase=M.clamp((day-.25)/.60,0,1),amount=strength*phase*phase*(3-2*phase);
+ const energy=1-.10*amount,skyFill=energy*(1-.20*amount),groundFill=energy*(1-.18*amount);
+ for(let i=0;i<3;i++){sky[i]*=skyFill;ground[i]*=groundFill;sun[i]*=energy;}
+ return amount;
+}
 const VERT=`#version 300 es
 precision highp float;
 layout(location=0) in vec3 aPosition;layout(location=1) in vec3 aNormal;layout(location=2) in vec2 aUV;
@@ -176,10 +187,13 @@ void main(){
    w=vec2(sin(vWorld.x*.37+vWorld.z*.22+uTime*.63)+.43*sin(vWorld.x*1.27-vWorld.z*.43-uTime*.91)+.17*sin(vWorld.x*2.13+vWorld.z*1.90+uTime*.24),cos(vWorld.z*.31-vWorld.x*.24+uTime*.44)+.40*cos(vWorld.z*1.60+vWorld.x*.21-uTime*.80)+.14*cos(vWorld.x*2.31-vWorld.z*.63+uTime*.53))*.018;
   }else{
    vec2 p=vWorld.xz;
-   vec3 phase=vec3(dot(p,vec2(.60,.29))+uTime*.38,dot(p,vec2(1.61,-.52))-uTime*.61,dot(p,vec2(2.78,1.83))+uTime*.47);
+   // Crossed 4.7m, 1.9m and .94m waves; fade slopes below pixel resolution.
+   vec3 phase=vec3(dot(p,vec2(1.20,.58))+uTime*.66,dot(p,vec2(3.22,-1.04))-uTime*1.05,dot(p,vec2(5.56,3.66))+uTime*.83);
    vec3 resolved=1.-smoothstep(vec3(.7),vec3(2.8),fwidth(phase));
-   // Three crossed slopes, smaller than one degree in calm conditions.
-   w=(vec2(.90,.435)*sin(phase.x)*resolved.x+vec2(.952,-.307)*sin(phase.y)*.25*resolved.y+vec2(.835,.55)*sin(phase.z)*.08*resolved.z)*.010;
+   float wind=uWeather==1.?1.25:1.;
+   // Max lake UV displacement < .00150 even in rain; pool bound .002592
+   // remains the maximum covered by reflectionScissor's existing .003 pad.
+   w=(vec2(.90,.435)*sin(phase.x)*resolved.x+vec2(.952,-.307)*sin(phase.y)*.25*resolved.y+vec2(.835,.55)*sin(phase.z)*.08*resolved.z)*(.018*wind);
   }
   w*=mix(.45,1.,openWater);
   n=normalize(vec3(w.x,1.,w.y));
@@ -190,10 +204,24 @@ void main(){
   vec3 reflected=texture(uReflectionMap,reflectionUV).rgb;
   vec3 ref=uHDR>.5?reflected:acesInput(reflected);
   float viewFacing=max(0.,dot(n,V));
-  float f=.07+.85*pow(1.-viewFacing,4.);
-  vec3 water=mix(vec3(.005,.014,.012),vec3(.014,.044,.033),uDay);
-  if(gardenPool)f=.10+.82*pow(1.-viewFacing,3.);
-  water*=mix(1.,.66+.34*sh,uDay)*mix(.82,1.,openWater);
+  float f;vec3 water;
+  if(gardenPool){
+   f=.10+.82*pow(1.-viewFacing,3.);
+   water=mix(vec3(.005,.014,.012),vec3(.014,.044,.033),uDay);
+   water*=mix(1.,.66+.34*sh,uDay)*mix(.82,1.,openWater);
+  }else{
+   float facing=clamp(viewFacing,0.,1.);
+   // Air/water Schlick reflectance (IOR 1.333); preserve planar image detail.
+   f=.0204+.9796*pow(1.-facing,5.);
+   // Artistic optical thickness from mapped OUTER-bank distance, not depth
+   // or surveyed bathymetry. Other lake/island banks retain the open-water case.
+   float opticalThickness=mix(.25,2.8,smoothstep(.15,7.,bankDistance));
+   // Snell's transmitted cosine stays >= .661; no grazing-angle singularity.
+   float transmittedCos=sqrt(max(.4375,1.-.5625*(1.-facing*facing)));
+   vec3 transmission=exp(-vec3(1.65,.62,.42)*(opticalThickness/transmittedCos));
+   water=mix(vec3(.014,.050,.035),vec3(.075,.095,.054),transmission);
+   water*=mix(.24,1.,uDay)*mix(1.,.66+.34*sh,uDay);
+  }
   col=mix(water,ref,f);
   col+=pow(max(0.,dot(n,normalize(V+uSun))),230.)*vec3(1.,.80,.55)*uDay*.8*sh*(uWeather==1.?.45:uWeather==2.?.72:1.);
   if(uSeason>2.5)col=mix(col,vec3(.40,.55,.61),.79);
@@ -228,6 +256,13 @@ const FOLIAGEFRAG=FRAG
 // Ceramic route guarantees material 25 for every original instance.
 const CERAMICVERT=VERT.replace(/\biMeta\.x(?===)/g,'25.0');
 const CERAMICFRAG=FRAG.replace(/\bvMat\b/g,'25.').replace('flat in float 25.;','');
+// Bound ordinary specialization to the two highest-coverage opaque materials
+// after ceramic/foliage. Keep every equation and derivative in its original
+// control-flow position; a literal material lets the linker remove dead paths.
+const STONEFRAG=FRAG.replace(/\bvMat\b/g,'21.').replace('flat in float 21.;','');
+const MAPPEDFRAG=FRAG.replace(/\bvMat\b/g,'6.').replace('flat in float 6.;','');
+// Ground retains its original atlas, relief, two noise scales and season response.
+const GROUNDFRAG=FRAG.replace(/\bvMat\b/g,'0.').replace('flat in float 0.;','');
 const GLASSFRAG=FRAG.replace('float mat=vMat,','float mat=28.,')
  .replace('frag=vec4(col,1.);','frag=vec4(col,.13+.65*pow(1.-ndv,4.));');
 // Local historical greenhouse membrane; optical values are display fits.
@@ -262,7 +297,39 @@ vec3 acesInput(vec3 display){
  return (-b+sqrt(b*b+.56*y*a))/(2.*a*1.10);
 }
 float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
-void main(){vec4 w=uInvVP*vec4(vUV*2.-1.,1,1);vec3 d=normalize(w.xyz/w.w-uEye);float up=max(0.,d.y);vec3 top=mix(vec3(.026,.055,.104),vec3(.38,.60,.78),uDay);vec3 c=mix(uSky,top,pow(up,.42));vec2 p=d.xz/(max(.12,up))*2.4+vec2(uTime*.002,0);float cloud=smoothstep(.57,.83,n(p)*.65+n(p*2.1)*.25+n(p*4.3)*.1)*smoothstep(.02,.25,up);c=mix(c,mix(vec3(.12,.15,.21),vec3(.93,.95,.94),uDay),cloud*.6);float sun=pow(max(0.,dot(d,uSun)),650.0);c+=sun*vec3(1.,.8,.5)*uDay*.7*(uWeather==1.?.45:uWeather==2.?.72:1.);if(uDay<.25){vec2 s=d.xz/(.1+up)*190.;float st=step(.996,h(floor(s)))*(1.-smoothstep(.0,.18,length(fract(s)-.5)));c+=st*(1.-uDay)*smoothstep(0.,.3,up);}if(uWeather>.5&&uWeather<2.5)c=mix(c,uSky,.50);if(uIsolate>.5)c=mix(vec3(.86,.89,.86),vec3(.97,.98,.96),clamp(vUV.y,0.,1.));frag=vec4(uHDR>.5?acesInput(c):c,1);}`;
+void main(){
+ vec4 w=uInvVP*vec4(vUV*2.-1.,1,1);vec3 d=normalize(w.xyz/w.w-uEye);
+ float up=max(0.,d.y),day=clamp(uDay,0.,1.);
+ // Keep the geometric horizon at uSky, shared by surface aerial perspective.
+ // A gentler low-elevation gradient avoids the broad flat blue-grey band.
+ vec3 top=mix(vec3(.026,.055,.104),vec3(.34,.57,.77),day);
+ float elevation=1.-exp(-up*3.2);
+ vec3 c=mix(uSky,top,elevation);
+ // Below the horizon, retain a quiet groundward fade in elevated views.
+ c=mix(c,uSky*.96,smoothstep(0.,.45,max(0.,-d.y)));
+ float facing=max(0.,dot(d,uSun));
+ float sunSide=pow(facing,8.);
+ float skyFade=smoothstep(0.,.12,up);
+ float warmth=(1.-smoothstep(.30,.75,uSun.y))*day;
+ c+=vec3(.065,.031,.009)*sunSide*skyFade*warmth;
+ vec2 p=d.xz/max(.12,up)*2.4+vec2(uTime*.002,0);
+ // Same three noise octaves as before; density also shapes cloud lighting.
+ float density=n(p)*.65+n(p*2.1)*.25+n(p*4.3)*.1;
+ float cloud=smoothstep(.55,.83,density)*smoothstep(.025,.24,up);
+ vec3 cloudShade=mix(vec3(.105,.135,.19),vec3(.78,.84,.88),day);
+ vec3 cloudLight=mix(vec3(.15,.18,.23),vec3(.96,.96,.93),day);
+ vec3 cloudColor=mix(cloudShade,cloudLight,clamp((1.-density)*1.25+sunSide*.22,0.,1.));
+ c=mix(c,cloudColor,cloud*.67);
+ float weatherSun=uWeather==1.?.45:uWeather==2.?.72:1.;
+ // Separate a restrained halo from the small bright solar disk.
+ float halo=pow(facing,180.)*.12;
+ float disk=smoothstep(.99955,.99985,facing)*.55;
+ c+=(halo+disk)*vec3(1.,.84,.61)*day*weatherSun*(1.-cloud*.8)*skyFade;
+ if(day<.25){vec2 s=d.xz/(.1+up)*190.;float st=step(.996,h(floor(s)))*(1.-smoothstep(.0,.18,length(fract(s)-.5)));c+=st*(1.-day)*smoothstep(0.,.3,up);}
+ if(uWeather>.5&&uWeather<2.5)c=mix(c,uSky,.50);
+ if(uIsolate>.5)c=mix(vec3(.86,.89,.86),vec3(.97,.98,.96),clamp(vUV.y,0.,1.));
+ frag=vec4(uHDR>.5?acesInput(c):c,1);
+}`;
 const PARTICLEV=`#version 300 es
 precision highp float;layout(location=0) in vec4 aP;uniform mat4 uVP;uniform vec3 uEye;uniform float uTime;uniform float uWeather;out float vAlpha;void main(){float snow=step(2.5,uWeather);float range=max(170.,uEye.y+70.);vec3 p=vec3(mod(aP.x+uTime*(snow*1.4+2.),650.)-325.+uEye.x,mod(aP.y*range-uTime*mix(55.,6.,snow),range),mod(aP.z,650.)-325.+uEye.z);p.x+=sin(uTime*.7+aP.y*19.)*snow*3.;p.y-=aP.w*mix(5.5,.0,snow);gl_Position=uVP*vec4(p,1);gl_PointSize=clamp(500./length(p-uEye),1.5,4.);vAlpha=mix(.23,.68,snow);}`;
 const PARTICLEF=`#version 300 es
@@ -357,17 +424,17 @@ class Engine{
  compilePrograms(deferValidation=false,preparePeople=false){
   if(this.disposed||this.gl.isContextLost())throw Error('Scene loading was interrupted');
   this.releaseProgramStages();
-  for(const key of ['main','glass','membrane','ceramic','foliage','shadow','skyProg','particles','post','peopleShadow'])if(this[key]){this.gl.deleteProgram(this[key].p);this[key]=null;}
+  for(const key of ['main','glass','membrane','ceramic','foliage','stone','mapped','ground','shadow','skyProg','particles','post','peopleShadow'])if(this[key]){this.gl.deleteProgram(this[key].p);this[key]=null;}
   this.programError=null;this.programsReady=false;
   this.parallelShaderCompile=this.gl.getExtension('KHR_parallel_shader_compile');
   this.shaderCache=new Map();this.programBatch=[];
-  try{this.main=this.program(VERT,FRAG);this.glass=this.program(VERT,GLASSFRAG);this.membrane=this.program(VERT,MEMBRANEFRAG);this.ceramic=this.program(CERAMICVERT,CERAMICFRAG);this.foliage=this.program(FOLIAGEVERT,FOLIAGEFRAG);this.shadow=this.program(VERT,SHADOWF);this.skyProg=this.program(SKYV,SKYF);this.particles=this.program(PARTICLEV,PARTICLEF);this.post=this.program(SKYV,POSTF);
+  try{this.main=this.program(VERT,FRAG);this.glass=this.program(VERT,GLASSFRAG);this.membrane=this.program(VERT,MEMBRANEFRAG);this.ceramic=this.program(CERAMICVERT,CERAMICFRAG);this.foliage=this.program(FOLIAGEVERT,FOLIAGEFRAG);this.stone=this.program(VERT,STONEFRAG);this.mapped=this.program(VERT,MAPPEDFRAG);this.ground=this.program(VERT,GROUNDFRAG);this.shadow=this.program(VERT,SHADOWF);this.skyProg=this.program(SKYV,SKYF);this.particles=this.program(PARTICLEV,PARTICLEF);this.post=this.program(SKYV,POSTF);
    if(preparePeople&&Y.Pedestrians46?.createShadowProgram)this.peopleShadow=Y.Pedestrians46.createShadowProgram(this);
    this.pendingPrograms={shaders:[...this.shaderCache.values()],programs:this.programBatch};
   }catch(error){
    this.programError=error;
    for(const shader of this.shaderCache.values())this.gl.deleteShader(shader);
-   for(const key of ['main','glass','membrane','ceramic','foliage','shadow','skyProg','particles','post','peopleShadow'])if(this[key]){this.gl.deleteProgram(this[key].p);this[key]=null;}throw error;
+   for(const key of ['main','glass','membrane','ceramic','foliage','stone','mapped','ground','shadow','skyProg','particles','post','peopleShadow'])if(this[key]){this.gl.deleteProgram(this[key].p);this[key]=null;}throw error;
   }finally{this.shaderCache=null;this.programBatch=null;}
   // Submit compilation now, but allow texture and scene loading to overlap the
   // driver work. Startup must call finishPrograms before publishing readiness.
@@ -421,7 +488,7 @@ class Engine{
    for(const shader of pending.shaders)if(!this.gl.getShaderParameter(shader,this.gl.COMPILE_STATUS))throw Error(this.gl.getShaderInfoLog(shader));
    for(const p of pending.programs)if(!this.gl.getProgramParameter(p,this.gl.LINK_STATUS))throw Error(this.gl.getProgramInfoLog(p));
    this.programsReady=true;
-  }catch(error){this.programError=error;for(const key of ['main','glass','membrane','ceramic','foliage','shadow','skyProg','particles','post','peopleShadow'])if(this[key]){this.gl.deleteProgram(this[key].p);this[key]=null;}throw error;}
+  }catch(error){this.programError=error;for(const key of ['main','glass','membrane','ceramic','foliage','stone','mapped','ground','shadow','skyProg','particles','post','peopleShadow'])if(this[key]){this.gl.deleteProgram(this[key].p);this[key]=null;}throw error;}
   finally{this.releaseProgramStages();}
  }
  releaseProgramStages(){
@@ -473,19 +540,19 @@ class Engine{
   const deleted208=new Set();for(const m of this.meshResources||[])for(const buffer of[m.vertexBuffer,m.indexBuffer])if(buffer&&!deleted208.has(buffer)){g.deleteBuffer(buffer);deleted208.add(buffer);}this.pages208=[];this.pageIndexScratch208=null;
   for(const key of ['pickTarget','reflectTarget','sceneTarget','shadowTarget']){this.disposeTarget(this[key]);this[key]=null;}
   for(const key of ['atlas','materials','dummy','shoreTexture','scan1119'])if(this[key]){g.deleteTexture(this[key]);this[key]=null;}
-  for(const key of ['main','glass','membrane','ceramic','foliage','shadow','skyProg','particles','post','peopleShadow'])if(this[key])g.deleteProgram(this[key].p);
+  for(const key of ['main','glass','membrane','ceramic','foliage','stone','mapped','ground','shadow','skyProg','particles','post','peopleShadow'])if(this[key])g.deleteProgram(this[key].p);
   g.deleteVertexArray(this.emptyVAO);g.deleteVertexArray(this.particleVAO);g.deleteBuffer(this.particleBuffer);
-  this.buckets.clear();this.visibilityCaches.clear();this.meshResources=[];this.visibilityScratch=null;
+  this.buckets.clear();this.invalidateBucketIndex();this.visibilityCaches.clear();this.meshResources=[];this.visibilityScratch=null;
  }
  resize(w,h){if(this.disposed)return;let d=Math.min(window.devicePixelRatio||1,1.5)*this.quality,w1=Math.max(1,Math.round(w*d)),h1=Math.max(1,Math.round(h*d));if(this.sceneTarget&&w1===this.canvas.width&&h1===this.canvas.height)return;this.canvas.width=w1;this.canvas.height=h1;this.disposeTarget(this.pickTarget);this.disposeTarget(this.reflectTarget);this.disposeTarget(this.sceneTarget);this.sceneTarget=this.colorDepthTarget(w1,h1);this.pickTarget=this.target(w1,h1);let rf=Math.min(this.software?512:896,w1*.72)/w1;this.reflectTarget=this.target(Math.round(w1*rf),Math.round(h1*rf),false,this.hdr);this.aspect=w1/h1;this.shadowDirty=true;}
- add(key,geometry,matrix,color,meta=[0,0,0,0],uv=[0,0,1,1]){let b=this.buckets.get(key);if(!b){b={geometry:{v:new Float32Array(geometry.v)},detailWidth:geometry.detailWidth||0,instances:[]};this.buckets.set(key,b)}if(typeof color==='string')color=M.color(color);b.instances.push(...matrix,...color.slice(0,3),1,...meta,...uv);this.stats.instances++}
+ add(key,geometry,matrix,color,meta=[0,0,0,0],uv=[0,0,1,1]){this.invalidateBucketIndex();let b=this.buckets.get(key);if(!b){b={geometry:{v:new Float32Array(geometry.v)},detailWidth:geometry.detailWidth||0,instances:[]};this.buckets.set(key,b)}if(typeof color==='string')color=M.color(color);b.instances.push(...matrix,...color.slice(0,3),1,...meta,...uv);this.stats.instances++}
  beginPrepared(manifest){
   if(manifest.version===3&&![1,2].includes(manifest.normalTransformFormat194))throw Error('Unsupported normal transform format194');
-  this.meshResources=manifest.meshes.map(m=>({...m,vertexBuffer:null,indexBuffer:null}));this.buckets=new Map();this.visibilityCaches.clear();
+  this.meshResources=manifest.meshes.map(m=>({...m,vertexBuffer:null,indexBuffer:null}));this.buckets=new Map();this.invalidateBucketIndex();this.visibilityCaches.clear();
   Object.assign(this.stats,manifest.stats);
   for(const record of manifest.buckets){const resource=this.meshResources[record.mesh];this.buckets.set(record.key,{resource,vertexCount:resource.vertexCount,detailWidth:resource.detailWidth||0,count:record.count,passes:new Map()});}
  }
- preparedVertices(index,vertices){if(this.disposed)throw Error('Scene loading was interrupted');const g=this.gl,m=this.meshResources[index];m.vertexBuffer=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,m.vertexBuffer);g.bufferData(g.ARRAY_BUFFER,vertices,g.STATIC_DRAW);}
+ preparedVertices(index,vertices){if(this.disposed)throw Error('Scene loading was interrupted');const g=this.gl,m=this.meshResources[index];if(m.waterBounds&&Y.ReflectionFootprint)m.reflectionFootprint=Y.ReflectionFootprint.prepare(vertices);m.vertexBuffer=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,m.vertexBuffer);g.bufferData(g.ARRAY_BUFFER,vertices,g.STATIC_DRAW);}
  preparedIndices(index,indices){if(this.disposed)throw Error('Scene loading was interrupted');const g=this.gl,m=this.meshResources[index];m.indexBuffer=g.createBuffer();g.bindVertexArray(null);g.bindBuffer(g.ELEMENT_ARRAY_BUFFER,m.indexBuffer);g.bufferData(g.ELEMENT_ARRAY_BUFFER,indices,g.STATIC_DRAW);g.bindBuffer(g.ELEMENT_ARRAY_BUFFER,null);}
  preparedInstances(record,data,spatial,compiled){
   if(this.disposed)throw Error('Scene loading was interrupted');const b=this.buckets.get(record.key);
@@ -495,7 +562,16 @@ class Engine{
   // still compiles locally. GPU setup keeps the loader's existing upload budget.
   this.compileBucket(b,compiled);this.prepareRanges(b);b.preparedCompiled=true;
  }
- compileBucket(b,compiled){if(compiled){Object.assign(b,compiled);Y.Visibility.prepareSingle(b);}else Y.Visibility.compile(b);
+ compileBucket(b,compiled){this.invalidateBucketIndex();if(compiled){Object.assign(b,compiled);Y.Visibility.prepareSingle(b);}else Y.Visibility.compile(b);
+  // Validate original instance data rather than trusting prepared metadata.
+  // A mixed or malformed bucket always stays on the generic program.
+  b.ordinaryMaterial=0;
+  if((b.uniformMaterial===6||b.uniformMaterial===21)&&b.data.length===b.count*28){
+   b.ordinaryMaterial=b.uniformMaterial;
+   for(let i=0;i<b.data.length;i+=28)if(b.data[i+20]!==b.ordinaryMaterial){b.ordinaryMaterial=0;break;}
+  }
+  b.groundMaterial=b.uniformMaterial===0&&b.data.length===b.count*28;
+  if(b.groundMaterial)for(let i=0;i<b.data.length;i+=28)if(b.data[i+20]!==0){b.groundMaterial=false;break;}
   b.foliageIsotropic=(b.uniformMaterial===45||b.uniformMaterial===46);
   if(b.foliageIsotropic)for(let i=0;i<b.data.length;i+=28){const d=b.data,a=d[i]**2+d[i+1]**2+d[i+2]**2,c=d[i+4]**2+d[i+5]**2+d[i+6]**2,e=d[i+8]**2+d[i+9]**2+d[i+10]**2;
    if(Math.min(a,c,e)<=0||Math.max(a,c,e)-Math.min(a,c,e)>Math.max(a,c,e)*1e-6||Math.max(Math.abs(d[i]*d[i+4]+d[i+1]*d[i+5]+d[i+2]*d[i+6]),Math.abs(d[i]*d[i+8]+d[i+1]*d[i+9]+d[i+2]*d[i+10]),Math.abs(d[i+4]*d[i+8]+d[i+5]*d[i+9]+d[i+6]*d[i+10]))>Math.max(a,c,e)*1e-6){b.foliageIsotropic=false;break;}
@@ -683,7 +759,7 @@ class Engine{
    const item=items[i],last=drawItems[drawItems.length-1];
    const pageCombined=i<clearStart&&last&&last.b.resource.page208&&this.mergePage208(last,item);
    if(pageCombined)drawItems[drawItems.length-1]=pageCombined;
-   else if(i<clearStart&&last&&!last.pageRange208&&!!last.b.foliageIsotropic===!!item.b.foliageIsotropic&&(last.b.uniformMaterial===25)===(item.b.uniformMaterial===25)&&!last.ranges&&!item.ranges&&last.b.resource===item.b.resource&&last.b.vertexCount===item.b.vertexCount&&last.record.offset+last.record.count*28===item.record.offset){
+   else if(i<clearStart&&last&&!last.pageRange208&&!!last.b.foliageIsotropic===!!item.b.foliageIsotropic&&!!last.b.groundMaterial===!!item.b.groundMaterial&&(last.b.ordinaryMaterial||0)===(item.b.ordinaryMaterial||0)&&(last.b.uniformMaterial===25)===(item.b.uniformMaterial===25)&&!last.ranges&&!item.ranges&&last.b.resource===item.b.resource&&last.b.vertexCount===item.b.vertexCount&&last.record.offset+last.record.count*28===item.record.offset){
     const combined=last===items[i-1]?{...last,record:{...last.record}}:last;
     combined.record.count+=item.record.count;drawItems[drawItems.length-1]=combined;
    }else drawItems.push(item);
@@ -702,14 +778,35 @@ class Engine{
   for(let i=0;i<16;i+=4){crop[i]=vp[i]*sx-vp[i+3]*ox;crop[i+1]=vp[i+1]*sy-vp[i+3]*oy;}
   return M.frustum(crop);
  }
+ // Only this engine's compiled-scene epoch may use indexed traversal. Any
+ // supported geometry or Map membership/order edit must invalidate it first.
+ invalidateBucketIndex(){
+  this.bucketIndex=null;this.bucketIndexGeneration=(this.bucketIndexGeneration||0)+1;this.bucketIndexEpoch=null;
+  if(this.bucketIndexIdle!==undefined&&typeof cancelIdleCallback==='function')cancelIdleCallback(this.bucketIndexIdle);
+  this.bucketIndexIdle=undefined;this.bucketIndexJob=null;
+ }
+ scheduleBucketIndex(){
+  // No timer fallback: first frames and busy browsers retain original traversal.
+  if(this.bucketIndex||this.bucketIndexJob||typeof requestIdleCallback!=='function')return;
+  const epoch=this.bucketIndexEpoch=Object.freeze({generation:this.bucketIndexGeneration||0}),buckets=this.buckets,job=this.bucketIndexJob=Y.Visibility.buildBucketIndexSteps(buckets,epoch);
+  const tick=deadline=>{
+   this.bucketIndexIdle=undefined;
+   if(this.disposed||this.bucketIndexEpoch!==epoch||this.buckets!==buckets||this.state.bucketSpatialIndex===false){if(this.bucketIndexJob===job)this.bucketIndexJob=null;return;}
+   const end=performance.now()+2;
+   while(deadline.timeRemaining()>.5&&performance.now()<end){const step=job.next();if(step.done){this.bucketIndex=step.value;this.bucketIndexJob=null;this.visibilityCaches.clear();return;}}
+   this.bucketIndexIdle=requestIdleCallback(tick);
+  };
+  this.bucketIndexIdle=requestIdleCallback(tick);
+ }
  visibleScene(vp,slot){
   const state=this.state,hidden=state.inspectionMask?.objectId===state.isolate?state.inspectionMask.buckets:null;
   const lodEye=this.camera.eye,focal=this.canvas.clientHeight/(2*Math.tan((this.camera.fov||.80)/2));
-  const key=[...vp,...lodEye,focal,state.selected,state.isolate,state.explode,state.detailLOD!==false,state.vegetation!==false,state.meshCulling!==false,state.deferredInstanceVAO!==false,slot===3?this.waterLevel:0,slot===3&&state.reflectionFrustum!==false?this.reflectionCullRect:null,[...(state.routeEdges||[])].join('/'),hidden?[...hidden].join('/'):null].join(',');
+  const key=[...vp,...lodEye,focal,state.selected,state.isolate,state.explode,state.detailLOD!==false,state.vegetation!==false,state.meshCulling!==false,state.deferredInstanceVAO!==false,state.bucketSpatialIndex!==false,slot===3?this.waterLevel:0,slot===3&&state.reflectionFrustum!==false?this.reflectionCullRect:null,slot===3?this.reflectionFootprintPlanes:null,[...(state.routeEdges||[])].join('/'),hidden?[...hidden].join('/'):null].join(',');
   let cached=this.visibilityCaches.get(slot);
   if(!cached||cached.key!==key){
-   const planes=slot===3?this.reflectionPlanes(vp,this.reflectionCullRect):M.frustum(vp),items=[],clear=[],stream=this.instanceStream(slot),selectionResult={count:0,culled:0};let submitted=0,triangles=0,culled=0;
-   for(const[name,b]of this.buckets){
+   const planes=slot===3?[...this.reflectionPlanes(vp,this.reflectionCullRect),...(this.reflectionFootprintPlanes||[])]:M.frustum(vp),items=[],clear=[],stream=this.instanceStream(slot),selectionResult={count:0,culled:0};let submitted=0,triangles=0,culled=0;
+   if(state.bucketSpatialIndex!==false)this.scheduleBucketIndex();
+   for(const[name,b]of (state.bucketSpatialIndex===false?this.buckets:Y.Visibility.indexedBuckets(this.bucketIndex,this.buckets,planes,state,this.bucketIndexEpoch))){
     if(hidden?.has(name)||(slot===2&&(b.uniformMaterial===4||b.uniformMaterial===8||b.uniformMaterial===44||b.uniformMaterial===47))||(slot===3&&b.uniformMaterial===4))continue;const result=Y.Visibility.select(b,planes,lodEye,focal,state,stream,true,true,selectionResult);culled+=result.culled;if(!result.count)continue;
     const ranges=this.visibleRanges(b,planes,slot);if(ranges&&!ranges.length)continue;
     const record=this.instanceCache(b,slot,result.count,stream,null,state.deferredInstanceVAO!==false),item={b,record,ranges};
@@ -736,6 +833,9 @@ class Engine{
   if(p===this.main){this.sampler(p,'uShadowMap',0,this.shadowTarget.tex);this.sampler(p,'uReflectionMap',1,pass===3?this.dummy:this.reflectTarget.tex);this.sampler(p,'uAtlas',2,this.atlas||this.dummy);this.sampler(p,'uMaterials',3,this.materials||this.dummy);this.sampler(p,'uShoreDistance',4,this.shoreTexture);this.sampler(p,'uScan1119',5,this.scan1119);}
   const ceramic=p===this.main&&(pass===0||pass===3)&&this.state.specializedCeramic!==false;
   if(ceramic){this.stateUniforms(this.ceramic,vp,eye,pass);this.sampler(this.ceramic,'uShadowMap',0,this.shadowTarget.tex);this.sampler(this.ceramic,'uReflectionMap',1,pass===3?this.dummy:this.reflectTarget.tex);this.sampler(this.ceramic,'uAtlas',2,this.atlas||this.dummy);this.sampler(this.ceramic,'uMaterials',3,this.materials||this.dummy);this.sampler(this.ceramic,'uShoreDistance',4,this.shoreTexture);this.sampler(this.ceramic,'uScan1119',5,this.scan1119);}
+  const ordinary=p===this.main&&(pass===0||pass===3)&&this.state.specializedOrdinary!==false;
+  const ground=p===this.main&&(pass===0||pass===3)&&this.state.specializedGround!==false;
+  const ordinaryReady=new Set();
   const cached=this.visibleScene(vp,pass===1?0:pass);
   // stateUniforms binds its program; ceramic setup was the last binding above.
   const season45=typeof this.state.season==='number'?Math.fround(this.state.season):NaN;const winter45=Number.isFinite(season45)&&season45>2.5;let skipped45Instances=0,skipped45Triangles=0;let calls=0,blending=false,index=0,active=ceramic?this.ceramic:p;try{for(const{b,record,ranges,pageRange208}of cached.drawItems){
@@ -746,7 +846,21 @@ class Engine{
     g.enable(g.BLEND);g.blendFunc(g.SRC_ALPHA,g.ONE_MINUS_SRC_ALPHA);g.depthMask(false);blending=true;
    }
    if(blending){const next=b.uniformMaterial===47?this.membrane:this.glass;if(active!==next){this.stateUniforms(next,vp,eye,pass);this.sampler(next,'uShadowMap',0,this.shadowTarget.tex);this.sampler(next,'uReflectionMap',1,pass===3?this.dummy:this.reflectTarget.tex);this.sampler(next,'uAtlas',2,this.atlas||this.dummy);this.sampler(next,'uMaterials',3,this.materials||this.dummy);this.sampler(next,'uShoreDistance',4,this.shoreTexture);this.sampler(next,'uScan1119',5,this.scan1119);active=next;}}
-   if((foliage||ceramic)&&!blending){const next=ceramic&&b.uniformMaterial===25?this.ceramic:foliage&&b.foliageIsotropic?this.foliage:p;if(active!==next){g.useProgram(next.p);active=next;}}
+   if((foliage||ceramic||ordinary||ground)&&!blending){
+    const next=ceramic&&b.uniformMaterial===25?this.ceramic:foliage&&b.foliageIsotropic?this.foliage:ordinary&&b.ordinaryMaterial===21?this.stone:ordinary&&b.ordinaryMaterial===6?this.mapped:ground&&b.groundMaterial?this.ground:p;
+    if(active!==next){
+     // Set per-view uniforms only once and only when a visible draw needs the
+     // program. State changes do not reorder any opaque or transparent draw.
+     if((next===this.stone||next===this.mapped||next===this.ground)&&!ordinaryReady.has(next)){
+      this.stateUniforms(next,vp,eye,pass);
+      // Assign every sampler its original unit even if its branch is constant
+      // dead: WebGL may retain the uniform, and sampler types cannot alias unit 0.
+      this.sampler(next,'uShadowMap',0,this.shadowTarget.tex);this.sampler(next,'uReflectionMap',1,pass===3?this.dummy:this.reflectTarget.tex);this.sampler(next,'uAtlas',2,this.atlas||this.dummy);this.sampler(next,'uMaterials',3,this.materials||this.dummy);this.sampler(next,'uShoreDistance',4,this.shoreTexture);this.sampler(next,'uScan1119',5,this.scan1119);
+      ordinaryReady.add(next);
+     }else g.useProgram(next.p);
+     active=next;
+    }
+   }
    if(winter45&&b.uniformMaterial===45&&canSkip45(this,p,pass,b,record,ranges,pageRange208,blending)){skipped45Instances+=record.count;skipped45Triangles+=b.vertexCount/3*record.count;continue;}
    g.bindVertexArray(record.vao);
    if(pageRange208){g.drawElementsInstanced(g.TRIANGLES,pageRange208[1],g.UNSIGNED_SHORT,pageRange208[0]*2,1);calls++;}
@@ -810,6 +924,7 @@ class Engine{
  this.ambientSky=M.lerp([.035,.049,.085],[.33,.365,.40],this.day);
  this.ambientGround=M.lerp([.018,.022,.032],[.13,.12,.096],this.day);
  this.sunColor=M.mul(M.lerp([.13,.23,.46],[3.05,2.93,2.70],this.day),state.weather===1?.45:state.weather===2?.72:1);
+ this.daylightGrade=applyDaylightGrade(state,this.day,this.ambientSky,this.ambientGround,this.sunColor);
  this.fogSky=this.skyColor.map(c=>{const y=Math.min(Math.max(c,0)**2.2,.995),a=2.51-2.43*y,b=.03-.59*y;return(-b+Math.sqrt(b*b+.56*y*a))/(2*a*1.10);});
  let proj=M.perspective(camera.fov||.80,this.aspect,M.clamp(Math.hypot(...M.sub(camera.eye,camera.target))*.012,.15,18),Math.max(6500,Math.hypot(...M.sub(camera.eye,camera.target))*2.3));proj[8]=camera.offsetX||0;proj[9]=-(camera.offsetY||0);this.projection=proj;let view=M.lookAt(camera.eye,camera.target,camera.up||[0,1,0]);this.vp=M.multiply(proj,view);let radius=M.clamp(Math.hypot(...M.sub(camera.eye,camera.target))*.73,95,1550),tc=[camera.target[0],0,camera.target[2]];if(!this.shadowCenter||Math.hypot(tc[0]-this.shadowCenter[0],tc[2]-this.shadowCenter[2])>4||Math.abs(radius-(this.shadowRadius||0))>3){this.shadowDirty=true;this.shadowCenter=tc;this.shadowRadius=radius}const L=this.shadowCenter,lightView=M.lookAt(M.add(L,M.mul(this.sun,2300)),L),lightTexel=2*this.shadowRadius/this.shadowSize;
  lightView[12]=Math.round(lightView[12]/lightTexel)*lightTexel;lightView[13]=Math.round(lightView[13]/lightTexel)*lightTexel;
@@ -817,7 +932,7 @@ class Engine{
  this.people?.prepare(this.vp,nextRefVP,this.state);
  if(this.shadowDirty){g.bindFramebuffer(g.FRAMEBUFFER,this.shadowTarget.f);g.viewport(0,0,this.shadowSize,this.shadowSize);g.clear(g.DEPTH_BUFFER_BIT);this.draw(this.shadow,this.lightVP,camera.eye,2);this.shadowDirty=false}
  let cameraRange=Math.hypot(...M.sub(camera.eye,camera.target)),lakeCenter=Y.DATA.toWorld([547,238]),nearLake=Math.hypot(camera.target[0]-lakeCenter[0],camera.target[2]-lakeCenter[1])<330;
- let reflectKey=[...camera.eye,...camera.target,camera.offsetX||0,camera.offsetY||0,this.waterLevel,state.isolate,this.canvas.width,this.canvas.height,state.hour,state.season,state.weather,state.explode].join(",");if(mainVisible.hasWater&&(reflectKey!==this.lastReflectKey||this.frame++%3===0||this.lastReflection<0)){this.lastReflectKey=reflectKey;this.refVP=nextRefVP;let t=this.reflectTarget;g.bindFramebuffer(g.FRAMEBUFFER,t.f);g.viewport(0,0,t.w,t.h);const scissor=this.reflectionScissor(mainVisible,this.refVP);this.reflectionCullRect=scissor;if(scissor){g.enable(g.SCISSOR_TEST);g.scissor(...scissor);}try{g.clear(g.DEPTH_BUFFER_BIT);if(state.skyAfterOpaque===false)this.sky(this.refVP,refEye);this.draw(this.main,this.refVP,refEye,3);}finally{this.reflectionCullRect=null;if(scissor)g.disable(g.SCISSOR_TEST);}
+ let reflectKey=[...camera.eye,...camera.target,camera.offsetX||0,camera.offsetY||0,this.waterLevel,state.isolate,this.canvas.width,this.canvas.height,state.hour,state.season,state.weather,state.explode,this.daylightGrade].join(",");if(mainVisible.hasWater&&(reflectKey!==this.lastReflectKey||this.frame++%3===0||this.lastReflection<0)){this.lastReflectKey=reflectKey;this.refVP=nextRefVP;let t=this.reflectTarget;g.bindFramebuffer(g.FRAMEBUFFER,t.f);g.viewport(0,0,t.w,t.h);const scissor=this.reflectionScissor(mainVisible,this.refVP);this.reflectionCullRect=scissor;this.reflectionFootprintPlanes=scissor&&Y.ReflectionFootprint?Y.ReflectionFootprint.planes(mainVisible,this.vp,this.refVP,this.canvas,t,state):null;if(scissor){g.enable(g.SCISSOR_TEST);g.scissor(...scissor);}try{g.clear(g.DEPTH_BUFFER_BIT);if(state.skyAfterOpaque===false)this.sky(this.refVP,refEye);this.draw(this.main,this.refVP,refEye,3);}finally{this.reflectionCullRect=null;this.reflectionFootprintPlanes=null;if(scissor)g.disable(g.SCISSOR_TEST);}
  // Reflection color is sampled later; its depth renderbuffer is only a pass-local
  // visibility aid and is cleared before every subsequent reflection render.
  g.invalidateFramebuffer(g.FRAMEBUFFER,[g.DEPTH_ATTACHMENT]);this.lastReflection=state.time}
@@ -857,9 +972,9 @@ function indexUpload(engine,m,input){const p=m.page208,g=engine.gl,i=m.pageMembe
    if(p.indexRemaining208===0){g.bindVertexArray(null);p.indexBuffer=g.createBuffer();if(!p.indexBuffer)throw Error('Page208 index buffer allocation failed');for(const x of p.members)x.indexBuffer=p.indexBuffer;g.bindBuffer(g.ELEMENT_ARRAY_BUFFER,p.indexBuffer);g.bufferData(g.ELEMENT_ARRAY_BUFFER,data,g.STATIC_DRAW);g.bindBuffer(g.ELEMENT_ARRAY_BUFFER,null);releaseIndices208(p);}
   }catch(error){p.failed=true;releaseIndices208(p);throw error;}
 }
-P.preparedVertices=function(index,v){if(this.disposed)throw Error('Scene loading was interrupted');const m=this.meshResources[index],p=m.page208;if(!p)return vertices.call(this,index,v);if(p.failed)throw Error('Scene loading was interrupted');const i=m.pageMember208;if(!(v instanceof Float32Array)||v.length!==m.buffer.length||p.vertexSeen[i])invalid208(p,'Invalid page208 vertex publication');const start=v.byteOffset-m.buffer.offset+p.members[0].buffer.offset;if(start<0||start+p.vertexBytes>v.buffer.byteLength)invalid208(p,'Truncated page208 vertices');try{if(!p.vertexBuffer){const g=this.gl;p.vertexBuffer=g.createBuffer();for(const x of p.members)x.vertexBuffer=p.vertexBuffer;g.bindBuffer(g.ARRAY_BUFFER,p.vertexBuffer);g.bufferData(g.ARRAY_BUFFER,new Float32Array(v.buffer,start,p.vertexBytes/4),g.STATIC_DRAW);}if(!m.originalIndexed208)indexUpload(this,m,null);p.vertexSeen[i]=true;}catch(error){p.failed=true;releaseIndices208(p);throw error;}};
+P.preparedVertices=function(index,v){if(this.disposed)throw Error('Scene loading was interrupted');const m=this.meshResources[index],p=m.page208;if(!p)return vertices.call(this,index,v);if(m.waterBounds&&Y.ReflectionFootprint)m.reflectionFootprint=Y.ReflectionFootprint.prepare(v);if(p.failed)throw Error('Scene loading was interrupted');const i=m.pageMember208;if(!(v instanceof Float32Array)||v.length!==m.buffer.length||p.vertexSeen[i])invalid208(p,'Invalid page208 vertex publication');const start=v.byteOffset-m.buffer.offset+p.members[0].buffer.offset;if(start<0||start+p.vertexBytes>v.buffer.byteLength)invalid208(p,'Truncated page208 vertices');try{if(!p.vertexBuffer){const g=this.gl;p.vertexBuffer=g.createBuffer();for(const x of p.members)x.vertexBuffer=p.vertexBuffer;g.bindBuffer(g.ARRAY_BUFFER,p.vertexBuffer);g.bufferData(g.ARRAY_BUFFER,new Float32Array(v.buffer,start,p.vertexBytes/4),g.STATIC_DRAW);}if(!m.originalIndexed208)indexUpload(this,m,null);p.vertexSeen[i]=true;}catch(error){p.failed=true;releaseIndices208(p);throw error;}};
 P.preparedIndices=function(index,v){if(this.disposed)throw Error('Scene loading was interrupted');const m=this.meshResources[index],p=m.page208;if(!p)return indices.call(this,index,v);if(p.failed)throw Error('Scene loading was interrupted');if(!m.originalIndexed208||!(v instanceof Uint16Array)||v.length!==m.vertexCount)invalid208(p,'Invalid page208 index publication');indexUpload(this,m,v);};
 P.finishPrepared=function(...args){for(const p of this.pages208||[])if(p.failed||!p.vertexSeen.every(Boolean)||!p.indexSeen.every(Boolean)||p.indexRemaining208!==0||!p.indexBuffer||p.packedIndices208){releasePages208(this,true);throw Error('Incomplete logical page208 uploads');}this.pageIndexScratch208=null;return finish.apply(this,args);};
 P.dispose=function(...args){releasePages208(this,true);return dispose.apply(this,args);};
-P.mergePage208=function(a,b){const ma=a.b.resource,mb=b.b.resource,p=ma.page208;if(!p||p!==mb.page208||ma===mb||a.ranges||b.ranges||a.record.count!==1||b.record.count!==1||a.b.count!==1||b.b.count!==1||a.b.data[22]!==0||b.b.data[22]!==0||!!a.b.foliageIsotropic!==!!b.b.foliageIsotropic||(a.b.uniformMaterial===25)!==(b.b.uniformMaterial===25))return null;const first=a.pageRange208?a.pageRange208[0]:ma.indexByteOffset208/2,count=a.pageRange208?a.pageRange208[1]:ma.vertexCount,lastOffset=a.pageLastOffset208??a.record.offset;if(first+count!==mb.indexByteOffset208/2||lastOffset+28!==b.record.offset||a.b.data.length!==28||b.b.data.length!==28)return null;const x=new Uint32Array(a.b.data.buffer,a.b.data.byteOffset,28),y=new Uint32Array(b.b.data.buffer,b.b.data.byteOffset,28);for(let i=0;i<28;i++)if(x[i]!==y[i]||!Number.isFinite(a.b.data[i]))return null;return{...a,pageRange208:[first,count+mb.vertexCount],pageLastOffset208:b.record.offset};};
+P.mergePage208=function(a,b){const ma=a.b.resource,mb=b.b.resource,p=ma.page208;if(!p||p!==mb.page208||ma===mb||a.ranges||b.ranges||a.record.count!==1||b.record.count!==1||a.b.count!==1||b.b.count!==1||a.b.data[22]!==0||b.b.data[22]!==0||!!a.b.foliageIsotropic!==!!b.b.foliageIsotropic||!!a.b.groundMaterial!==!!b.b.groundMaterial||(a.b.ordinaryMaterial||0)!==(b.b.ordinaryMaterial||0)||(a.b.uniformMaterial===25)!==(b.b.uniformMaterial===25))return null;const first=a.pageRange208?a.pageRange208[0]:ma.indexByteOffset208/2,count=a.pageRange208?a.pageRange208[1]:ma.vertexCount,lastOffset=a.pageLastOffset208??a.record.offset;if(first+count!==mb.indexByteOffset208/2||lastOffset+28!==b.record.offset||a.b.data.length!==28||b.b.data.length!==28)return null;const x=new Uint32Array(a.b.data.buffer,a.b.data.byteOffset,28),y=new Uint32Array(b.b.data.buffer,b.b.data.byteOffset,28);for(let i=0;i<28;i++)if(x[i]!==y[i]||!Number.isFinite(a.b.data[i]))return null;return{...a,pageRange208:[first,count+mb.vertexCount],pageLastOffset208:b.record.offset};};
 })(YY);

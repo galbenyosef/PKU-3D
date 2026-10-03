@@ -19,7 +19,7 @@ test('actual index dependency chain accepts unique union feature and preserves h
  const count=Y.CAMPUS.features.length;vm.runInContext(fs.readFileSync(candidate,'utf8'),ctx);assert.equal(Y.CAMPUS.features.length,count);
 });
 test('real Builder produces finite grounded pickable mass inside registered roof footprint',()=>{
- const rows=[],e={buckets:new Map(),stats:{instances:0}},b=new Y.Builder({add(k,g,m,c,p,uv){Y.Engine.prototype.add.call(e,k,g,m,c,p,uv);const v=e.buckets.get(k).geometry.v,points=[];for(let i=0;i<v.length;i+=8)points.push(Y.M.apply(m,[...v.slice(i,i+3),1]).slice(0,3));rows.push({pick:p[1],points});}});
+ const rows=[],e={buckets:new Map(),stats:{instances:0},invalidateBucketIndex:Y.Engine.prototype.invalidateBucketIndex},b=new Y.Builder({add(k,g,m,c,p,uv){Y.Engine.prototype.add.call(e,k,g,m,c,p,uv);const v=e.buckets.get(k).geometry.v,points=[];for(let i=0;i<v.length;i+=8)points.push(Y.M.apply(m,[...v.slice(i,i+3),1]).slice(0,3));rows.push({pick:p[1],points});}});
  b.id=17;Y.Architecture30.render(b,f,()=>{throw Error('unexpected generic footprint')});assert.equal(b.id,17);assert.equal(rows.length,3);
  const bb=rows.map(r=>{assert.equal(r.pick,1339);assert(r.points.every(p=>p.every(Number.isFinite)));return [0,1,2].map(a=>[Math.min(...r.points.map(p=>p[a])),Math.max(...r.points.map(p=>p[a]))]);});
  assert(bb[0][1][0]<0);assert(bb[0][1][1]>bb[1][1][0]);assert(bb[1][1][1]>bb[2][1][0]);

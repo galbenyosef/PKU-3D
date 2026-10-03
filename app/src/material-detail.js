@@ -2,6 +2,8 @@
 // description, not a claim about an unmeasured building's construction. Preserve
 // the full-resolution atlas and offline source in materials.js; tile ribs remain
 // geometry, while material 25 supplies only the clay's fine surface texture.
+// Mineral and clay colour variation is centred on the previous mean tint.
+// Roughness values are restrained display fits, not measured building samples.
 // Inject after the renderer's noise, filteredNoise and bump helpers.
 YY.MATERIAL_DETAIL_GLSL=`
 void campusMaterialDetail(float mat,vec2 st,float dist,inout vec3 base,inout vec3 n,inout float rough){
@@ -16,11 +18,11 @@ void campusMaterialDetail(float mat,vec2 st,float dist,inout vec3 base,inout vec
   float fade=1.-smoothstep(.35,1.5,max(fw.x,fw.y));
   float joint=face.x*face.y,variation=mix(.5,hash(floor(b)),fade);
   float patina=filteredNoise(st*.53),grain=filteredNoise(st*19.);
-  vec3 brick=base*(.86+.18*variation-.045*patina);
+  vec3 brick=base*(.9275+.09*(variation-.5)-.025*(patina-.5));
   // Mortar inherits the local masonry colour rather than painting all walls
   // with one green-grey joint colour.
   base=mix(brick,base*.76,(1.-joint)*fade);
-  rough=clamp(.94+(grain-.5)*.05, .90,.98);
+  rough=.91+(grain-.5)*.04;
   float height=joint*.0018*fade+(grain-.5)*.00045;
   vec3 detail=bump(n,height);
   n=normalize(mix(n,detail,1.-smoothstep(75.,95.,dist)));
@@ -33,8 +35,8 @@ void campusMaterialDetail(float mat,vec2 st,float dist,inout vec3 base,inout vec
   // impulse at fract() wrap. Existing physical tile meshes use material 25.
   float lip=1.-smoothstep(.015,.06+fw.y,min(q.y,1.-q.y));
   float variation=mix(.5,hash(floor(t)),fade);
-  base*=.86+.10*variation+(.08*(gutter-.5)-.035*lip)*fade;
-  rough=.90+.045*(variation-.5);
+  base*=.91+.06*(variation-.5)+(.06*(gutter-.5)-.035*lip)*fade;
+  rough=.85+.045*(variation-.5);
   vec3 detail=bump(n,(gutter*.012-lip*.002)*fade);
   n=normalize(mix(n,detail,1.-smoothstep(70.,90.,dist)));
  }
@@ -49,15 +51,15 @@ void campusMaterialDetail(float mat,vec2 st,float dist,inout vec3 base,inout vec
  }
  if(mat==24.){
   float mineral=filteredNoise(st*2.),grain=filteredNoise(st*70.);
-  base*=.94+.035*mineral+.020*grain;
-  rough=.94+.035*(grain-.5);
+  base*=.9675+.020*(mineral-.5)+.014*(grain-.5);
+  rough=.90+.035*(grain-.5);
   vec3 detail=bump(n,filteredNoise(st*25.)*.00065);
   n=normalize(mix(n,detail,1.-smoothstep(35.,45.,dist)));
  }
  if(mat==25.){
   float clay=filteredNoise(st*7.),grain=filteredNoise(st*55.);
-  base*=.91+.045*clay+.025*grain;
-  rough=.89+.05*(clay-.5);
+  base*=.945+.026*(clay-.5)+.018*(grain-.5);
+  rough=.84+.05*(clay-.5);
   vec3 detail=bump(n,filteredNoise(st*23.)*.0008);
   n=normalize(mix(n,detail,1.-smoothstep(45.,55.,dist)));
  }

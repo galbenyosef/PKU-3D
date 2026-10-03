@@ -4,7 +4,7 @@ function capture(source=fs.readFileSync(root+'/src/building111-v46.js','utf8')){
  const ctx=vm.createContext({console});vm.runInContext('var YY={Architecture30:{render(){}}};',ctx);
  for(const n of ['math','geometry','engine'])vm.runInContext(fs.readFileSync(root+'/src/'+n+'.js','utf8'),ctx);
  vm.runInContext(source,ctx);ctx.document={createElement:()=>({getContext:()=>new Proxy({},{get:()=>()=>{}})})};vm.runInContext(fs.readFileSync(root+'/src/models.js','utf8'),ctx);
- const Y=ctx.YY,B=Y.Building111,f=JSON.parse(fs.readFileSync(root+'/data/campus.json')).features.find(f=>f.properties.id===B.id),out=[],engine={buckets:new Map(),stats:{instances:0}};
+ const Y=ctx.YY,B=Y.Building111,f=JSON.parse(fs.readFileSync(root+'/data/campus.json')).features.find(f=>f.properties.id===B.id),out=[],engine={buckets:new Map(),stats:{instances:0},invalidateBucketIndex:Y.Engine.prototype.invalidateBucketIndex};
  engine.add=function(k,g,m,c,p){Y.Engine.prototype.add.call(this,k,g,m,c,p);out.push({k,v:Array.from(this.buckets.get(k).geometry.v),m:Array.from(m),c,p});};
  const b=new Y.Builder(engine),result=B.render(b,f);return{B,result,out,pick:f.properties.pickId};
 }
