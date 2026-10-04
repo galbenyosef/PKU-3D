@@ -27,6 +27,8 @@ function interaction({width=1440,height=1000,observation,displayBounds,isolate=0
  let now=0;
  const helperStart=source.indexOf("/* Time-based orbit transitions."),helperEnd=source.indexOf("/* Campus viewer */",helperStart);assert(helperStart>=0&&helperEnd>helperStart);
  vm.runInContext(source.slice(helperStart,helperEnd),c);
+ const panelLayout=source.split('\n').find(line=>line.startsWith('function panelLayoutOffset('));assert(panelLayout,'actual panel layout function must be present');
+ vm.runInContext(panelLayout,c);c.panelOffset=new c.YY.PanelOffset(c.panelLayoutOffset());
  c.browseCamera=new c.YY.BrowseCamera(c.orbit,{clock:()=>now,immediate:()=>reducedMotion});
  // The public buttons call the actual animated wrapper, which now precedes the pose calculators.
  for(const name of ["focusFeature","architectureView"]){const line=source.split("\n").find(line=>line.startsWith(`function ${name}(`));assert(line);vm.runInContext(line,c);}

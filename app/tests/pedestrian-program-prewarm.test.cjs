@@ -29,10 +29,14 @@ test('cancellation before validation releases stages; recovery uses fresh progra
 test('actual app init requests preparation only for enabled nonisolated people, including recovery',async()=>{
  const src=fs.readFileSync(path.join(appRoot,'src/app-v29.js'),'utf8'),start=src.indexOf('async function init(recover=false){'),end=src.indexOf('\ncanvas.addEventListener',start);assert(start>=0&&end>start);const initSource=src.slice(start,end);
  for(const recover of [false,true])for(const people of [true,false])for(const isolate of [0,169]){
-  const calls=[],created=[],state={people,isolate},nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{dataset:{},classList:{toggle(){}},hidden:false});return nodes.get(id)},canvas={},root=node('root');let disposed=0,warmed=0;
+  const calls=[],created=[],state={people,isolate},nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{dataset:{},classList:{toggle(){},contains(){return false}},hidden:false});return nodes.get(id)},canvas={},root=node('root');let disposed=0,warmed=0;
   class Engine{constructor(c,options){assert.equal(c,canvas);assert.equal(options.deferPrograms,true);created.push(this)}resize(){}compilePrograms(...args){calls.push(args)}dispose(){}}
   const Y={SceneCache46:{warmup(){warmed++;return{dispose(){disposed++}}}},SCENE_PACKAGE46:{},Engine,Pedestrians46:{create(e,c,s){assert.equal(e,created[0]);assert.equal(s,state);return{}}}};
-  const noop=()=>{},ctx=vm.createContext({Y,state,canvas,root,$:node,renderCatalog:noop,routeOptions:noop,credit:noop,localStorage:{getItem(){return null}},innerWidth:1440,innerHeight:1000,syncDisclosure:noop,fitRegion:noop,renderGeneration:0,engine:null,loadRenderResources:async()=>({}),campus:null,ready:false,lastVisualKey:'',last:1,lastDraw:1,D:{features:[]},window:{},orbit:{},planView:{},mode:'3d',select:noop,changeMode:noop,developmentReferences:false,frameRequest:1,cancelAnimationFrame:noop,requestAnimationFrame(){return 2},tick:noop,console:{error(e){throw e}}});
+  const noop=()=>{},ctx=vm.createContext({YY:{},performance,Y,state,canvas,root,$:node,renderCatalog:noop,routeOptions:noop,credit:noop,localStorage:{getItem(){return null}},innerWidth:1440,innerHeight:1000,syncDisclosure:noop,fitRegion:noop,renderGeneration:0,engine:null,loadRenderResources:async()=>({}),campus:null,ready:false,lastVisualKey:'',last:1,lastDraw:1,D:{features:[]},window:{},orbit:{},planView:{},mode:'3d',select:noop,changeMode:noop,developmentReferences:false,frameRequest:1,cancelAnimationFrame:noop,requestAnimationFrame(){return 2},tick:noop,console:{error(e){throw e}}});
+  const helperStart=src.indexOf('/* Time-based orbit transitions.'),helperEnd=src.indexOf('/* Campus viewer */',helperStart);assert(helperStart>=0&&helperEnd>helperStart);
+  vm.runInContext(src.slice(helperStart,helperEnd),ctx);
+  for(const name of ['panelLayoutOffset','finishPanelOffset']){const line=src.split('\n').find(s=>s.startsWith('function '+name+'('));assert(line);vm.runInContext(line,ctx);}
+  ctx.panelOffset=new ctx.YY.PanelOffset(ctx.panelLayoutOffset());
   const init=vm.runInContext('('+initSource+')',ctx);await init(recover);assert.equal(calls.length,1);assert.equal(calls[0][0],true);assert.equal(calls[0][1],people&&!isolate);assert.equal(warmed,1);assert.equal(disposed,1);assert.equal(ctx.ready,true);assert.equal(root.dataset.ready,'true');
  }
 });

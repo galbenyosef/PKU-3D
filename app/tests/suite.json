@@ -62,6 +62,7 @@
     "research2-atrium338.test.cjs",
     "first-person-ground-entry.test.cjs",
     "first-person.test.cjs",
+    "panel-layout-transition.test.cjs",
     "studentcenter195-side-stairs.test.cjs",
     "scene-codec.test.cjs",
     "initial-visibility.test.cjs",

@@ -74,9 +74,12 @@ test('initial program batch submits every link before synchronizing shader statu
 });
 
 test('renderer construction failure releases decoders started before it',async()=>{
- const text=fs.readFileSync(path.join(root,'src/app-v29.js'),'utf8').match(/async function init\(recover=false\)\{[\s\S]*?\n\}/)[0],events=[],rootNode={dataset:{}};
+ const appSource=fs.readFileSync(path.join(root,'src/app-v29.js'),'utf8'),text=appSource.match(/async function init\(recover=false\)\{[\s\S]*?\n\}/)[0],events=[],rootNode={dataset:{}};
  const Y={SCENE_PACKAGE46:{},SceneCache46:{warmup(){events.push('warmup');return{dispose(){events.push('dispose');}};}},Engine:class{constructor(){events.push('engine');throw Error('GPU initialization failed');}}};
- const run=new Function('Y','root','events',`let renderGeneration=0,ready=false;const canvas={},console={error(){}},$=()=>({}),changeMode=mode=>events.push(mode);${text};return init(true);`);
+ const helperStart=appSource.indexOf('/* Time-based orbit transitions.'),helperEnd=appSource.indexOf('/* Campus viewer */',helperStart);assert(helperStart>=0&&helperEnd>helperStart);
+ const panelFunctions=['panelLayoutOffset','finishPanelOffset'].map(name=>{const line=appSource.split('\n').find(s=>s.startsWith('function '+name+'('));assert(line);return line;}).join('\n');
+ rootNode.classList={contains:()=>true};
+ const run=new Function('Y','root','events',`let renderGeneration=0,ready=false;const YY={},innerWidth=1440,canvas={},console={error(){}},$=()=>({hidden:true}),changeMode=mode=>events.push(mode);${appSource.slice(helperStart,helperEnd)};${panelFunctions};const panelOffset=new YY.PanelOffset(panelLayoutOffset());${text};return init(true);`);
  await run(Y,rootNode,events);assert.deepEqual(events,['warmup','engine','plan','dispose']);assert.equal(rootNode.dataset.ready,'plan-only');
 });
 

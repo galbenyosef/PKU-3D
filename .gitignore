@@ -157,6 +157,7 @@ node_modules/
 !/app/tests/assets-roundtrip.test.py
 
 !/app/tests/first-person.test.cjs
+!/app/tests/panel-layout-transition.test.cjs
 
 !/app/src/studentcenter195-side-stairs.js
 !/app/tests/studentcenter195-side-stairs.test.cjs

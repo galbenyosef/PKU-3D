@@ -50,14 +50,19 @@ function navigationClock({gpuBusy=false}={}){
   gl:{TIMEOUT_EXPIRED:1,clientWaitSync:f=>f.ready?2:1,deleteSync(){}},
   render(){renders++;this.frameFences.push({ready:!gpuBusy});assert(this.frameFences.length<=2,'GPU queue must remain bounded');}};
  const context=vm.createContext({
+  YY:{},performance,innerWidth:800,innerHeight:600,browseMotion:{matches:false},lastPanelRenderedX:undefined,lastPanelRenderedY:undefined,
   ready:true,mode:'3d',animation:true,last:0,lastDraw:0,lastInput:null,labelTick:0,frameRequest:0,lastVisualKey:'',labelsPending:false,
   state:{firstPerson:true,time:0,routeEdges:new Set()},keys:new Set(),walker:walk,engine,noWalkRoute:new Set(),
   route:null,routePlaying:false,routeDistance:0,walkDetached:false,
   document:{hidden:false,querySelectorAll:()=>[],addEventListener:(name,callback)=>events.set(name,callback)},
-  window:{addEventListener:(name,callback)=>events.set(name,callback)},root:{querySelector:()=>null},canvas:{width:800,height:600},
+  window:{addEventListener:(name,callback)=>events.set(name,callback)},root:{querySelector:()=>null,classList:{contains:()=>true}},canvas:{width:800,height:600},
   requestAnimationFrame:()=>1,camera:()=>walk.camera(),$:()=>({hidden:true}),browseCamera:{step(){},cancel(){}},
   syncWalkUI(){},syncWalkPosition(){},drawLabels(){},moveAlong(){},say(){}
  });
+ const helperStart=source.indexOf('/* Time-based orbit transitions.'),helperEnd=source.indexOf('/* Campus viewer */',helperStart);assert(helperStart>=0&&helperEnd>helperStart);
+ vm.runInContext(source.slice(helperStart,helperEnd),context);
+ vm.runInContext(line('function panelLayoutOffset(')+'\n'+line('function finishPanelOffset('),context);
+ context.panelOffset=new context.YY.PanelOffset(context.panelLayoutOffset());
  const gate=engineSource.match(/ frameAvailable\(\)\{[\s\S]*?\n \}/);assert(gate,'Missing GPU frame gate');
  engine.frameAvailable=vm.runInContext('({'+gate[0]+'}).frameAvailable',context);
  const start=source.indexOf('function tick(now){'),end=source.indexOf('\nasync function loadRenderResources',start);assert(start>=0&&end>start);

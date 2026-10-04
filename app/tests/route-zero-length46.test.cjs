@@ -6,10 +6,12 @@ function setup(){
  // Actual Network.build computes intersections, node identities and shortest paths.
  const network=Y.Network.build([{points:[[0,0],[10,0],[20,0]],w:3},{points:[[10,-10],[10,10]],w:3},{points:[[100,100],[110,100]],w:3}]);
  const feature=(id,centre)=>({properties:{pickId:id,centre}}),features=[feature(1,[.02,.01]),feature(2,[.04,-.03]),feature(3,[19.9,0]),feature(4,[100,100])],by=new Map(features.map(f=>[f.properties.pickId,f]));
- const elements={'route-from':{value:'1'},'route-to':{value:'3'},'route-status':{},'route-progress':{value:0,disabled:true},'route-play':{disabled:true}},orbit={target:[0,0,0],distance:1000,yaw:0,elevation:1};
- Object.assign(ctx,{Y,by,campus:{network},point:f=>f.properties.centre,$:id=>elements[id],state:{routeEdges:new Set()},route:null,routePlaying:false,routeDistance:0,mode:'3d',orbit,drawPlan:()=>{},say:()=>{}});
+ const elements={detail:{hidden:true},'route-from':{value:'1'},'route-to':{value:'3'},'route-status':{},'route-progress':{value:0,disabled:true},'route-play':{disabled:true}},orbit={target:[0,0,0],distance:1000,yaw:0,elevation:1};
+ Object.assign(ctx,{performance,innerWidth:1440,root:{classList:{contains:()=>true}},Y,by,campus:{network},point:f=>f.properties.centre,$:id=>elements[id],state:{routeEdges:new Set()},route:null,routePlaying:false,routeDistance:0,mode:'3d',orbit,drawPlan:()=>{},say:()=>{}});
  const helperStart=appSource.indexOf('/* Time-based orbit transitions.'),helperEnd=appSource.indexOf('/* Campus viewer */',helperStart);assert(helperStart>=0&&helperEnd>helperStart);
  vm.runInContext(appSource.slice(helperStart,helperEnd),ctx,{filename:'app-v29.js:BrowseCamera'});
+ vm.runInContext(appFunction('panelLayoutOffset')+'\n'+appFunction('finishPanelOffset'),ctx);
+ ctx.panelOffset=new Y.PanelOffset(ctx.panelLayoutOffset());
  ctx.browseCamera=new Y.BrowseCamera(orbit,{clock:()=>0});
  vm.runInContext(appFunction('planRoute')+'\n'+appFunction('moveAlong'),ctx,{filename:'app-v29.js:selected-functions'});
  const plan=id=>{elements['route-to'].value=String(id);vm.runInContext('planRoute()',ctx)};
