@@ -6,7 +6,7 @@
   const sorted=points.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]),cross=(a,b,c)=>(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]),lower=[],upper=[];
   for(const p of sorted){while(lower.length>=2&&cross(lower[lower.length-2],lower[lower.length-1],p)<=0)lower.pop();lower.push(p);}
   for(let i=sorted.length-1;i>=0;i--){const p=sorted[i];while(upper.length>=2&&cross(upper[upper.length-2],upper[upper.length-1],p)<=0)upper.pop();upper.push(p);}
-  const result=lower.slice(0,-1).concat(upper.slice(0,-1));return result.length>=3?result:null;
+  lower.pop();upper.pop();for(const p of upper)lower.push(p);return lower.length>=3?lower:null;
  }
  function prepare(vertices){
   if(!vertices||vertices.length%8||vertices.length<24)return null;
@@ -14,7 +14,11 @@
   for(let i=0;i<vertices.length;i+=8){if(vertices[i+1]!==y||!Number.isFinite(vertices[i])||!Number.isFinite(vertices[i+2]))return null;points.push([vertices[i],vertices[i+2]]);}
   const polygon=hull(points);return polygon?{polygon,y}:null;
  }
- function expand(polygon,dx,dy){return hull(polygon.flatMap(p=>[-1,1].flatMap(x=>[-1,1].map(y=>[p[0]+x*dx,p[1]+y*dy]))));}
+ function expand(polygon,dx,dy){
+  const points=[];
+  for(let i=0;i<polygon.length;i++)if(i in polygon){const p=polygon[i];for(let x=-1;x<=1;x+=2)for(let y=-1;y<=1;y+=2)points.push([p[0]+x*dx,p[1]+y*dy]);}
+  return hull(points);
+ }
  function clipScreen(polygon,width,height){
   for(const [axis,sign,limit]of[[0,1,2/width],[0,-1,1+2/width],[1,1,2/height],[1,-1,1+2/height]]){
    const next=[];let prev=polygon[polygon.length-1];if(!prev)return[];
@@ -40,10 +44,10 @@
   const[a,b,c,d,e,f,g,h,i]=m,A=e*i-f*h,B=c*h-b*i,C=b*f-c*e,D=f*g-d*i,E=a*i-c*g,F=c*d-a*f,G=d*h-e*g,H=b*g-a*h,I=a*e-b*d;
   const det=a*A+b*D+c*G,scale=Math.max(...m.map(Math.abs));
   if(!Number.isFinite(det)||Math.abs(det)<=1e-12*Math.max(1,scale**3))return null;
-  const result=[A,B,C,D,E,F,G,H,I].map(v=>v/det);return result.every(Number.isFinite)?result:null;
+  const result=[A/det,B/det,C/det,D/det,E/det,F/det,G/det,H/det,I/det];return result.every(Number.isFinite)?result:null;
  }
  const apply3=(m,p)=>[m[0]*p[0]+m[1]*p[1]+m[2]*p[2],m[3]*p[0]+m[4]*p[1]+m[5]*p[2],m[6]*p[0]+m[7]*p[1]+m[8]*p[2]];
- const apply4=(m,p)=>[0,1,3].map(k=>m[k]*p[0]+m[k+4]*p[1]+m[k+8]*p[2]+m[k+12]);
+ const apply4=(m,p)=>[m[0]*p[0]+m[4]*p[1]+m[8]*p[2]+m[12],m[1]*p[0]+m[5]*p[1]+m[9]*p[2]+m[13],m[3]*p[0]+m[7]*p[1]+m[11]*p[2]+m[15]];
  function planes(visible,mainVP,refVP,canvas,target,state,worldCache){
   if(state.reflectionFootprint===false||!mainVP||!refVP||!Array.from(mainVP).every(Number.isFinite)||!Array.from(refVP).every(Number.isFinite))return null;
   const width=canvas.width,height=canvas.height,w=target.w,h=target.h,selected=state.selected??0,explode=state.explode??0;
@@ -94,18 +98,23 @@
   const raw=hull(reflected),clamped=clampedHull(raw);if(!clamped)return null;
   // Clamp is 1-Lipschitz. The original .003 ripple bound also covers the calm
   // pool (.002592). Three texels retain bilinear support and the crop guard.
-  const numeric=32*EPS*Math.max(1,...reflected.flat().map(Math.abs)),padX=.003+3/w+numeric,padY=.003+3/h+numeric;
-  const xs=clamped.map(p=>p[0]),ys=clamped.map(p=>p[1]),sx=Math.max(...xs)-Math.min(...xs),sy=Math.max(...ys)-Math.min(...ys);
+  let maxReflected=1;for(const p of reflected)for(let k=0;k<p.length;k++)maxReflected=Math.max(maxReflected,Math.abs(p[k]));
+  const numeric=32*EPS*maxReflected,padX=.003+3/w+numeric,padY=.003+3/h+numeric;
+  let maxX=-Infinity,minX=Infinity,maxY=-Infinity,minY=Infinity;
+  for(const p of clamped){maxX=Math.max(maxX,p[0]);minX=Math.min(minX,p[0]);maxY=Math.max(maxY,p[1]);minY=Math.min(minY,p[1]);}
+  const sx=maxX-minX,sy=maxY-minY;
   if(!(sx>1e-10&&sy>1e-10))return null;
   const result=[],sides=8;
   // Support halfspaces circumscribe the exact dilated hull. A bounded number
   // reduces CPU culling work; dropping hull edges can only retain extra draws.
   for(let i=0;i<sides;i++){
    const angle=2*Math.PI*i/sides,nx=Math.cos(angle)/sx,ny=Math.sin(angle)/sy;
-   const A=-nx,B=-ny,C=Math.max(...clamped.map(p=>nx*p[0]+ny*p[1]))+Math.abs(nx)*padX+Math.abs(ny)*padY;
-   const p=[0,4,8,12].map(k=>A*.5*refVP[k]+B*.5*refVP[k+1]+(C+(A+B)*.5)*refVP[k+3]),length=Math.hypot(...p.slice(0,3));
+   const A=-nx,B=-ny;let support=-Infinity;for(const p of clamped)support=Math.max(support,nx*p[0]+ny*p[1]);
+   const C=support+Math.abs(nx)*padX+Math.abs(ny)*padY;
+   const p=[];for(let k=0;k<16;k+=4)p.push(A*.5*refVP[k]+B*.5*refVP[k+1]+(C+(A+B)*.5)*refVP[k+3]);
+   const length=Math.hypot(p[0],p[1],p[2]);
    if(!(length>1e-12)||!p.every(Number.isFinite))return null;
-   result.push(p.map(v=>v/length));
+   for(let k=0;k<p.length;k++)p[k]=p[k]/length;result.push(p);
   }
   return result;
  }
