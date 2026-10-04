@@ -6,7 +6,7 @@ function fixture(width=1440){
   state:{firstPerson:false,time:0,routeEdges:new Set()},orbit:{target:[20,5,9.5],distance:500,yaw:.4,elevation:.31},
   root:{classList:{contains:()=>!catalog}},document:{hidden:false},$:id=>({hidden:id==='detail'?!detail:true}),canvas:{width,height:1000},
   ready:true,mode:'3d',last:0,lastInput:null,lastDraw:0,frameRequest:0,animation:false,routePlaying:false,route:null,routeDistance:0,
-  labelTick:0,labelsPending:false,lastVisualKey:'',lastPanelRenderedX:undefined,lastPanelRenderedY:undefined,browseMotion:{matches:false},
+  labelTick:0,labelsPending:false,lastVisualKey:'',lastLabelCameraKey:'',browseMotion:{matches:false},
   requestAnimationFrame:()=>1,drawLabels(){labels.push({...rendered.at(-1)});}};
  c.Y=c.YY;c.engine={software:false,shadowDirty:false,frameAvailable:()=>available,render:view=>rendered.push({...view})};vm.createContext(c);
  const helpers=source.indexOf('/* Time-based orbit transitions.'),viewer=source.indexOf('/* Campus viewer */',helpers);

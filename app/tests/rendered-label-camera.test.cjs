@@ -1,0 +1,55 @@
+// Real camera/tick/label functions with a simulated GPU gate and the production math/project functions.
+const test=require('node:test'),path=require('node:path'),fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'../..');
+const source=fs.readFileSync(path.join(root,'app/src/app-v29.js'),'utf8');
+const campus=JSON.parse(fs.readFileSync(root+'/app/data/campus.json')),M=require(root+'/app/src/math.js'),engineSource=fs.readFileSync(root+'/app/src/engine.js','utf8');
+const line=(s,n)=>{const q=s.split('\n').find(l=>l.startsWith('function '+n+'('));assert(q,n);return q};
+function fixture(){let available=true,now=0;const elements=new Map(),data=structuredClone(campus),f=data.features.find(f=>f.properties.pickId===195).properties;
+ const el=id=>{if(!elements.has(id))elements.set(id,{hidden:true,style:{},children:[],append(n){this.children.push(n)},getBoundingClientRect:()=>({left:1120,right:1440,top:540,bottom:930})});return elements.get(id)};
+ const c={YY:{},M,Math,Number,Array,Map,Set,D:data,performance:{now:()=>now},innerWidth:1440,innerHeight:1000,canvas:{width:1440,height:1000,clientWidth:1440,clientHeight:1000},state:{firstPerson:false,labels:true,isolate:0,selected:195,routeEdges:new Set(),time:0},selected:195,orbit:{target:[f.centre[0],f.height*.42,f.centre[1]],distance:400,yaw:.4,elevation:.45},planView:{w:500},mode:'3d',root:{classList:{contains:()=>true},querySelector:()=>null},$:el,document:{hidden:false,createElement:()=>({hidden:false,style:{},setAttribute(){}})},ready:true,last:0,lastDraw:0,labelTick:0,animation:false,routePlaying:false,route:null,routeDistance:0,browseMotion:{matches:false},keys:new Set(),requestAnimationFrame:()=>1,select(){},pauseTravel(){},syncWalkUI(){},syncWalkPosition(){},drawPlan(){},labelDraws:0,renders:[]};
+ c.Y=c.YY;c.Y.Dorm45Basement338={hide(){c.labelDraws++},draw3D(){}};
+ vm.createContext(c);vm.runInContext(source.slice(source.indexOf('/* Time-based orbit transitions.'),source.indexOf('/* Campus viewer */')),c);
+ vm.runInContext(line(source,'panelLayoutOffset'),c);c.panelOffset=new c.Y.PanelOffset(c.panelLayoutOffset());vm.runInContext(line(source,'finishPanelOffset'),c);vm.runInContext(line(source,'camera'),c);
+ c.browseCamera=new c.Y.BrowseCamera(c.orbit,{clock:()=>now,immediate:()=>c.browseMotion.matches});
+ vm.runInContext(source.split('\n').find(l=>l.startsWith('const featured=')),c);vm.runInContext(source.split('\n').find(l=>l.startsWith('const selectable=')),c);
+ vm.runInContext(source.slice(source.indexOf('function labelCandidates('),source.indexOf('function zoom(')),c);
+ const projectLine=engineSource.split('\n').find(l=>l.startsWith(' project(p){'));assert(projectLine);vm.runInContext('function '+projectLine.trim(),c);
+ c.engine={software:false,shadowDirty:false,canvas:c.canvas,frameAvailable:()=>available,render(view){this.camera=JSON.parse(JSON.stringify(view));const d=Math.hypot(...M.sub(view.eye,view.target)),p=M.perspective(view.fov||.8,c.canvas.width/c.canvas.height,M.clamp(d*.012,.15,18),Math.max(6500,d*2.3));p[8]=view.offsetX||0;p[9]=-(view.offsetY||0);this.vp=M.multiply(p,M.lookAt(view.eye,view.target,view.up||[0,1,0]));c.renders.push(JSON.parse(JSON.stringify(view)))}};c.engine.project=c.project.bind(c.engine);
+ vm.runInContext(source.slice(source.indexOf('const noWalkRoute=new Set();'),source.indexOf('\nasync function loadRenderResources')),c);
+ return{c,el,tick(t){now=t;c.tick(t)},available(on){available=on},nodes:()=>vm.runInContext('labelNodes',c),assertAligned(){let count=0;for(const[id,n]of vm.runInContext('labelNodes',c)){if(n.hidden)continue;const p=data.features.find(f=>f.properties.pickId===id).properties,q=c.engine.project([p.centre[0],p.height+4,p.centre[1]]),error=Math.hypot(parseFloat(n.style.left)-q.x,parseFloat(n.style.top)-q.y);assert(error<1,'label drift '+p.label+' '+error);count++}return count}};
+}
+
+test('accepted direct-camera movement synchronizes actual DOM labels inside the former 170ms gap',()=>{const h=fixture();h.tick(200);assert(h.assertAligned()>0);const n=h.c.labelDraws;h.c.orbit.target[0]+=12;h.tick(216);assert(h.assertAligned()>0);assert.equal(h.c.labelDraws,n+1);h.c.orbit.yaw+=.08;h.tick(232);h.assertAligned();});
+test('queue-blocked input never advances label positions or the rendered tracker',()=>{const h=fixture();h.tick(200);const before=JSON.stringify([...h.nodes()].map(([id,n])=>[id,n.hidden,n.style.left,n.style.top])),n=h.c.labelDraws,r=h.c.renders.length;h.available(false);h.c.orbit.target[0]+=12;h.tick(216);assert.equal(h.c.labelDraws,n);assert.equal(h.c.renders.length,r);assert.equal(JSON.stringify([...h.nodes()].map(([id,n])=>[id,n.hidden,n.style.left,n.style.top])),before);h.assertAligned();h.available(true);h.tick(232);assert.equal(h.c.labelDraws,n+1);h.assertAligned();});
+test('actual BrowseCamera goal stays aligned through every rendered frame and the exact settling frame',()=>{const h=fixture();h.tick(200);h.c.browseCamera.focus(()=>{h.c.orbit.target=[78,4,486.48];h.c.orbit.distance=32.095656756331465;h.c.orbit.yaw=1.6269991174;h.c.orbit.elevation=.2});let t=200,n=h.c.labelDraws,r=h.c.renders.length;for(let i=0;h.c.browseCamera.goal&&i<240;i++){t+=16;h.tick(t);if(h.c.renders.length>r){assert.equal(h.c.labelDraws,n+1);h.assertAligned();n=h.c.labelDraws;r=h.c.renders.length}}assert.equal(h.c.browseCamera.goal,null);assert.equal(h.c.orbit.distance,32.095656756331465);const settledCount=h.c.labelDraws;h.tick(t+16);h.tick(t+200);assert.equal(h.c.labelDraws,settledCount);assert.equal(h.c.renders.length,r);});
+test('ordinary animated stationary frames retain 170ms cadence and deferred idle labels flush once',()=>{const h=fixture();h.c.animation=true;h.tick(200);const n=h.c.labelDraws;for(const t of[216,250,300,360])h.tick(t);assert.equal(h.c.labelDraws,n);h.tick(380);assert.equal(h.c.labelDraws,n+1);h.tick(400);h.c.animation=false;h.tick(560);assert.equal(h.c.labelDraws,n+2);const r=h.c.renders.length;h.tick(800);assert.equal(h.c.labelDraws,n+2);assert.equal(h.c.renders.length,r);});
+test('reduced-motion panel projection and direct panel finish still refresh after accepted render',()=>{const h=fixture();h.tick(200);h.c.browseMotion.matches=true;h.el('detail').hidden=false;h.tick(216);assert.equal(h.c.labelDraws,2);h.assertAligned();h.el('detail').hidden=true;h.c.finishPanelOffset();h.available(false);h.tick(232);assert.equal(h.c.labelDraws,2);h.available(true);h.tick(248);assert.equal(h.c.labelDraws,3);h.assertAligned();});
+test('first-person pose fov and up changes sync only after a rendered frame, even with unchanged visual state',()=>{const h=fixture();h.tick(200);const view=JSON.parse(JSON.stringify(h.c.camera()));h.c.state.firstPerson=true;h.c.walker={camera:()=>view};h.tick(216);const n=h.c.labelDraws,r=h.c.renders.length;view.fov=.9;h.tick(232);assert.equal(h.c.renders.length,r+1);assert.equal(h.c.labelDraws,n+1);h.assertAligned();view.up=[.03,1,0];h.tick(248);assert.equal(h.c.labelDraws,n+2);h.assertAligned();view.eye[0]+=4;h.available(false);h.tick(264);assert.equal(h.c.labelDraws,n+2);h.available(true);h.tick(280);assert.equal(h.c.labelDraws,n+3);h.assertAligned();});
+test('resize and hidden/lifecycle pose changes refresh on first accepted render',()=>{const h=fixture();h.tick(200);Object.assign(h.c.canvas,{width:1300,height:950,clientWidth:1300,clientHeight:950});h.c.innerWidth=1300;h.c.innerHeight=950;h.tick(216);assert.equal(h.c.labelDraws,2);h.assertAligned();h.c.document.hidden=true;h.c.orbit.target[2]+=10;h.tick(232);assert.equal(h.c.labelDraws,2);h.c.document.hidden=false;h.c.ready=false;h.tick(248);assert.equal(h.c.labelDraws,2);h.c.ready=true;h.tick(264);assert.equal(h.c.labelDraws,3);h.assertAligned();});
+test('label eligibility and priority react to live names, selection and precinct thresholds',()=>{
+ const h=fixture(),list=vm.runInContext('selectable',h.c),ids=()=>Array.from(h.c.labelCandidates(),f=>f.properties.pickId);
+ const precinct=list.find(f=>f.properties.precinct32&&(f.properties.name||f.properties.displayName));assert(precinct);
+ for(const mode of ['3d','plan'])for(const distance of [649,650,651]){h.c.mode=mode;h.c.selected=195;h.c.orbit.distance=distance;h.c.planView.w=distance;assert.equal(ids().includes(precinct.properties.pickId),distance>650);h.c.selected=precinct.properties.pickId;assert.equal(ids()[0],precinct.properties.pickId);}
+ h.c.mode='3d';h.c.orbit.distance=400;h.c.selected=195;assert.equal(ids()[0],195);const lake=list.find(f=>f.properties.name==='未名湖');assert.equal(ids()[1],lake.properties.pickId);
+ const p=list.find(f=>f.properties.pickId===195).properties;p.name='';p.displayName='';assert(!ids().includes(195));p.displayName='changed live display';assert.equal(ids()[0],195);
+ const featured=vm.runInContext('featured',h.c),ordinary=list.filter(f=>(f.properties.name||f.properties.displayName)&&!f.properties.precinct32&&f.properties.pickId!==195&&f.properties.name!=='未名湖'&&!featured.includes(f.properties.id));
+ const regularIds=ordinary.map(f=>f.properties.pickId);assert.deepEqual(ids().filter(id=>regularIds.includes(id)),regularIds);
+});
+
+
+test('context loss cancels navigation; actual recovery init renders fresh labels only after the queue accepts',async()=>{
+ const h=fixture();h.tick(200);const events=new Map(),old=h.c.engine;let disposed=0,next;
+ h.c.root.dataset={ready:'true'};h.c.window={};h.c.changeMode=()=>{};h.c.fitRegion=()=>{};h.c.stopWalkInput=()=>{};h.c.cancelAnimationFrame=()=>{};
+ h.c.canvas.addEventListener=(name,handler)=>events.set(name,handler);old.dispose=()=>disposed++;
+ h.c.Y.Engine=function(){next={...old,resize(){},compilePrograms(){},dispose(){}};next.project=h.c.project.bind(next);return next;};
+ h.c.Y.Pedestrians46={create:()=>undefined};h.c.loadRenderResources=async()=>({network:{}});
+ const start=source.indexOf('async function init(recover=false)'),end=source.indexOf('// Keep disclosure buttons accurate',start);assert(start>=0&&end>start);
+ vm.runInContext(source.slice(start,end),h.c);
+ h.c.browseCamera.focus(()=>{h.c.orbit.target[0]+=30});assert(h.c.browseCamera.goal);
+ let prevented=false;events.get('webglcontextlost')({preventDefault(){prevented=true;}});
+ assert(prevented);assert.equal(disposed,1);assert.equal(h.c.ready,false);assert.equal(h.c.browseCamera.goal,null);assert.equal(h.c.root.dataset.ready,'recovering');
+ h.c.orbit.target[0]+=8;const count=h.c.labelDraws;h.tick(216);assert.equal(h.c.labelDraws,count);
+ await events.get('webglcontextrestored')();assert.equal(h.c.ready,true);assert.equal(h.c.root.dataset.ready,'true');assert.equal(h.c.window.Yanyuan.engine,next);
+ const renders=h.c.renders.length;h.available(false);h.tick(232);assert.equal(h.c.renders.length,renders);assert.equal(h.c.labelDraws,count);
+ h.available(true);h.tick(248);assert.equal(h.c.renders.length,renders+1);assert.equal(h.c.labelDraws,count+1);assert(h.assertAligned()>0);
+});

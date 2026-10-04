@@ -95,7 +95,11 @@ function unshuffle(buffer,width,little=new Uint8Array(new Uint32Array([1]).buffe
   const digest=await crypto.subtle.digest('SHA-256',buffer),actual=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');
   if(actual!==sha)throw Error('Scene chunk checksum mismatch');
  }
- async function inflate(bytes){return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();}
+ async function inflate(bytes){
+  const view=bytes instanceof Uint8Array?bytes:new Uint8Array(bytes);
+  const input=new ReadableStream({start(controller){controller.enqueue(view);controller.close();}});
+  return new Response(input.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+ }
  function modernCapable(m){return !modernDisabled&&!m.encoded&&/^https?:/.test(m.url)&&typeof WebAssembly==='object'&&!!self.crypto?.subtle&&typeof DecompressionStream==='function';}
  function modernAvailable(m){return modernCapable(m)&&m.alternative?.codec===modernCodec;}
  function nextURL(m,modern){return modern&&m.prefetchAlternative?m.prefetchAlternative.url:m.prefetchURL;}

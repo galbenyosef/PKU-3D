@@ -20,7 +20,7 @@ test('the worker hashes restored original bytes and transfers them only after ve
   let release,hashStarted,hashInput,reply,transferCount=0;
   const gatedHash=new Promise(resolve=>{release=resolve;}),started=new Promise(resolve=>{hashStarted=resolve;});
   const crypto={subtle:{digest(algorithm,buffer){assert.equal(algorithm,'SHA-256');hashInput=new Uint8Array(buffer).slice();hashStarted();return gatedHash;}}};
-  const c=vm.createContext({Uint8Array,Uint32Array,Blob,Response,DecompressionStream,atob,crypto,self:{crypto,postMessage(data,transfers){transferCount=transfers?.length||0;reply=structuredClone(data,{transfer:transfers||[]});}}});
+  const c=vm.createContext({Uint8Array,Uint32Array,Blob,Response,DecompressionStream,ReadableStream,atob,crypto,self:{crypto,postMessage(data,transfers){transferCount=transfers?.length||0;reply=structuredClone(data,{transfer:transfers||[]});}}});
   vm.runInContext(module.YY.workerSource,c);
   const pending=c.self.onmessage({data:{index:7,encoded:packed.toString('base64'),rawBytes:raw.length,shuffle:4,sha256:'00'.repeat(32)}});
   await Promise.race([started,pending.then(()=>{throw Error('Worker finished before reaching raw SHA verification');})]);
@@ -40,7 +40,7 @@ test('network stream and offline chunk decode the same bytes and reject damaged 
  async function run(options={}){
   let reply,wholeBodyReads=0,fetches=0;
   const data=options.corrupt?packed.subarray(0,packed.length-8):packed;
-  const c=vm.createContext({Uint8Array,Uint32Array,Blob,Response,DecompressionStream,atob,crypto:webcrypto,self:{crypto:webcrypto,postMessage:r=>{reply=r;}},fetch:async()=>{
+  const c=vm.createContext({Uint8Array,Uint32Array,Blob,Response,DecompressionStream,ReadableStream,atob,crypto:webcrypto,self:{crypto:webcrypto,postMessage:r=>{reply=r;}},fetch:async()=>{
    fetches++;const response=new Response(data,{status:options.status||200});
    return {ok:response.ok,status:response.status,get body(){throw Error('Compressed response must be consumed once before decompression');},arrayBuffer(){wholeBodyReads++;return response.arrayBuffer();}};
   }});
@@ -64,7 +64,7 @@ test('worker visibility compilation preserves every metadata field and transfers
   for(let k=0;k<count;k++){const i=k*28,j=k*5;data[i]=1+k%3;data[i+5]=2;data[i+10]=.5;data[i+15]=1;data[i+20]=[8,38,45,6][k%4];data[i+21]=k%9===0?950002:55;data[i+23]=k%5-2;spatial.set([k*1.3,2-k%7,-k,1+k%4,k%2?.02:2],j);}
   const expected={data,spatial,detailWidth};V.compile(expected);delete expected.data;delete expected.spatial;delete expected.detailWidth;
   const bytes=new Uint8Array(raw),packed=gzipSync(new Uint8Array(arrange(bytes,32))),sha256=createHash('sha256').update(bytes).digest('hex');let reply,transferCount;
-  const c=vm.createContext({Uint8Array,Uint32Array,Float32Array,Float64Array,ArrayBuffer,Blob,Response,DecompressionStream,atob,crypto:webcrypto,self:{crypto:webcrypto,postMessage:(r,transfer)=>{transferCount=transfer?.length;reply=structuredClone(r,{transfer:transfer||[]});}},fetch:async()=>new Response(packed)});
+  const c=vm.createContext({Uint8Array,Uint32Array,Float32Array,Float64Array,ArrayBuffer,Blob,Response,DecompressionStream,ReadableStream,atob,crypto:webcrypto,self:{crypto:webcrypto,postMessage:(r,transfer)=>{transferCount=transfer?.length;reply=structuredClone(r,{transfer:transfer||[]});}},fetch:async()=>new Response(packed)});
   vm.runInContext(module.YY.workerSource+'\nconst essential=new Set('+JSON.stringify(V.essentialMaterials)+');self.compileVisibility='+V.compile.toString()+';',c);
   const bucket={count,detailWidth,data:{offset:0,length:count*28},spatial:{offset:count*28*4,length:count*5}};
   await c.self.onmessage({data:{index:1,url:'https://fixture/chunk.gz',rawBytes:raw.byteLength,shuffle:32,sha256,buckets:[bucket],...(offline?{encoded:packed.toString('base64')}:{})}});
@@ -78,7 +78,7 @@ test('metadata may overlap hashing but neither records nor metadata escape befor
  for(const matches of [true,false]){
   let release,compiled,reply;const hashReady=new Promise(r=>release=r),metadataReady=new Promise(r=>compiled=r);
   const crypto={subtle:{digest:()=>hashReady}},raw=new Uint8Array(132),packed=gzipSync(raw);
-  const c=vm.createContext({Uint8Array,Uint32Array,Float32Array,ArrayBuffer,Blob,Response,DecompressionStream,atob,crypto,self:{crypto,compileVisibility(bucket,allocate){module.YY.Visibility.compile(bucket,allocate);compiled();},postMessage:r=>{reply=r;}},fetch:async()=>new Response(packed)});
+  const c=vm.createContext({Uint8Array,Uint32Array,Float32Array,ArrayBuffer,Blob,Response,DecompressionStream,ReadableStream,atob,crypto,self:{crypto,compileVisibility(bucket,allocate){module.YY.Visibility.compile(bucket,allocate);compiled();},postMessage:r=>{reply=r;}},fetch:async()=>new Response(packed)});
   vm.runInContext(module.YY.workerSource,c);
   const pending=c.self.onmessage({data:{index:1,url:'https://fixture/chunk.gz',rawBytes:132,shuffle:0,sha256:'00'.repeat(32),buckets:[{count:1,detailWidth:0,data:{offset:0,length:28},spatial:{offset:112,length:5}}]}});
   await metadataReady;assert.equal(reply,undefined,'unverified records must stay in the worker');
@@ -94,7 +94,7 @@ test('one response is prefetched during decoding and reused only after its own v
  for(const failure of [null,'checksum','http','network']){
   let release,hashStarted,hashes=0;const firstHash=new Promise(r=>release=r),started=new Promise(r=>hashStarted=r),fetches=[],replies=[];
   const crypto={subtle:{digest(...args){hashes++;if(hashes===1){hashStarted();return firstHash;}return webcrypto.subtle.digest(...args);}}};
-  const c=vm.createContext({Uint8Array,Uint32Array,Blob,Response,DecompressionStream,AbortController,atob,crypto,self:{crypto,postMessage:r=>replies.push(r)},fetch:async url=>{
+  const c=vm.createContext({Uint8Array,Uint32Array,Blob,Response,DecompressionStream,ReadableStream,AbortController,atob,crypto,self:{crypto,postMessage:r=>replies.push(r)},fetch:async url=>{
    fetches.push(url);if(url==='second'&&failure==='network')throw Error('prefetch network failure');
    return new Response(url==='second'&&failure==='checksum'?gzipSync(new Uint8Array(64).fill(18)):packed,{status:url==='second'&&failure==='http'?404:200});
   }});vm.runInContext(module.YY.workerSource,c);

@@ -87,6 +87,7 @@ p{margin:10px 0}
 .close{position:absolute;right:15px;top:14px;display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:transparent;color:#7c8778;font:24px/1 sans-serif}
 .close:hover{background:#e9eade;color:var(--ink)}
 #detail-close{position:sticky;float:right;top:-12px;right:-12px;background:var(--paper);margin:-11px -11px 0 4px;z-index:3}
+#detail-overview,#detail-information{display:contents}
 #detail-category{font-size:9px;letter-spacing:.1em;padding-right:15px;line-height:1.8}
 #detail h2{font-size:28px;line-height:1.5;margin:17px 0 12px;overflow-wrap:anywhere}
 #detail-summary{font-size:12px;line-height:1.95;color:#72806d;margin-bottom:22px}
@@ -260,6 +261,20 @@ kbd{font-family:ui-monospace,monospace}
 @media(max-height:560px) and (min-width:651px){
   :root{--panel-top:92px;--bottom:56px}.topbar{top:12px}
   #catalog{padding-top:19px}#catalog h1{font-size:24px;margin:8px 0 3px}.intro{display:none}
+}
+@media(max-width:650px), (min-width:651px) and (max-width:1050px) and (max-height:560px){
+  #detail.detail-compact{padding:12px 15px}
+  #detail.detail-compact h2{font-size:17px;line-height:1.4;margin:0 30px 8px 0}
+  #detail.detail-compact #detail-close{top:0;right:0;margin:-2px -5px 0 4px}
+  #detail.detail-compact .viewpoints button{min-height:38px}
+  #detail-expand{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:38px;margin-top:8px;padding:7px 11px;font-size:12px;color:var(--accent)}
+}
+@media(min-width:651px) and (max-width:1050px) and (max-height:560px){
+  #detail.detail-compact{padding:8px 12px;max-height:calc(100dvh - var(--panel-top) - var(--bottom) - 54px)}
+  #detail.detail-compact h2{font-size:15px;line-height:1.3;margin:0 34px 6px 0}
+  #detail.detail-compact #detail-close{position:absolute;float:none;top:8px;right:8px;margin:0}
+  #detail.detail-compact .viewpoints button{min-height:32px}
+  #detail.detail-compact #detail-expand{min-height:32px;margin-top:6px;padding:5px 9px}
 }
 @media(prefers-reduced-motion:reduce){button,.place-information summary span{transition:none}}
 

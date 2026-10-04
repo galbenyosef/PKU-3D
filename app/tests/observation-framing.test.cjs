@@ -22,7 +22,7 @@ test('view changes fit long wings without inheriting a blanket mobile distance',
 });
 
 function interaction({width=1440,height=1000,observation,displayBounds,isolate=0,panelLeft=1120,panelTop=540,reducedMotion=false}={}){
- const elements=new Map(),el=id=>{if(!elements.has(id))elements.set(id,{hidden:false,getBoundingClientRect:()=>({left:panelLeft,top:panelTop})});return elements.get(id);};const feature={properties:{id:'test/long-wing',pickId:7,kind:'building',bounds:[-30,-6,70,25],centre:[20,9.5],height:12,frontAngle46:.4,frontElevation46:.31,...(observation===undefined?{}:{frontObservation46:observation}),...(displayBounds===undefined?{}:{displayBounds46:displayBounds})}};
+ const elements=new Map(),el=id=>{if(!elements.has(id))elements.set(id,{hidden:false,scrollTop:0,classList:{compact:false,contains(){return this.compact},toggle(key,on){this.compact=on}},contains:()=>false,setAttribute(){},getBoundingClientRect:()=>({left:panelLeft,top:panelTop})});return elements.get(id);};const feature={properties:{id:'test/long-wing',pickId:7,kind:'building',bounds:[-30,-6,70,25],centre:[20,9.5],height:12,frontAngle46:.4,frontElevation46:.31,...(observation===undefined?{}:{frontObservation46:observation}),...(displayBounds===undefined?{}:{displayBounds46:displayBounds})}};
  const c={Math,Number,Array,selected:7,by:new Map([[7,feature]]),state:{isolate},orbit:{target:[-20,0,30],distance:2250,yaw:0,elevation:1.05},planView:{},innerWidth:width,innerHeight:height,Y:{Landscape42:{elevation:()=>2}},YY:{},$ :el,root:{classList:{contains:()=>true}},document:{querySelector:()=>({getBoundingClientRect:()=>({bottom:78})})},drawPlan(){},changeMode(next){c.browseCamera.cancel();c.mode=next;}};vm.createContext(c);
  let now=0;
  const helperStart=source.indexOf("/* Time-based orbit transitions."),helperEnd=source.indexOf("/* Campus viewer */",helperStart);assert(helperStart>=0&&helperEnd>helperStart);
@@ -30,6 +30,7 @@ function interaction({width=1440,height=1000,observation,displayBounds,isolate=0
  const panelLayout=source.split('\n').find(line=>line.startsWith('function panelLayoutOffset('));assert(panelLayout,'actual panel layout function must be present');
  vm.runInContext(panelLayout,c);c.panelOffset=new c.YY.PanelOffset(c.panelLayoutOffset());
  c.browseCamera=new c.YY.BrowseCamera(c.orbit,{clock:()=>now,immediate:()=>reducedMotion});
+ vm.runInContext(source.slice(source.indexOf('function setDetailCompact('),source.indexOf('function architectureView(')),c);
  // The public buttons call the actual animated wrapper, which now precedes the pose calculators.
  for(const name of ["focusFeature","architectureView"]){const line=source.split("\n").find(line=>line.startsWith(`function ${name}(`));assert(line);vm.runInContext(line,c);}
  vm.runInContext(source.slice(source.indexOf('function frontObservation46('),source.indexOf('function changeMode(')),c);

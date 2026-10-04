@@ -19,7 +19,7 @@ const descriptor={codec:'gzip-meshopt-attributes-v1',url:modern,bytes:packed.len
 function message(extra={}){return {index:7,url:legacy,rawBytes:raw.length,sha256:hash(raw),shuffle:0,buckets:[],decoderURL,alternative:{...descriptor},...extra};}
 function worker(opts={}){
  const posts=[],fetches=[],imports=[],decodes=[],aborted=[];
- const ctx={Blob,Response,DecompressionStream,Uint8Array,Uint32Array,Float32Array,Float64Array,ArrayBuffer,Map,Set,URL,AbortController,WebAssembly:opts.noWasm?undefined:WebAssembly,crypto:opts.crypto||(opts.noSubtle?{}:webcrypto),atob,clearTimeout,setTimeout:opts.timeout?(fn=>setTimeout(fn,1)):setTimeout,console};
+ const ctx={Blob,Response,DecompressionStream,ReadableStream,Uint8Array,Uint32Array,Float32Array,Float64Array,ArrayBuffer,Map,Set,URL,AbortController,WebAssembly:opts.noWasm?undefined:WebAssembly,crypto:opts.crypto||(opts.noSubtle?{}:webcrypto),atob,clearTimeout,setTimeout:opts.timeout?(fn=>setTimeout(fn,1)):setTimeout,console};
  ctx.self=ctx;ctx.compileVisibility=()=>{};
  ctx.postMessage=(data,transfers)=>posts.push({data,transfers});
  ctx.fetch=async(url,init)=>{

@@ -169,3 +169,9 @@ node_modules/
 !/app/tests/initial-reflection.test.cjs
 !/app/tests/initial-visibility.test.cjs
 !/app/tests/scene-codec.test.cjs
+
+!/app/tests/detail-compact-focus.test.cjs
+!/app/tests/rendered-label-camera.test.cjs
+!/app/tests/detail-compact-markup.test.py
+
+!/app/tests/label-layout-phases.test.cjs

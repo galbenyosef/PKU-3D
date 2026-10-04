@@ -2,7 +2,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),crypto=require('node:crypto'),zlib=require('node:zlib');
 const app=process.env.PKU_APP||path.resolve(__dirname,'..'),source=fs.readFileSync(path.join(app,'src/scene-cache46.js'),'utf8'),sha=b=>crypto.createHash('sha256').update(Buffer.from(b)).digest('hex');
 const moduleContext=vm.createContext({YY:{}}),marker='Y.SceneCache46={';assert.equal(source.split(marker).length,2,'One production worker export anchor');vm.runInContext(source.replace(marker,'Y.testWorkerSource=workerSource;'+marker),moduleContext);const workerSource=moduleContext.YY.testWorkerSource;
-function worker(wa=WebAssembly,extra={}){const c=vm.createContext({Uint8Array,Uint32Array,Float32Array,Float64Array,ArrayBuffer,atob,Blob,Response,DecompressionStream,WebAssembly:wa,self:{},...extra});vm.runInContext(workerSource,c);return c;}
+function worker(wa=WebAssembly,extra={}){const c=vm.createContext({Uint8Array,Uint32Array,Float32Array,Float64Array,ArrayBuffer,atob,Blob,Response,DecompressionStream,ReadableStream,WebAssembly:wa,self:{},...extra});vm.runInContext(workerSource,c);return c;}
 // Independently serialize known bytes into lanes, then demand exact reconstruction.
 function arranged(bytes,width){const out=new Uint8Array(bytes.length);let q=0;for(let lane=0;lane<width;lane++)for(let i=lane;i<bytes.length;i+=width)out[q++]=bytes[i];return out.buffer;}
 const pattern=n=>Uint8Array.from({length:n},(_,i)=>(i*197+(i>>>7)*89)&255);
