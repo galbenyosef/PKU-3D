@@ -27,3 +27,7 @@ For a rights concern, open an [issue](https://github.com/sldyns/PKU-3D/issues) w
 软件与原创文档采用 MIT；OSM 衍生数据库采用 ODbL，地图服务另有使用规则。照片和视频不随项目分发。该检查没有对每座建筑、雕塑或题字作逐项法律认定，“公开来源”不等于“已获任意使用授权”。
 
 The public site uses external links for satellite and standard maps. Downloaded provider map mosaics are excluded from the new release package.
+
+## Optional lossless scene decoder
+
+The optional `gzip-meshopt-attributes-v1` transport uses the unmodified meshoptimizer v1.3 decoder by Arseny Kapoulkine and contributors, under its MIT license. The local `meshopt_decoder.js` file retains the official ES-module contents and embedded WebAssembly from upstream commit `9e1f07b159d3cb777f1c67ed31fc11fd117986f4`; only the served filename suffix is adapted for JavaScript MIME handling. Its upstream license accompanies it as `meshoptimizer-LICENSE.md` in the scene asset directory and checksum-pinned asset archive. [Upstream source](https://github.com/zeux/meshoptimizer/tree/9e1f07b159d3cb777f1c67ed31fc11fd117986f4). The encoder is an offline build tool and is not shipped to the website. Geometry/database licensing is unchanged.

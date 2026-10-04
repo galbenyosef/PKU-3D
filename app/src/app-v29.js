@@ -82,7 +82,7 @@ class BrowseCamera {
  constructor(orbit,{clock=()=>performance.now(),immediate=()=>false}={}){this.orbit=orbit;this.clock=clock;this.immediate=immediate;this.goal=null;this.time=0;this.tau=.095;}
  cancel(finish=false){if(finish&&this.goal)assign(this.orbit,this.goal);this.goal=null;this.time=0;}
  focus(mutate){const from=copy(this.orbit);this.cancel();mutate();if(this.immediate())return;this.goal=copy(this.orbit);assign(this.orbit,from);this.time=this.clock();this.tau=.095;}
- zoom(factor){if(!(factor>0)||!Number.isFinite(factor))return;const next=copy(this.goal||this.orbit);next.distance=Math.max(3,Math.min(10000,next.distance*factor));if(this.immediate()){assign(this.orbit,next);this.cancel();return;}if(!this.goal)this.time=this.clock();this.goal=next;this.tau=.065;}
+ zoom(factor){if(!(factor>0)||!Number.isFinite(factor))return;const next=copy(this.goal||this.orbit);const reversing=this.goal&&(factor-1)*(this.goal.distance-this.orbit.distance)<0;if(reversing){next.distance=this.orbit.distance;this.time=this.clock();}next.distance=Math.max(3,Math.min(10000,next.distance*factor));if(this.immediate()){assign(this.orbit,next);this.cancel();return;}if(!this.goal)this.time=this.clock();this.goal=next;this.tau=.065;}
  step(now){
   if(!this.goal)return false;
   if(this.immediate()){this.cancel(true);return true;}
@@ -331,6 +331,7 @@ async function init(recover=false){
   prepared=Y.SceneCache46&&Y.SCENE_PACKAGE46?Y.SceneCache46.warmup():undefined;
   next=new Y.Engine(canvas,{deferPrograms:true});engine=next;next.resize(innerWidth,innerHeight);
   next.compilePrograms(true,state.people!==false&&!state.isolate);
+  next.onInstanceDataReady=()=>{if(generation===renderGeneration&&!next.disposed&&mode==='3d')next.prepareInitialVisibility(camera(),state.firstPerson?{...state,routeEdges:noWalkRoute}:state);};
   const scene=await loadRenderResources(next,(n,total)=>{if(generation===renderGeneration)$('status').textContent=(recover?'正在恢复校园… ':'正在打开校园… ')+Math.round(n/total*100)+'%';},prepared);
   if(generation!==renderGeneration){next.dispose();return;}
   campus=scene;next.people=Y.Pedestrians46.create(next,campus,state);$('show-people').disabled=false;$('walkers-view').disabled=false;ready=true;lastVisualKey='';lastInput=null;last=lastDraw=0;root.dataset.ready='true';$('coverage').textContent=`${D.features.filter(f=>f.properties.kind==='building'&&!f.properties.supersededBy43).length} 个建筑对象`;$('status').textContent='';

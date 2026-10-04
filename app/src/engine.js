@@ -1,14 +1,13 @@
 /* Yanyuan WebGL2 renderer; original scene assets remain local. */
 (function(Y){'use strict';const M=Y.M;
-// Clear-day art direction operates on irradiance before the shared display map.
-// Keep night, rain, haze, snow and inspection lighting on their existing values.
-// daylightGrade: 0 retains the previous look; 1 is the bounded candidate strength.
+// Clear daylight: separate a zenith-biased sky from ground-facing bounce.
+// These are linear irradiance display fits, not a new input color conversion.
+const DAYLIGHT_SKY=[0.25,0.29,0.35],DAYLIGHT_GROUND=[0.045,0.042,0.035],DAYLIGHT_SUN=[2.8,2.66,2.45];
 function applyDaylightGrade(state,day,sky,ground,sun){
  if(state.weather!==0||state.isolate||day<=.25)return 0;
  const strength=Number.isFinite(state.daylightGrade)?M.clamp(state.daylightGrade,0,1):1;
  const phase=M.clamp((day-.25)/.60,0,1),amount=strength*phase*phase*(3-2*phase);
- const energy=1-.10*amount,skyFill=energy*(1-.20*amount),groundFill=energy*(1-.18*amount);
- for(let i=0;i<3;i++){sky[i]*=skyFill;ground[i]*=groundFill;sun[i]*=energy;}
+ for(let i=0;i<3;i++){sky[i]+=(DAYLIGHT_SKY[i]-sky[i])*amount;ground[i]+=(DAYLIGHT_GROUND[i]-ground[i])*amount;sun[i]+=(DAYLIGHT_SUN[i]-sun[i])*amount;}
  return amount;
 }
 const VERT=`#version 300 es
@@ -51,7 +50,7 @@ void main(){vec4 w=iMatrix*vec4(aPosition,1.0);
 const FRAG=`#version 300 es
 precision highp float;
 in vec3 vWorld;in vec3 vNormal;in vec4 vColor;in vec2 vUV;in vec2 vSurfaceUV;in vec4 vShadow;in vec4 vReflection;flat in float vId;flat in float vMat;
-uniform vec3 uEye;uniform vec3 uSun;uniform vec3 uSky;uniform vec3 uFogSky;uniform vec3 uAmbientSky;uniform vec3 uAmbientGround;uniform vec3 uSunColor;uniform vec4 uShoreBounds;uniform float uShoreId;uniform float uShoreRange;uniform float uCalmWaterId;uniform float uDay;uniform float uTime;uniform float uSelected;uniform float uIsolate;uniform float uSeason;uniform float uWeather;uniform float uFog;uniform float uWaterLevel;uniform float uHDR;uniform int uPass;uniform vec4 uSelection;
+uniform vec3 uEye;uniform vec3 uSun;uniform vec3 uSky;uniform vec3 uFogSky;uniform vec3 uAmbientSky;uniform vec3 uAmbientGround;uniform vec3 uSunColor;uniform vec4 uShoreBounds;uniform float uShoreId;uniform float uShoreRange;uniform float uCalmWaterId;uniform float uDay;uniform float uTime;uniform float uSelected;uniform float uIsolate;uniform float uSeason;uniform float uWeather;uniform float uFog;uniform float uWaterLevel;uniform float uHDR;uniform float uDaylightShape;uniform int uPass;uniform vec4 uSelection;
 uniform highp sampler2DShadow uShadowMap;uniform highp sampler2D uReflectionMap;uniform highp sampler2D uShoreDistance;uniform highp sampler2D uAtlas;uniform highp sampler2DArray uMaterials;
 uniform highp sampler2DArray uScan1119;
 out vec4 frag;
@@ -124,6 +123,9 @@ void main(){
  if(mat<18.&&mat!=4.&&mat!=5.&&mat!=8.&&mat!=12.&&mat!=3.&&mat!=16.){float scale=2.4;if(mat==14.)scale=4.8;if(mat==0.)scale=3.6;if(mat==2.)scale=2.;if(mat==6.)scale=2.1;vec4 t=material(mat,st/scale);float footprint=max(length(dFdx(st)),length(dFdy(st)));base*=mix(t.rgb,vec3(.95),smoothstep(.55,2.5,footprint));float relief=.023;if(mat==13.||mat==9.||mat==0.)relief=.006;if(mat==7.||mat==10.||mat==14.)relief=.006;if(mat==2.)relief=.04;vec3 surfaceDx=dFdx(vWorld),surfaceDy=dFdy(vWorld);float height=t.a*relief;vec2 heightGradient=vec2(dFdx(height),dFdy(height));if(dist<260.)n=bumpWithDerivatives(n,surfaceDx,surfaceDy,heightGradient);}
 
  campusMaterialDetail(mat,st,dist,base,n,rough);
+ // Existing road atlas stays full-resolution; separate its mineral body from
+ // pale wall/paving without adding a texture lookup or synthetic markings.
+ if(mat==15.)base*=.95;
  // v13FacadeMaterial: dedicated fine dark masonry, blue glazing and aluminium.
  // v14ArcMasonry: flat brick uses metric surface UV; curved brick uses the
  // constructor's physical arc-length UV. Avoids triplanar seams on round wings.
@@ -136,17 +138,17 @@ void main(){
  if(mat==29.||mat==37.||mat==43.){rough=mat==29.?.28:.64;metal=mat==29.?.62:.25;base*=.94+.04*filteredNoise(st*vec2(4.,130.));}
  // v9: lime-plaster and physical clay-tile meshes, with subtle microtexture only.
  // Zhihua: subtle antialiased plaster joints and square stone panels, no relief strips.
- if(mat==35.||mat==36.){vec2 pitch=mat==36.?vec2(1.08):vec2(2.45,100.);vec2 q=fract(st/pitch),fw=max(fwidth(st/pitch),vec2(.0001));vec2 edge=min(q,1.-q);vec2 line=1.-smoothstep(vec2(.002),vec2(.006)+fw,edge);float joint=mat==35.?line.x:max(line.x,line.y);base*=.975-joint*.055;rough=.92;}
+ if(mat==35.||mat==36.){vec2 pitch=mat==36.?vec2(1.08):vec2(2.45,100.);vec2 q=fract(st/pitch),fw=max(fwidth(st/pitch),vec2(.0001));vec2 edge=min(q,1.-q);vec2 line=1.-smoothstep(vec2(.002),vec2(.006)+fw,edge);float joint=mat==35.?line.x:max(line.x,line.y);base*=.985-joint*.095;rough=.92;}
  // Qiu roof standing seams: world-space spacing with pixel filtering.
  if(mat==43.){float u=(vWorld.x*.9989-vWorld.z*.0467)/.66;float fw=max(fwidth(u),.0001);float edge=abs(fract(u+.5)-.5);float seam=1.-smoothstep(.025-fw*.5,.025+fw*.5,edge);float fade=1.-smoothstep(.45,1.2,fw);base*=1.-.15*seam*fade;}
  // Evergreen needles use 33; 26 remains the library paving material.
  if(mat==33.){base*=.88+.17*noise(vWorld.xz*2.3+vWorld.y*.6);rough=.93;if(uSeason>2.5)base=mix(base,vec3(.86,.89,.87),smoothstep(.60,.98,gn.y)*.62);}
  // Library forecourt: physical-scale paving joints with derivative antialiasing.
- if(mat==26.){vec2 t=st/vec2(1.25,.85),q=fract(t),fw=fwidth(t);vec2 a=smoothstep(vec2(.004),vec2(.010)+fw,q)*smoothstep(vec2(.004),vec2(.010)+fw,1.-q);float joint=a.x*a.y,fade=1.-smoothstep(.16,.70,max(fw.x,fw.y));base*=.90+.035*noise(floor(t))+.025*filteredNoise(st*27.);base*=1.-(1.-joint)*.28*fade;rough=.93;if(dist<65.)n=bump(n,joint*.0015*fade);}
+ if(mat==26.){vec2 t=st/vec2(1.25,.85),q=fract(t),fw=fwidth(t);vec2 a=smoothstep(vec2(.004),vec2(.010)+fw,q)*smoothstep(vec2(.004),vec2(.010)+fw,1.-q);float joint=a.x*a.y,fade=1.-smoothstep(.16,.70,max(fw.x,fw.y));base*=.9425+.045*(noise(floor(t))-.5)*fade+.020*filteredNoise(st*27.);base*=1.-(1.-joint)*.34*fade;rough=.93;if(dist<65.)n=bump(n,joint*.0015*fade);}
  if(mat==23.){base*=.92+.08*noise(vWorld.xz*4.);rough=.94;if(uSeason>2.5)base=mix(base,vec3(.84,.87,.84),smoothstep(.4,.95,gn.y)*.50);}
  if(mat==22.){base*=.89+.12*filteredNoise(st*31.);rough=.94;}
  if(mat==34.){vec2 q=st/1.15,cell=floor(q);float first=100.,second=100.,tone=.5;for(int ix=-1;ix<=1;ix++){for(int iz=-1;iz<=1;iz++){vec2 c=cell+vec2(float(ix),float(iz)),site=c+vec2(.20)+.60*vec2(hash(c),hash(c+vec2(17.7)));float dd=length(q-site);if(dd<first){second=first;first=dd;tone=hash(c+vec2(9.1));}else second=min(second,dd);}}float aa=max(.008,length(fwidth(q))),edge=smoothstep(.025-aa,.025+aa,second-first);base*=mix(.69,.94+tone*.09,edge);rough=.96;}
- if(mat==21.){float footprint=max(length(dFdx(st)),length(dFdy(st)));float fine=1.-smoothstep(.006,.035,footprint);float grain=mix(.5,filteredNoise(st*55.),fine),big=mix(.5,noise(st*1.7),1.-smoothstep(.25,.8,footprint));base*=.86+.16*grain+.05*big;rough=.98;vec3 roofDx=dFdx(vWorld),roofDy=dFdy(vWorld);float roofHeight=grain*.0012;vec2 roofGradient=vec2(dFdx(roofHeight),dFdy(roofHeight));if(dist<65.&&fine>.01)n=bumpWithDerivatives(n,roofDx,roofDy,roofGradient);}
+ if(mat==21.){float footprint=max(length(dFdx(st)),length(dFdy(st)));float fine=1.-smoothstep(.006,.035,footprint);float grain=mix(.5,filteredNoise(st*55.),fine),big=mix(.5,noise(st*1.7),1.-smoothstep(.25,.8,footprint));base*=.88+.12*grain+.05*big;rough=.98;vec3 roofDx=dFdx(vWorld),roofDy=dFdy(vWorld);float roofHeight=grain*.0012;vec2 roofGradient=vec2(dFdx(roofHeight),dFdy(roofHeight));if(dist<65.&&fine>.01)n=bumpWithDerivatives(n,roofDx,roofDy,roofGradient);}
  // The mapped ground keeps its existing texture, relief and two noise scales.
  // Softer, differently oriented colour variation avoids large square patches.
  if(mat==40.)base*=vec3(.94,.94,.925);
@@ -166,10 +168,19 @@ void main(){
  if(uSeason>2.5&&(mat==2.||mat==7.))base=mix(base,vec3(.89,.93,.94),smoothstep(.10,.8,gn.y));
  if(uWeather>.5&&uWeather<1.5)campusRainResponse(mat,gn.y,base,rough);
  base=pow(max(base,vec3(.0)),vec3(2.2));
+ // Clear-day ground reflectance fit; preserve snow and the original color ratios.
+ if(mat==0.&&uSeason<=2.5)base*=mix(1.,.65,uDaylightShape);
  float ndl=max(0.,dot(n,uSun)),ndv=max(.001,dot(n,V)),sh=shadow(gn,ndl);vec3 H=normalize(V+uSun);float ndh=max(0.,dot(n,H)),hdv=max(0.,dot(H,V));
  float a=rough*rough,a2=a*a,den=ndh*ndh*(a2-1.)+1.;float D=a2/(PI*den*den+.0001);float k=(rough+1.)*(rough+1.)/8.;float G=ndv/(ndv*(1.-k)+k)*ndl/(ndl*(1.-k)+k);
- vec3 F=vec3(.04),spec=vec3(0.);if(mat==5.||mat==9.||mat==4.||mat==10.||mat==28.||mat==29.||mat==32.||mat==37.||mat==43.||mat==18.||mat==19.||mat==20.||mat==24.||mat==25.){F=fresnel(hdv,mix(vec3(.04),base,metal));spec=D*G*F/(4.*ndv*ndl+.001);}vec3 kd=(1.-F)*(1.-metal);
+ vec3 F=vec3(.04),spec=vec3(0.);if(mat==5.||mat==9.||mat==4.||mat==10.||mat==28.||mat==29.||mat==32.||mat==37.||mat==43.||mat==18.||mat==19.||mat==20.||mat==24.||mat==25.){float dielectric=mat==24.?.025:mat==18.?.030:(mat==19.||mat==25.)?.032:.04;F=fresnel(hdv,mix(vec3(dielectric),base,metal));spec=D*G*F/(4.*ndv*ndl+.001);}vec3 kd=(1.-F)*(1.-metal);
  float ao=mix(.78,1.,smoothstep(.0,6.,vWorld.y));vec3 amb=mix(uAmbientGround,uAmbientSky,clamp(n.y*.5+.5,0.,1.));vec3 sunCol=uSunColor;
+ // Uniform sky is only the broad lobe; zenith sky and ground bounce face
+ // different directions. This shades form without a screen-space contrast filter.
+ float skyHemisphere=clamp(n.y*.5+.5,0.,1.);
+ float skyView=0.60*skyHemisphere+0.40*max(n.y,0.);
+ float groundView=0.50*(1.-skyHemisphere)+0.50*max(-n.y,0.);
+ vec3 directionalAmbient=uAmbientSky*skyView+uAmbientGround*groundView;
+ amb=mix(amb,directionalAmbient,uDaylightShape);
  vec3 col=base*amb*ao+(kd*base/PI+spec)*sunCol*ndl*sh;// Ground bounce is included in the hemisphere ambient term.
 
  if(mat==3.||mat==16.||mat==45.||mat==46.){float trans=pow(max(0.,dot(-uSun,V)),3.);col+=base*sunCol*.13*(.24+.76*trans)*(1.-ndl);}
@@ -548,19 +559,20 @@ class Engine{
  add(key,geometry,matrix,color,meta=[0,0,0,0],uv=[0,0,1,1]){this.invalidateBucketIndex();let b=this.buckets.get(key);if(!b){b={geometry:{v:new Float32Array(geometry.v)},detailWidth:geometry.detailWidth||0,instances:[]};this.buckets.set(key,b)}if(typeof color==='string')color=M.color(color);b.instances.push(...matrix,...color.slice(0,3),1,...meta,...uv);this.stats.instances++}
  beginPrepared(manifest){
   if(manifest.version===3&&![1,2].includes(manifest.normalTransformFormat194))throw Error('Unsupported normal transform format194');
-  this.meshResources=manifest.meshes.map(m=>({...m,vertexBuffer:null,indexBuffer:null}));this.buckets=new Map();this.invalidateBucketIndex();this.visibilityCaches.clear();
+  this.meshResources=manifest.meshes.map(m=>({...m,vertexBuffer:null,indexBuffer:null,vertexPublication:0}));this.buckets=new Map();this.invalidateBucketIndex();this.visibilityCaches.clear();this.preparedInstanceCount=0;this.initialVisibilityStats=null;
   Object.assign(this.stats,manifest.stats);
   for(const record of manifest.buckets){const resource=this.meshResources[record.mesh];this.buckets.set(record.key,{resource,vertexCount:resource.vertexCount,detailWidth:resource.detailWidth||0,count:record.count,passes:new Map()});}
  }
- preparedVertices(index,vertices){if(this.disposed)throw Error('Scene loading was interrupted');const g=this.gl,m=this.meshResources[index];if(m.waterBounds&&Y.ReflectionFootprint)m.reflectionFootprint=Y.ReflectionFootprint.prepare(vertices);m.vertexBuffer=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,m.vertexBuffer);g.bufferData(g.ARRAY_BUFFER,vertices,g.STATIC_DRAW);}
+ preparedVertices(index,vertices){if(this.disposed)throw Error('Scene loading was interrupted');const g=this.gl,m=this.meshResources[index];if(m.waterBounds&&Y.ReflectionFootprint)m.reflectionFootprint=Y.ReflectionFootprint.prepare(vertices);m.vertexBuffer=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,m.vertexBuffer);g.bufferData(g.ARRAY_BUFFER,vertices,g.STATIC_DRAW);this.preparedVertexPublished?.(m);}
  preparedIndices(index,indices){if(this.disposed)throw Error('Scene loading was interrupted');const g=this.gl,m=this.meshResources[index];m.indexBuffer=g.createBuffer();g.bindVertexArray(null);g.bindBuffer(g.ELEMENT_ARRAY_BUFFER,m.indexBuffer);g.bufferData(g.ELEMENT_ARRAY_BUFFER,indices,g.STATIC_DRAW);g.bindBuffer(g.ELEMENT_ARRAY_BUFFER,null);}
  preparedInstances(record,data,spatial,compiled){
   if(this.disposed)throw Error('Scene loading was interrupted');const b=this.buckets.get(record.key);
   if(!b||data.length!==b.count*28||spatial.length!==b.count*5)throw Error('Incomplete prepared scene bucket');
-  b.data=data;b.spatial=spatial;
+  const firstPublication=!b.preparedCompiled;b.data=data;b.spatial=spatial;
   // Prepared workers supply identical CPU visibility bounds; the uncached path
   // still compiles locally. GPU setup keeps the loader's existing upload budget.
   this.compileBucket(b,compiled);this.prepareRanges(b);b.preparedCompiled=true;
+  if(firstPublication&&++this.preparedInstanceCount===this.buckets.size)this.onInstanceDataReady?.();
  }
  compileBucket(b,compiled){this.invalidateBucketIndex();if(compiled){Object.assign(b,compiled);Y.Visibility.prepareSingle(b);}else Y.Visibility.compile(b);
   // Validate original instance data rather than trusting prepared metadata.
@@ -592,9 +604,9 @@ class Engine{
   }
   g.bindVertexArray(null);this.visibilityCaches.clear();
  }
- instanceStream(pass){
+ instanceStream(pass,initialData=null){
   this.instanceStreams ||= new Map();let stream=this.instanceStreams.get(pass);
-  if(!stream){stream={buffer:this.gl.createBuffer(),data:new Float32Array(65536),used:0,capacity:0};this.instanceStreams.set(pass,stream);}
+  if(!stream){stream={buffer:this.gl.createBuffer(),data:initialData||new Float32Array(65536),used:0,capacity:0};this.instanceStreams.set(pass,stream);}
   stream.used=0;return stream;
  }
  instanceCache(bucket,pass,count,stream,visible=bucket.visible,deferVAO=false){
@@ -700,6 +712,7 @@ class Engine{
   this.uniform(p,'uAmbientSky',this.ambientSky);
   this.uniform(p,'uAmbientGround',this.ambientGround);
   this.uniform(p,'uSunColor',this.sunColor);
+  this.uniform(p,'uDaylightShape',this.daylightGrade);
   this.uniform(p,'uShoreBounds',this.shoreBounds);
   this.uniform(p,'uShoreId',this.shoreId);
   this.uniform(p,'uShoreRange',this.shoreRange);
@@ -732,9 +745,9 @@ class Engine{
   }
   if(b.uniformMaterial===4&&b.resource.waterBounds)b.waterRanges=[transform([0,b.vertexCount,...b.resource.waterBounds])];
  }
- visibleRanges(b,planes,slot){
-  if(!b.worldRanges||this.state.meshCulling===false)return null;
-  const out=[],lift=b.data[21]===this.state.selected?this.state.explode*b.data[23]:0,clip=slot===2?.48:slot===3?this.waterLevel-.025:-Infinity;
+ visibleRanges(b,planes,slot,state=this.state,waterLevel=this.waterLevel){
+  if(!b.worldRanges||state.meshCulling===false)return null;
+  const out=[],lift=b.data[21]===state.selected?state.explode*b.data[23]:0,clip=slot===2?.48:slot===3?waterLevel-.025:-Infinity;
   const accept=b.rangeAccept;
   if(accept){
    const a=accept.bounds,scale=accept.scale,verticalScale=scale[1]+Math.abs(lift),roundoff=32*Number.EPSILON;
@@ -767,11 +780,11 @@ class Engine{
   }
   return{drawItems,drawClearStart};
  }
- reflectionPlanes(vp,rect){
-  if(!rect||this.state.reflectionFrustum===false)return M.frustum(vp);
+ reflectionPlanes(vp,rect,state=this.state,target=this.reflectTarget){
+  if(!rect||state.reflectionFrustum===false)return M.frustum(vp);
   // Crop only the culling volume, never the raster projection. One extra
   // texel protects coverage at the scissor edge from floating point error.
-  const {w,h}=this.reflectTarget,left=Math.max(0,rect[0]-1)/w*2-1,right=Math.min(w,rect[0]+rect[2]+1)/w*2-1;
+  const {w,h}=target,left=Math.max(0,rect[0]-1)/w*2-1,right=Math.min(w,rect[0]+rect[2]+1)/w*2-1;
   const bottom=Math.max(0,rect[1]-1)/h*2-1,top=Math.min(h,rect[1]+rect[3]+1)/h*2-1;
   if(!(right>left&&top>bottom))return M.frustum(vp);
   const crop=Array.from(vp),sx=2/(right-left),sy=2/(top-bottom),ox=(right+left)/(right-left),oy=(top+bottom)/(top-bottom);
@@ -781,6 +794,8 @@ class Engine{
  // Only this engine's compiled-scene epoch may use indexed traversal. Any
  // supported geometry or Map membership/order edit must invalidate it first.
  invalidateBucketIndex(){
+  // CPU-only collectors also borrow this invalidation method.
+  this.cancelInitialVisibility?.(true);
   this.bucketIndex=null;this.bucketIndexGeneration=(this.bucketIndexGeneration||0)+1;this.bucketIndexEpoch=null;
   if(this.bucketIndexIdle!==undefined&&typeof cancelIdleCallback==='function')cancelIdleCallback(this.bucketIndexIdle);
   this.bucketIndexIdle=undefined;this.bucketIndexJob=null;
@@ -793,22 +808,30 @@ class Engine{
    this.bucketIndexIdle=undefined;
    if(this.disposed||this.bucketIndexEpoch!==epoch||this.buckets!==buckets||this.state.bucketSpatialIndex===false){if(this.bucketIndexJob===job)this.bucketIndexJob=null;return;}
    const end=performance.now()+2;
-   while(deadline.timeRemaining()>.5&&performance.now()<end){const step=job.next();if(step.done){this.bucketIndex=step.value;this.bucketIndexJob=null;this.visibilityCaches.clear();return;}}
+   while(deadline.timeRemaining()>.5&&performance.now()<end){const step=job.next();if(step.done){this.bucketIndex=step.value;this.bucketIndexJob=null;this.cancelInitialVisibility(true);this.visibilityCaches.clear();return;}}
    this.bucketIndexIdle=requestIdleCallback(tick);
   };
   this.bucketIndexIdle=requestIdleCallback(tick);
  }
- visibleScene(vp,slot){
-  const state=this.state,hidden=state.inspectionMask?.objectId===state.isolate?state.inspectionMask.buckets:null;
-  const lodEye=this.camera.eye,focal=this.canvas.clientHeight/(2*Math.tan((this.camera.fov||.80)/2));
-  const key=[...vp,...lodEye,focal,state.selected,state.isolate,state.explode,state.detailLOD!==false,state.vegetation!==false,state.meshCulling!==false,state.deferredInstanceVAO!==false,state.bucketSpatialIndex!==false,slot===3?this.waterLevel:0,slot===3&&state.reflectionFrustum!==false?this.reflectionCullRect:null,slot===3?this.reflectionFootprintPlanes:null,[...(state.routeEdges||[])].join('/'),hidden?[...hidden].join('/'):null].join(',');
-  let cached=this.visibilityCaches.get(slot);
-  if(!cached||cached.key!==key){
-   const planes=slot===3?[...this.reflectionPlanes(vp,this.reflectionCullRect),...(this.reflectionFootprintPlanes||[])]:M.frustum(vp),items=[],clear=[],stream=this.instanceStream(slot),selectionResult={count:0,culled:0};let submitted=0,triangles=0,culled=0;
-   if(state.bucketSpatialIndex!==false)this.scheduleBucketIndex();
+ // A plan owns only CPU arrays/records. Real drawing remains the sole GL owner.
+ visibilityViewport(){return[this.aspect,this.canvas.width,this.canvas.height,this.canvas.clientWidth,this.canvas.clientHeight,this.reflectTarget?.w,this.reflectTarget?.h].join(',');}
+ visiblePlanContext(vp,slot,state=this.state,camera=this.camera,reflection=null){
+  const hidden=state.inspectionMask?.objectId===state.isolate?state.inspectionMask.buckets:null;
+  const lodEye=camera.eye,focal=this.canvas.clientHeight/(2*Math.tan((camera.fov||.80)/2));
+  if(slot===3&&!reflection)reflection={mainVP:this.vp,refVP:vp,waterLevel:this.waterLevel,scissor:this.reflectionCullRect,footprintPlanes:this.reflectionFootprintPlanes,target:{w:this.reflectTarget?.w,h:this.reflectTarget?.h}};
+  const waterLevel=slot===3?reflection.waterLevel:this.waterLevel;
+  let key=[...vp,...lodEye,focal,state.selected,state.isolate,state.explode,state.detailLOD!==false,state.vegetation!==false,state.meshCulling!==false,state.deferredInstanceVAO!==false,state.bucketSpatialIndex!==false,slot===3?waterLevel:0,slot===3&&state.reflectionFrustum!==false?reflection.scissor:null,slot===3?reflection.footprintPlanes:null,[...(state.routeEdges||[])].join('/'),hidden?[...hidden].join('/'):null].join(',');
+  // Both paths bind the complete reflection descriptor, including null fallbacks.
+  if(slot===3)key+='|'+JSON.stringify([Array.from(reflection.mainVP||[]),Array.from(reflection.refVP),waterLevel,reflection.scissor,reflection.footprintPlanes,reflection.target.w,reflection.target.h,state.reflectionScissor!==false,state.reflectionFrustum!==false,state.reflectionFootprint!==false]);
+  return{vp,slot,state,hidden,lodEye,focal,key,waterLevel,reflection};
+ }
+ *buildVisiblePlan(context,stream,cooperative=false){
+  const{vp,slot,state,hidden,lodEye,focal,waterLevel,reflection}=context,planes=slot===3?[...this.reflectionPlanes(vp,reflection.scissor,state,reflection.target),...(reflection.footprintPlanes||[])]:M.frustum(vp),items=[],clear=[],selectionResult={count:0,culled:0};let submitted=0,triangles=0,culled=0;
+   let batch=0;
    for(const[name,b]of (state.bucketSpatialIndex===false?this.buckets:Y.Visibility.indexedBuckets(this.bucketIndex,this.buckets,planes,state,this.bucketIndexEpoch))){
+    if(cooperative&&++batch%16===0)yield;
     if(hidden?.has(name)||(slot===2&&(b.uniformMaterial===4||b.uniformMaterial===8||b.uniformMaterial===44||b.uniformMaterial===47))||(slot===3&&b.uniformMaterial===4))continue;const result=Y.Visibility.select(b,planes,lodEye,focal,state,stream,true,true,selectionResult);culled+=result.culled;if(!result.count)continue;
-    const ranges=this.visibleRanges(b,planes,slot);if(ranges&&!ranges.length)continue;
+    const ranges=this.visibleRanges(b,planes,slot,state,waterLevel);if(ranges&&!ranges.length)continue;
     const record=this.instanceCache(b,slot,result.count,stream,null,state.deferredInstanceVAO!==false),item={b,record,ranges};
     if(b.uniformMaterial===44||b.uniformMaterial===47){
      // One pane per bucket, sorted only when the visibility cache changes.
@@ -819,10 +842,114 @@ class Engine{
    }
    const clearStart=items.length;clear.sort((a,b)=>b.depth-a.depth);items.push(...clear);
    const grouped=this.groupDraws(items,clearStart);
+  return{items,clearStart,...grouped,submitted,triangles:Math.round(triangles),culled,hasWater:items.some(({b})=>b.materials.has(4)),water:items.filter(({b})=>b.uniformMaterial===4&&b.count===1).map(({b})=>b),stream};
+ }
+ cancelInitialVisibility(clearPlans=false){
+  if(this.initialVisibilityIdle!==undefined&&typeof cancelIdleCallback==='function')cancelIdleCallback(this.initialVisibilityIdle);
+  this.initialVisibilityIdle=undefined;
+  if(this.initialVisibilityJob||this.initialReflectionWait){this.initialVisibilityJob?.steps?.return();this.initialVisibilityJob=null;this.initialReflectionWait=null;if(this.initialVisibilityStats)this.initialVisibilityStats.cancelled=true;}
+  if(clearPlans){this.initialVisibilityPlans=null;if(this.initialVisibilityStats)this.initialVisibilityStats.retainedBytes=0;}
+ }
+ cancelInitialReflection(){
+  const job=this.initialVisibilityJob;
+  if(job?.reflection){
+   if(this.initialVisibilityIdle!==undefined&&typeof cancelIdleCallback==='function')cancelIdleCallback(this.initialVisibilityIdle);
+   this.initialVisibilityIdle=undefined;job.steps?.return();this.initialVisibilityJob=null;
+  }
+  this.initialReflectionWait=null;this.initialVisibilityPlans?.delete(3);
+  if(this.initialVisibilityStats){this.initialVisibilityStats.reflectionCancelled=true;this.initialVisibilityStats.retainedBytes=(this.initialVisibilityJob?.stream?.data.byteLength||0)+[...(this.initialVisibilityPlans?.values()||[])].reduce((bytes,item)=>bytes+item.plan.stream.data.byteLength,0);}
+ }
+ preparedVertexPublished(resource){
+  // This runs only after the actual mesh publication succeeds, including page208.
+  resource.vertexPublication=(resource.vertexPublication||0)+1;
+  const wait=this.initialReflectionWait;
+  if(wait?.pending.delete(resource)){
+   if(this.initialVisibilityStats)this.initialVisibilityStats.reflectionWaitingResources=wait.pending.size;
+   try{if(!wait.pending.size)this.resumeInitialReflection();}catch(error){if(this.initialVisibilityStats)this.initialVisibilityStats.reflectionFailed=String(error);this.cancelInitialReflection();}
+  }
+ }
+ waitInitialReflection(job,main){
+  if(!main.hasWater)return;
+  const bindings=main.items.filter(({b})=>b.materials.has(4)).map(({b})=>({bucket:b,resource:b.resource})),resources=new Set(bindings.map(({resource})=>resource));
+  // Unknown resources are not a ready-null footprint. Ordinary render remains safe.
+  if(resources.has(undefined)||resources.has(null))return;
+  const pending=new Set([...resources].filter(m=>!m.vertexPublication));
+  this.initialReflectionWait={main,bindings,resources,pending,frame:job.frame,view:job.view,state:job.state,canvas:job.canvas,target:job.target,epoch:job.epoch,viewport:job.viewport,reflectionTarget:job.reflectionTarget};
+  this.initialVisibilityStats.reflectionWaitingResources=pending.size;
+ }
+ resumeInitialReflection(){
+  const wait=this.initialReflectionWait;
+  if(!wait||wait.pending.size||this.initialVisibilityJob)return;
+  if(this.disposed||wait.epoch!==(this.bucketIndexGeneration||0)||wait.viewport!==this.visibilityViewport()||wait.reflectionTarget!==this.reflectTarget){this.cancelInitialVisibility(true);return;}
+  if(!wait.bindings.every(({bucket,resource})=>bucket.resource===resource)){this.cancelInitialReflection();return;}
+  this.initialReflectionWait=null;
+  this.initialVisibilityStats.reflectionReadyAt=performance.now();
+  // No hull/scissor work in the loader callback; the idle slice owns setup too.
+  try{this.queueInitialVisibility({contexts:[],index:0,steps:null,epoch:wait.epoch,viewport:wait.viewport,reflectionTarget:wait.reflectionTarget,reflection:wait});}catch(error){this.initialVisibilityStats.reflectionFailed=String(error);this.cancelInitialReflection();}
+ }
+ prepareInitialVisibility(camera,state){
+  this.cancelInitialVisibility(true);
+  if(this.disposed||typeof requestIdleCallback!=='function'||state.deferredInstanceVAO===false||this.preparedInstanceCount!==this.buckets.size)return;
+  // Mutable UI sets/arrays cannot be shared with a job that yields.
+  const snapshot={...state,routeEdges:new Set(state.routeEdges||[]),inspectionMask:state.inspectionMask?{...state.inspectionMask,buckets:state.inspectionMask.buckets?new Set(state.inspectionMask.buckets):undefined}:undefined};
+  const view={...camera,eye:Array.from(camera.eye),target:Array.from(camera.target),up:camera.up?Array.from(camera.up):undefined};
+  const frame=this.frameMatrices(view,snapshot),epoch=this.bucketIndexGeneration||0,viewport=this.visibilityViewport();
+  const contexts=[this.visiblePlanContext(frame.vp,0,snapshot,view),this.visiblePlanContext(frame.lightVP,2,snapshot,view)];
+  this.initialVisibilityStats={startedAt:performance.now(),slices:0,cpuMs:0,maxSliceMs:0,retainedBytes:0,peakRetainedBytes:0,completed:0,adopted:0,discarded:0,adoptedMask:0,cancelled:false};
+  this.initialVisibilityPlans=new Map();
+  this.queueInitialVisibility({contexts,index:0,steps:null,epoch,viewport,reflectionTarget:this.reflectTarget,frame,view,state:snapshot,canvas:{width:this.canvas.width,height:this.canvas.height},target:{w:this.reflectTarget?.w,h:this.reflectTarget?.h}});
+ }
+ initialReflectionSourcesValid(sources){return !sources||sources.every(({bucket,resource,publication,footprint})=>bucket.resource===resource&&resource.vertexPublication===publication&&resource.reflectionFootprint===footprint);}
+ queueInitialVisibility(job){
+  this.initialVisibilityJob=job;const stats=this.initialVisibilityStats;
+  const tick=deadline=>{
+   if(this.initialVisibilityJob!==job)return;
+   this.initialVisibilityIdle=undefined;
+   if(this.disposed||job.epoch!==(this.bucketIndexGeneration||0)||job.viewport!==this.visibilityViewport()||job.reflectionTarget!==this.reflectTarget){this.cancelInitialVisibility(true);return;}
+   if(!this.initialReflectionSourcesValid(job.reflectionSources)||(job.reflection&&!job.reflection.bindings.every(({bucket,resource})=>bucket.resource===resource))){this.cancelInitialReflection();return;}
+   const started=performance.now(),end=started+2;
+   try{
+    if(job.reflection&&!job.contexts.length){
+     if(deadline.timeRemaining()<=.5){this.initialVisibilityIdle=requestIdleCallback(tick);return;}
+     const r=job.reflection,view=this.reflectionView(r.main,r.view,r.state,r.frame.projection);
+     const descriptor=this.reflectionDescriptor(r.main,r.frame.vp,view.vp,view.waterLevel,r.canvas,r.target,r.state,new WeakMap());
+     job.reflectionSources=r.bindings.map(({bucket,resource})=>({bucket,resource,publication:resource.vertexPublication,footprint:resource.reflectionFootprint}));
+     job.contexts.push(this.visiblePlanContext(view.vp,3,r.state,r.view,descriptor));stats.reflectionStartedAt=started;
+    }
+    while(deadline.timeRemaining()>.5&&performance.now()<end){
+     const context=job.contexts[job.index];
+     if(!job.steps){job.stream={data:new Float32Array(65536),used:0};job.steps=this.buildVisiblePlan(context,job.stream,true);}
+     const step=job.steps.next();
+     if(step.done){
+      this.initialVisibilityPlans.set(context.slot,{key:context.key,epoch:job.epoch,viewport:job.viewport,reflectionTarget:job.reflectionTarget,reflectionSources:job.reflectionSources,plan:step.value});stats.completed++;job.steps=null;job.stream=null;
+      if(context.slot===0)this.waitInitialReflection(job,step.value);
+      if(++job.index===job.contexts.length){this.initialVisibilityJob=null;stats.completedAt=performance.now();if(job.reflection)stats.reflectionCompletedAt=stats.completedAt;else{stats.mainShadowCompletedAt=stats.completedAt;this.resumeInitialReflection();}return;}
+     }
+    }
+    this.initialVisibilityIdle=requestIdleCallback(tick);
+   }catch(error){if(job.reflection){stats.reflectionFailed=String(error);this.cancelInitialReflection();}else{stats.failed=String(error);this.cancelInitialVisibility(true);}}
+   finally{const duration=performance.now()-started;stats.slices++;stats.cpuMs+=duration;stats.maxSliceMs=Math.max(stats.maxSliceMs,duration);stats.retainedBytes=(this.initialVisibilityJob?.stream?.data.byteLength||0)+[...(this.initialVisibilityPlans?.values()||[])].reduce((bytes,item)=>bytes+item.plan.stream.data.byteLength,0);stats.peakRetainedBytes=Math.max(stats.peakRetainedBytes,stats.retainedBytes);}
+  };
+  this.initialVisibilityIdle=requestIdleCallback(tick);
+ }
+ visibleScene(vp,slot){
+  const context=this.visiblePlanContext(vp,slot),{key,state}=context;let cached=this.visibilityCaches.get(slot);
+  if(!cached||cached.key!==key){
+   const pending=this.initialVisibilityPlans?.get(slot);let plan;
+   if(pending){this.initialVisibilityPlans.delete(slot);
+    if(pending.epoch===(this.bucketIndexGeneration||0)&&pending.key===key&&pending.viewport===this.visibilityViewport()&&pending.reflectionTarget===this.reflectTarget&&this.initialReflectionSourcesValid(pending.reflectionSources)){plan=pending.plan;this.initialVisibilityStats.adopted++;this.initialVisibilityStats.adoptedMask|=1<<slot;}
+    else this.initialVisibilityStats.discarded++;
+    this.initialVisibilityStats.retainedBytes=Math.max(0,this.initialVisibilityStats.retainedBytes-pending.plan.stream.data.byteLength);
+   }
+   const stream=this.instanceStream(slot,plan?.stream.data);
+   if(state.bucketSpatialIndex!==false)this.scheduleBucketIndex();
+   if(plan){stream.data=plan.stream.data;stream.used=plan.stream.used;}
+   else plan=this.buildVisiblePlan(context,stream).next().value;
+   const{stream:cpuStream,...records}=plan;
    // Only emitted draw heads need VAOs; retain every logical stream segment.
    // Materialize before upload, matching the original GL update ordering.
-   if(state.deferredInstanceVAO!==false)for(const item of grouped.drawItems)item.record.vao=this.instanceVAO(item.b,slot,stream,item.record.offset).vao;
-   this.uploadInstances(stream);cached={key,items,clearStart,...grouped,submitted,triangles:Math.round(triangles),culled,hasWater:items.some(({b})=>b.materials.has(4)),water:items.filter(({b})=>b.uniformMaterial===4&&b.count===1).map(({b})=>b)};this.visibilityCaches.set(slot,cached);this.stats.visibilityBuilds++;
+   if(state.deferredInstanceVAO!==false)for(const item of records.drawItems)item.record.vao=this.instanceVAO(item.b,slot,stream,item.record.offset).vao;
+   this.uploadInstances(stream);cached={key,...records};this.visibilityCaches.set(slot,cached);this.stats.visibilityBuilds++;
   }
   return cached;
  }
@@ -890,15 +1017,15 @@ class Engine{
    if(score<best){best=score;level=sp[1]+(id===state.selected?state.explode*b.data[23]:0);}
   }return level;
  }
- reflectionScissor(visible,vp){
-  if(this.state.reflectionScissor===false)return null;
+ reflectionScissor(visible,vp,state=this.state,target=this.reflectTarget){
+  if(state.reflectionScissor===false)return null;
   let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
   for(const {b} of visible.items){
    if(!b.materials.has(4))continue;
    // Unknown/mixed or animated water falls back to the full target. Only
    // single-instance static meshes have conservative world-space range boxes.
    if(b.uniformMaterial!==4||b.count!==1||!b.waterRanges?.length)return null;
-   const lift=b.data[21]===this.state.selected?(this.state.explode||0)*b.data[23]:0;
+   const lift=b.data[21]===state.selected?(state.explode||0)*b.data[23]:0;
    for(const r of b.waterRanges)for(const sx of[-1,1])for(const sy of[-1,1])for(const sz of[-1,1]){
     const x=r[2]+sx*r[5],y=r[3]+lift+sy*r[6],z=r[4]+sz*r[7];
     const w=vp[3]*x+vp[7]*y+vp[11]*z+vp[15];
@@ -913,33 +1040,49 @@ class Engine{
   // Maximum shader ripple displacement is .018*(1+.43+.17)*.09=.002592.
   // Pad by .003 plus two texels for linear filtering and roundoff. Clamp to
   // the shader's sampling interval, including water projected off screen.
-  const {w,h}=this.reflectTarget,padX=.003+2/w,padY=.003+2/h;
+  const {w,h}=target,padX=.003+2/w,padY=.003+2/h;
   const clamp=v=>Math.max(.001,Math.min(.999,v));
   const left=Math.max(0,Math.floor((clamp(x0)-padX)*w)),bottom=Math.max(0,Math.floor((clamp(y0)-padY)*h));
   const right=Math.min(w,Math.ceil((clamp(x1)+padX)*w)),top=Math.min(h,Math.ceil((clamp(y1)+padY)*h));
   return[left,bottom,right-left,top-bottom];
  }
- render(camera,state){this.state=state;this.camera=camera;let g=this.gl;this.day=M.clamp(Math.sin((state.hour-5.5)/14*Math.PI)*1.22,0,1);let angle=(state.hour-6)/12*Math.PI;this.sun=M.norm([Math.cos(angle),Math.max(.23,Math.sin(angle)),.30]);this.skyColor=M.lerp([.045,.075,.12],[.79,.84,.87],this.day);if(state.weather===1||state.weather===2)this.skyColor=M.lerp(this.skyColor,[.55,.62,.64],.4);this.fog=Y.Atmosphere.fog(state,camera);
+ reflectionView(visible,camera,state,projection){
+  const waterLevel=this.reflectionLevel(visible.water,camera,state),eye=[camera.eye[0],waterLevel*2-camera.eye[1],camera.eye[2]],target=[camera.target[0],waterLevel*2-camera.target[1],camera.target[2]];
+  return{waterLevel,eye,vp:M.multiply(projection,M.lookAt(eye,target,[0,-1,0]))};
+ }
+ reflectionDescriptor(visible,mainVP,refVP,waterLevel,canvas,target,state,worldCache){
+  const scissor=this.reflectionScissor(visible,refVP,state,target),footprintPlanes=scissor&&Y.ReflectionFootprint?Y.ReflectionFootprint.planes(visible,mainVP,refVP,canvas,target,state,worldCache):null;
+  return{mainVP,refVP,waterLevel,scissor,footprintPlanes,target:{w:target.w,h:target.h}};
+ }
+ frameMatrices(camera,state){
+  const angle=(state.hour-6)/12*Math.PI,sun=M.norm([Math.cos(angle),Math.max(.23,Math.sin(angle)),.30]);
+  let proj=M.perspective(camera.fov||.80,this.aspect,M.clamp(Math.hypot(...M.sub(camera.eye,camera.target))*.012,.15,18),Math.max(6500,Math.hypot(...M.sub(camera.eye,camera.target))*2.3));proj[8]=camera.offsetX||0;proj[9]=-(camera.offsetY||0);
+  const vp=M.multiply(proj,M.lookAt(camera.eye,camera.target,camera.up||[0,1,0]));
+  const radius=M.clamp(Math.hypot(...M.sub(camera.eye,camera.target))*.73,95,1550),tc=[camera.target[0],0,camera.target[2]],shadowChanged=!this.shadowCenter||Math.hypot(tc[0]-this.shadowCenter[0],tc[2]-this.shadowCenter[2])>4||Math.abs(radius-(this.shadowRadius||0))>3;
+  const shadowCenter=shadowChanged?tc:this.shadowCenter,shadowRadius=shadowChanged?radius:this.shadowRadius;
+  const lightView=M.lookAt(M.add(shadowCenter,M.mul(sun,2300)),shadowCenter),lightTexel=2*shadowRadius/this.shadowSize;
+  lightView[12]=Math.round(lightView[12]/lightTexel)*lightTexel;lightView[13]=Math.round(lightView[13]/lightTexel)*lightTexel;
+  return{sun,projection:proj,vp,shadowChanged,shadowCenter,shadowRadius,lightVP:M.multiply(M.ortho(-shadowRadius,shadowRadius,-shadowRadius,shadowRadius,10,5100),lightView)};
+ }
+ render(camera,state){this.cancelInitialVisibility(false);this.state=state;this.camera=camera;const frame=this.frameMatrices(camera,state);let g=this.gl;this.day=M.clamp(Math.sin((state.hour-5.5)/14*Math.PI)*1.22,0,1);this.sun=frame.sun;this.skyColor=M.lerp([.045,.075,.12],[.79,.84,.87],this.day);if(state.weather===1||state.weather===2)this.skyColor=M.lerp(this.skyColor,[.55,.62,.64],.4);this.fog=Y.Atmosphere.fog(state,camera);
  // Directional sky light and warm ground bounce share one hemisphere model.
  this.ambientSky=M.lerp([.035,.049,.085],[.33,.365,.40],this.day);
  this.ambientGround=M.lerp([.018,.022,.032],[.13,.12,.096],this.day);
  this.sunColor=M.mul(M.lerp([.13,.23,.46],[3.05,2.93,2.70],this.day),state.weather===1?.45:state.weather===2?.72:1);
  this.daylightGrade=applyDaylightGrade(state,this.day,this.ambientSky,this.ambientGround,this.sunColor);
  this.fogSky=this.skyColor.map(c=>{const y=Math.min(Math.max(c,0)**2.2,.995),a=2.51-2.43*y,b=.03-.59*y;return(-b+Math.sqrt(b*b+.56*y*a))/(2*a*1.10);});
- let proj=M.perspective(camera.fov||.80,this.aspect,M.clamp(Math.hypot(...M.sub(camera.eye,camera.target))*.012,.15,18),Math.max(6500,Math.hypot(...M.sub(camera.eye,camera.target))*2.3));proj[8]=camera.offsetX||0;proj[9]=-(camera.offsetY||0);this.projection=proj;let view=M.lookAt(camera.eye,camera.target,camera.up||[0,1,0]);this.vp=M.multiply(proj,view);let radius=M.clamp(Math.hypot(...M.sub(camera.eye,camera.target))*.73,95,1550),tc=[camera.target[0],0,camera.target[2]];if(!this.shadowCenter||Math.hypot(tc[0]-this.shadowCenter[0],tc[2]-this.shadowCenter[2])>4||Math.abs(radius-(this.shadowRadius||0))>3){this.shadowDirty=true;this.shadowCenter=tc;this.shadowRadius=radius}const L=this.shadowCenter,lightView=M.lookAt(M.add(L,M.mul(this.sun,2300)),L),lightTexel=2*this.shadowRadius/this.shadowSize;
- lightView[12]=Math.round(lightView[12]/lightTexel)*lightTexel;lightView[13]=Math.round(lightView[13]/lightTexel)*lightTexel;
- this.lightVP=M.multiply(M.ortho(-this.shadowRadius,this.shadowRadius,-this.shadowRadius,this.shadowRadius,10,5100),lightView);const mainVisible=this.visibleScene(this.vp,0);this.waterLevel=this.reflectionLevel(mainVisible.water,camera,state);let refEye=[camera.eye[0],this.waterLevel*2-camera.eye[1],camera.eye[2]],refTarget=[camera.target[0],this.waterLevel*2-camera.target[1],camera.target[2]];let nextRefVP=M.multiply(proj,M.lookAt(refEye,refTarget,[0,-1,0]));if(!this.refVP)this.refVP=nextRefVP;g.enable(g.DEPTH_TEST);g.depthFunc(g.LEQUAL);g.disable(g.CULL_FACE);g.disable(g.BLEND);
+ const proj=frame.projection;this.projection=proj;this.vp=frame.vp;if(frame.shadowChanged){this.shadowDirty=true;this.shadowCenter=frame.shadowCenter;this.shadowRadius=frame.shadowRadius;}this.lightVP=frame.lightVP;const mainVisible=this.visibleScene(this.vp,0);const reflection=this.reflectionView(mainVisible,camera,state,proj);this.waterLevel=reflection.waterLevel;const refEye=reflection.eye,nextRefVP=reflection.vp;if(!this.refVP)this.refVP=nextRefVP;g.enable(g.DEPTH_TEST);g.depthFunc(g.LEQUAL);g.disable(g.CULL_FACE);g.disable(g.BLEND);
  this.people?.prepare(this.vp,nextRefVP,this.state);
  if(this.shadowDirty){g.bindFramebuffer(g.FRAMEBUFFER,this.shadowTarget.f);g.viewport(0,0,this.shadowSize,this.shadowSize);g.clear(g.DEPTH_BUFFER_BIT);this.draw(this.shadow,this.lightVP,camera.eye,2);this.shadowDirty=false}
  let cameraRange=Math.hypot(...M.sub(camera.eye,camera.target)),lakeCenter=Y.DATA.toWorld([547,238]),nearLake=Math.hypot(camera.target[0]-lakeCenter[0],camera.target[2]-lakeCenter[1])<330;
- let reflectKey=[...camera.eye,...camera.target,camera.offsetX||0,camera.offsetY||0,this.waterLevel,state.isolate,this.canvas.width,this.canvas.height,state.hour,state.season,state.weather,state.explode,this.daylightGrade].join(",");if(mainVisible.hasWater&&(reflectKey!==this.lastReflectKey||this.frame++%3===0||this.lastReflection<0)){this.lastReflectKey=reflectKey;this.refVP=nextRefVP;let t=this.reflectTarget;g.bindFramebuffer(g.FRAMEBUFFER,t.f);g.viewport(0,0,t.w,t.h);const scissor=this.reflectionScissor(mainVisible,this.refVP);this.reflectionCullRect=scissor;this.reflectionFootprintPlanes=scissor&&Y.ReflectionFootprint?Y.ReflectionFootprint.planes(mainVisible,this.vp,this.refVP,this.canvas,t,state):null;if(scissor){g.enable(g.SCISSOR_TEST);g.scissor(...scissor);}try{g.clear(g.DEPTH_BUFFER_BIT);if(state.skyAfterOpaque===false)this.sky(this.refVP,refEye);this.draw(this.main,this.refVP,refEye,3);}finally{this.reflectionCullRect=null;this.reflectionFootprintPlanes=null;if(scissor)g.disable(g.SCISSOR_TEST);}
+ let reflectKey=[...camera.eye,...camera.target,camera.offsetX||0,camera.offsetY||0,this.waterLevel,state.isolate,this.canvas.width,this.canvas.height,state.hour,state.season,state.weather,state.explode,this.daylightGrade].join(",");if(mainVisible.hasWater&&(reflectKey!==this.lastReflectKey||this.frame++%3===0||this.lastReflection<0)){this.lastReflectKey=reflectKey;this.refVP=nextRefVP;let t=this.reflectTarget;g.bindFramebuffer(g.FRAMEBUFFER,t.f);g.viewport(0,0,t.w,t.h);const descriptor=this.reflectionDescriptor(mainVisible,this.vp,this.refVP,this.waterLevel,this.canvas,t,state),scissor=descriptor.scissor;this.reflectionCullRect=scissor;this.reflectionFootprintPlanes=descriptor.footprintPlanes;if(scissor){g.enable(g.SCISSOR_TEST);g.scissor(...scissor);}try{g.clear(g.DEPTH_BUFFER_BIT);if(state.skyAfterOpaque===false)this.sky(this.refVP,refEye);this.draw(this.main,this.refVP,refEye,3);}finally{this.reflectionCullRect=null;this.reflectionFootprintPlanes=null;if(scissor)g.disable(g.SCISSOR_TEST);}
  // Reflection color is sampled later; its depth renderbuffer is only a pass-local
  // visibility aid and is cleared before every subsequent reflection render.
  g.invalidateFramebuffer(g.FRAMEBUFFER,[g.DEPTH_ATTACHMENT]);this.lastReflection=state.time}
  g.bindFramebuffer(g.FRAMEBUFFER,this.sceneTarget.msF);g.viewport(0,0,this.canvas.width,this.canvas.height);g.clear(g.DEPTH_BUFFER_BIT);if(state.skyAfterOpaque===false)this.sky(this.vp,camera.eye);this.draw(this.main,this.vp,camera.eye,0);
  if((state.weather===1||state.weather===3)&&!state.isolate){let p=this.particles;g.useProgram(p.p);this.uniform(p,'uVP',this.vp);this.uniform(p,'uEye',camera.eye);this.uniform(p,'uTime',state.time);this.uniform(p,'uWeather',state.weather);this.uniform(p,'uHDR',this.hdr?1:0);g.enable(g.BLEND);g.blendFunc(g.SRC_ALPHA,g.ONE_MINUS_SRC_ALPHA);g.depthMask(false);g.bindVertexArray(this.particleVAO);g.drawArrays(state.weather===3?g.POINTS:g.LINES,0,this.particleCount);g.bindVertexArray(null);g.depthMask(true);g.disable(g.BLEND)}
  this.present();
- this.frameAvailable();this.frameFences.push(g.fenceSync(g.SYNC_GPU_COMMANDS_COMPLETE,0));g.flush();
+ this.frameAvailable();this.frameFences.push(g.fenceSync(g.SYNC_GPU_COMMANDS_COMPLETE,0));g.flush();this.initialVisibilityPlans=null;if(this.initialVisibilityStats)this.initialVisibilityStats.retainedBytes=0;
  }
  pick(x,y){
   const g=this.gl,t=this.pickTarget,rect=this.canvas.getBoundingClientRect(),px=M.clamp(Math.floor(x/rect.width*t.w),0,t.w-1),py=M.clamp(t.h-1-Math.floor(y/rect.height*t.h),0,t.h-1),pixel=new Uint8Array(4);
@@ -972,7 +1115,7 @@ function indexUpload(engine,m,input){const p=m.page208,g=engine.gl,i=m.pageMembe
    if(p.indexRemaining208===0){g.bindVertexArray(null);p.indexBuffer=g.createBuffer();if(!p.indexBuffer)throw Error('Page208 index buffer allocation failed');for(const x of p.members)x.indexBuffer=p.indexBuffer;g.bindBuffer(g.ELEMENT_ARRAY_BUFFER,p.indexBuffer);g.bufferData(g.ELEMENT_ARRAY_BUFFER,data,g.STATIC_DRAW);g.bindBuffer(g.ELEMENT_ARRAY_BUFFER,null);releaseIndices208(p);}
   }catch(error){p.failed=true;releaseIndices208(p);throw error;}
 }
-P.preparedVertices=function(index,v){if(this.disposed)throw Error('Scene loading was interrupted');const m=this.meshResources[index],p=m.page208;if(!p)return vertices.call(this,index,v);if(m.waterBounds&&Y.ReflectionFootprint)m.reflectionFootprint=Y.ReflectionFootprint.prepare(v);if(p.failed)throw Error('Scene loading was interrupted');const i=m.pageMember208;if(!(v instanceof Float32Array)||v.length!==m.buffer.length||p.vertexSeen[i])invalid208(p,'Invalid page208 vertex publication');const start=v.byteOffset-m.buffer.offset+p.members[0].buffer.offset;if(start<0||start+p.vertexBytes>v.buffer.byteLength)invalid208(p,'Truncated page208 vertices');try{if(!p.vertexBuffer){const g=this.gl;p.vertexBuffer=g.createBuffer();for(const x of p.members)x.vertexBuffer=p.vertexBuffer;g.bindBuffer(g.ARRAY_BUFFER,p.vertexBuffer);g.bufferData(g.ARRAY_BUFFER,new Float32Array(v.buffer,start,p.vertexBytes/4),g.STATIC_DRAW);}if(!m.originalIndexed208)indexUpload(this,m,null);p.vertexSeen[i]=true;}catch(error){p.failed=true;releaseIndices208(p);throw error;}};
+P.preparedVertices=function(index,v){if(this.disposed)throw Error('Scene loading was interrupted');const m=this.meshResources[index],p=m.page208;if(!p)return vertices.call(this,index,v);if(m.waterBounds&&Y.ReflectionFootprint)m.reflectionFootprint=Y.ReflectionFootprint.prepare(v);if(p.failed)throw Error('Scene loading was interrupted');const i=m.pageMember208;if(!(v instanceof Float32Array)||v.length!==m.buffer.length||p.vertexSeen[i])invalid208(p,'Invalid page208 vertex publication');const start=v.byteOffset-m.buffer.offset+p.members[0].buffer.offset;if(start<0||start+p.vertexBytes>v.buffer.byteLength)invalid208(p,'Truncated page208 vertices');try{if(!p.vertexBuffer){const g=this.gl;p.vertexBuffer=g.createBuffer();for(const x of p.members)x.vertexBuffer=p.vertexBuffer;g.bindBuffer(g.ARRAY_BUFFER,p.vertexBuffer);g.bufferData(g.ARRAY_BUFFER,new Float32Array(v.buffer,start,p.vertexBytes/4),g.STATIC_DRAW);}if(!m.originalIndexed208)indexUpload(this,m,null);p.vertexSeen[i]=true;this.preparedVertexPublished?.(m);}catch(error){p.failed=true;releaseIndices208(p);throw error;}};
 P.preparedIndices=function(index,v){if(this.disposed)throw Error('Scene loading was interrupted');const m=this.meshResources[index],p=m.page208;if(!p)return indices.call(this,index,v);if(p.failed)throw Error('Scene loading was interrupted');if(!m.originalIndexed208||!(v instanceof Uint16Array)||v.length!==m.vertexCount)invalid208(p,'Invalid page208 index publication');indexUpload(this,m,v);};
 P.finishPrepared=function(...args){for(const p of this.pages208||[])if(p.failed||!p.vertexSeen.every(Boolean)||!p.indexSeen.every(Boolean)||p.indexRemaining208!==0||!p.indexBuffer||p.packedIndices208){releasePages208(this,true);throw Error('Incomplete logical page208 uploads');}this.pageIndexScratch208=null;return finish.apply(this,args);};
 P.dispose=function(...args){releasePages208(this,true);return dispose.apply(this,args);};

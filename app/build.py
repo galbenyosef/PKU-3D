@@ -3,6 +3,8 @@ from pathlib import Path
 import base64, hashlib, html, json, re, shutil, subprocess, sys
 
 R = Path(__file__).resolve().parent
+sys.path.insert(0, str(R.parent / 'scripts'))
+from scene_codec_assets import codec_assets
 MAP_LINKS = {
     'satellite': ('卫星地图 ↗', 'https://www.arcgis.com/apps/mapviewer/index.html?basemapUrl=https%3A%2F%2Fservices.arcgisonline.com%2FArcGIS%2Frest%2Fservices%2FWorld_Imagery%2FMapServer&center=116.304%2C39.992&level=17'),
     'standard': ('标准地图 ↗', 'https://www.openstreetmap.org/#map=17/39.992/116.304'),
@@ -76,6 +78,24 @@ if '--cached' in sys.argv:
     if cached['sourceHash'] != digest.hexdigest():
         raise SystemExit('Scene inputs changed. Run a complete build before publishing.')
 
+# Explicit transport-only import: no codec resources are inferred from stale files.
+codec_args = [v for v in sys.argv if v.startswith('--codec-sidecar=')]
+codec_shas = [v for v in sys.argv if v.startswith('--codec-sidecar-sha256=')]
+if codec_args or codec_shas:
+    if len(codec_args) != 1 or len(codec_shas) != 1:
+        raise SystemExit('Codec import requires exactly one sidecar and approved SHA256')
+    subprocess.run([sys.executable, str(R.parent / 'scripts/import-scene-codec.py'),
+                    '--sidecar', codec_args[0].split('=', 1)[1],
+                    '--sha256', codec_shas[0].split('=', 1)[1]], check=True)
+# Detect an interrupted import before generating or copying any release outputs.
+scene_manifest = json.loads((R / 'assets/runtime-v46/scene/manifest.json').read_text())
+package_text = (R / 'src/scene-package46.js').read_text().strip()
+if not package_text.startswith('YY.SCENE_PACKAGE46=') or not package_text.endswith(';'):
+    raise SystemExit('Unexpected scene package wrapper')
+if json.loads(package_text[len('YY.SCENE_PACKAGE46='):-1]) != {'base': 'assets/runtime-v46/scene/', **scene_manifest}:
+    raise SystemExit('Scene package/manifest mismatch; incomplete codec import or bake')
+codec_files = codec_assets(scene_manifest, R / 'assets/runtime-v46/scene')
+
 # File URLs cannot upload file-origin images to WebGL. Load only these two
 # byte-identical texture data URLs through a classic script when opened offline.
 manifest = json.loads((R / 'assets/runtime-v46/scene/manifest.json').read_text())
@@ -124,7 +144,7 @@ gallery = {'images': {}, 'places': {}}
 # Provider map mosaics and development photos are not release assets.
 paths = {'assets/materials-display.jpg', texture_file, 'assets/brand/ink-swallow.png'}
 manifest = json.loads((R / 'assets/runtime-v46/scene/manifest.json').read_text())
-scene_paths = [manifest['atlas'], 'manifest.json', 'bucket-hashes.json']
+scene_paths = [manifest['atlas'], 'manifest.json', 'bucket-hashes.json'] + codec_files
 for chunk in manifest['chunks']:
     scene_paths.extend([chunk['file'], chunk['fallback']])
 paths.update('assets/runtime-v46/scene/' + file for file in scene_paths)

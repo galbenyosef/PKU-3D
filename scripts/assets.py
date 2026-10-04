@@ -15,6 +15,13 @@ import shutil
 import sys
 import tempfile
 import zipfile
+# Preserve direct CLI and importlib/spec_from_file_location callers alike.
+import importlib.util
+_codec_spec = importlib.util.spec_from_file_location(
+    '_pku_scene_codec_assets', Path(__file__).with_name('scene_codec_assets.py'))
+_codec_module = importlib.util.module_from_spec(_codec_spec)
+_codec_spec.loader.exec_module(_codec_module)
+codec_assets = _codec_module.codec_assets
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = Path('app')
@@ -42,6 +49,7 @@ def inputs():
     # use the exact delivered scene without baking on a different GPU/font set.
     cache = base / 'runtime-v46/scene'
     meta = json.loads((cache / 'manifest.json').read_text())
+    files.update(cache / name for name in codec_assets(meta, cache))
     files.update(cache / x for x in ('manifest.json', 'bucket-hashes.json', meta['atlas']))
     for chunk in meta['chunks']:
         files.update(cache / chunk[x] for x in ('file', 'fallback'))
@@ -63,13 +71,23 @@ def pack():
     folder.mkdir(exist_ok=True)
     target = folder / ('pku-3d-assets-' + (ROOT / 'VERSION').read_text().strip() + '.zip')
     with zipfile.ZipFile(target.with_suffix('.tmp'), 'w', compression=zipfile.ZIP_STORED, allowZip64=True) as z:
-        z.writestr('manifest.json', encoded)
+        def write_entry(name, data):
+            # Stable archive metadata; same bytes/version yield the same ZIP SHA.
+            info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            info.create_system = 3
+            info.external_attr = 0o100644 << 16
+            info.compress_type = zipfile.ZIP_STORED
+            z.writestr(info, data)
+        write_entry('manifest.json', encoded)
         for notice in ('LICENSE', 'DATA_LICENSE.md'):
-            z.write(ROOT / notice, notice)
+            write_entry(notice, (ROOT / notice).read_bytes())
         seen = set()
         for p, row in zip(paths, rows):
             if row['sha256'] not in seen:
-                z.write(p, 'blobs/' + row['sha256'])
+                data = p.read_bytes()
+                if len(data) != row['bytes'] or hashlib.sha256(data).hexdigest() != row['sha256']:
+                    raise RuntimeError('Asset changed during pack: ' + row['path'])
+                write_entry('blobs/' + row['sha256'], data)
                 seen.add(row['sha256'])
     target.with_suffix('.tmp').replace(target)
     payload['archive'] = {'file': target.name, 'bytes': target.stat().st_size, 'sha256': sha(target)}

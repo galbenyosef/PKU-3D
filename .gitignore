@@ -163,3 +163,8 @@ node_modules/
 !/app/src/studentcenter195-name-trace.js
 !/app/src/studentcenter195-name.js
 !/app/tools/extract-studentcenter-name.py
+!/app/tests/test_scene_codec_assets.py
+
+!/app/tests/initial-reflection.test.cjs
+!/app/tests/initial-visibility.test.cjs
+!/app/tests/scene-codec.test.cjs

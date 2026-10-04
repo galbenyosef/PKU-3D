@@ -62,10 +62,14 @@
     "research2-atrium338.test.cjs",
     "first-person-ground-entry.test.cjs",
     "first-person.test.cjs",
-    "studentcenter195-side-stairs.test.cjs"
+    "studentcenter195-side-stairs.test.cjs",
+    "scene-codec.test.cjs",
+    "initial-visibility.test.cjs",
+    "initial-reflection.test.cjs"
   ],
   "packagingTests": [
     "runtime-scene-package284.test.py",
-    "assets-roundtrip.test.py"
+    "assets-roundtrip.test.py",
+    "test_scene_codec_assets.py"
   ]
 }

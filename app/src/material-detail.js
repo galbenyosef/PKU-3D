@@ -2,7 +2,8 @@
 // description, not a claim about an unmeasured building's construction. Preserve
 // the full-resolution atlas and offline source in materials.js; tile ribs remain
 // geometry, while material 25 supplies only the clay's fine surface texture.
-// Mineral and clay colour variation is centred on the previous mean tint.
+// Material uplift: porous lime, masonry and unglazed clay keep distinct
+// reflectance and fine relief; original tint and physical tile geometry remain.
 // Roughness values are restrained display fits, not measured building samples.
 // Inject after the renderer's noise, filteredNoise and bump helpers.
 YY.MATERIAL_DETAIL_GLSL=`
@@ -18,12 +19,12 @@ void campusMaterialDetail(float mat,vec2 st,float dist,inout vec3 base,inout vec
   float fade=1.-smoothstep(.35,1.5,max(fw.x,fw.y));
   float joint=face.x*face.y,variation=mix(.5,hash(floor(b)),fade);
   float patina=filteredNoise(st*.53),grain=filteredNoise(st*19.);
-  vec3 brick=base*(.9275+.09*(variation-.5)-.025*(patina-.5));
+  vec3 brick=base*(.950+.105*(variation-.5)-.035*(patina-.5));
   // Mortar inherits the local masonry colour rather than painting all walls
   // with one green-grey joint colour.
-  base=mix(brick,base*.76,(1.-joint)*fade);
-  rough=.91+(grain-.5)*.04;
-  float height=joint*.0018*fade+(grain-.5)*.00045;
+  base=mix(brick,base*.70,(1.-joint)*fade);
+  rough=.945+(grain-.5)*.035+(1.-joint)*fade*.025;
+  float height=joint*.0022*fade+(grain-.5)*.00028;
   vec3 detail=bump(n,height);
   n=normalize(mix(n,detail,1.-smoothstep(75.,95.,dist)));
  }
@@ -35,9 +36,9 @@ void campusMaterialDetail(float mat,vec2 st,float dist,inout vec3 base,inout vec
   // impulse at fract() wrap. Existing physical tile meshes use material 25.
   float lip=1.-smoothstep(.015,.06+fw.y,min(q.y,1.-q.y));
   float variation=mix(.5,hash(floor(t)),fade);
-  base*=.91+.06*(variation-.5)+(.06*(gutter-.5)-.035*lip)*fade;
-  rough=.85+.045*(variation-.5);
-  vec3 detail=bump(n,(gutter*.012-lip*.002)*fade);
+  base*=.885+.075*(variation-.5)+(.065*(gutter-.5)-.045*lip)*fade;
+  rough=.895+.055*(variation-.5);
+  vec3 detail=bump(n,(gutter*.008-lip*.0018)*fade);
   n=normalize(mix(n,detail,1.-smoothstep(70.,90.,dist)));
  }
  if(mat==20.){
@@ -51,16 +52,20 @@ void campusMaterialDetail(float mat,vec2 st,float dist,inout vec3 base,inout vec
  }
  if(mat==24.){
   float mineral=filteredNoise(st*2.),grain=filteredNoise(st*70.);
-  base*=.9675+.020*(mineral-.5)+.014*(grain-.5);
-  rough=.90+.035*(grain-.5);
-  vec3 detail=bump(n,filteredNoise(st*25.)*.00065);
+  // Preserve a clean lime mean while letting existing mineral grain break
+  // up the broad wall; no added texture/noise evaluation.
+  base*=.982+.034*(mineral-.5)+.024*(grain-.5);
+  rough=.955+.025*(grain-.5);
+  vec3 detail=bump(n,(mineral-.5)*.00020+(grain-.5)*.00022);
   n=normalize(mix(n,detail,1.-smoothstep(35.,45.,dist)));
  }
  if(mat==25.){
   float clay=filteredNoise(st*7.),grain=filteredNoise(st*55.);
-  base*=.945+.026*(clay-.5)+.018*(grain-.5);
-  rough=.84+.05*(clay-.5);
-  vec3 detail=bump(n,filteredNoise(st*23.)*.0008);
+  // Clay stays darker than lime/stone; the original roof rib geometry
+  // supplies its silhouette, so surface relief is sub-millimetre only.
+  base*=.905+.050*(clay-.5)+.018*(grain-.5);
+  rough=.91+.06*(clay-.5);
+  vec3 detail=bump(n,(clay-.5)*.00055+(grain-.5)*.00024);
   n=normalize(mix(n,detail,1.-smoothstep(45.,55.,dist)));
  }
 }

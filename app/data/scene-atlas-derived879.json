@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "inputHash": "d587397eb60d01515864233d6f384fc3b93914afc5d2255bf613e77888f4959a",
+  "inputHash": "8562f6b6393d2e26de03c13cb84f434d30188731b30b4409281c7462c20e6fcc",
   "path": "assets/runtime-v46/scene/sign-atlas-01a45f62171de3743bd16457.png",
   "sha256": "01a45f62171de3743bd1645738013bf940139048fa26e6662e8ddfcc4ff99566",
   "note": "Preserve the validated lettering PNG across rendering-only changes. All 579 atlas-producing inputs retain their original order and bytes; atmosphere and reflection footprint helpers do not participate in atlas drawing."

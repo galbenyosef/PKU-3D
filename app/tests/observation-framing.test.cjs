@@ -100,3 +100,21 @@ test('invalid rear metadata falls back to whole-building rear view without borro
 test('reduced motion view buttons arrive at identical framing without queued movement',()=>{
  for(const id of viewButtons){const smooth=interaction({observation,displayBounds}),immediate=interaction({observation,displayBounds,reducedMotion:true});assert.deepEqual(immediate.click(id),smooth.click(id));assert.equal(immediate.c.browseCamera.goal,null);}
 });
+
+// Reverse against unfinished input in the real smoother, including no GPU submission yet.
+test('reversed zoom responds on the next frame instead of chasing the previous distance goal',()=>{
+ for(const firstFactor of [.5,2])for(const elapsed of [0,50]){
+  const {c}=interaction(),o=c.orbit,smoother=c.browseCamera;
+  o.distance=1000;let now=0;smoother.clock=()=>now;
+  const anchor=JSON.stringify(o.target),yaw=o.yaw,elevation=o.elevation;
+  smoother.zoom(firstFactor);now=elapsed;smoother.step(now);
+  const visible=o.distance,reverseFactor=firstFactor<1?1.1:.9;
+  smoother.zoom(reverseFactor);const goal=visible*reverseFactor;
+  assert.equal(smoother.goal.distance,goal,'reverse input starts from the currently visible distance');
+  now+=50;smoother.step(now);
+  assert.ok((o.distance-visible)*(reverseFactor-1)>0,'first accepted frame must move in the new direction');
+  assert.ok(o.distance>=Math.min(visible,goal)&&o.distance<=Math.max(visible,goal),'no overshoot');
+  now+=2000;smoother.step(now);assert.equal(o.distance,goal);assert.equal(smoother.goal,null);
+  assert.equal(JSON.stringify(o.target),anchor);assert.equal(o.yaw,yaw);assert.equal(o.elevation,elevation);
+ }
+});

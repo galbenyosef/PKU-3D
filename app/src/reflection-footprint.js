@@ -44,7 +44,7 @@
  }
  const apply3=(m,p)=>[m[0]*p[0]+m[1]*p[1]+m[2]*p[2],m[3]*p[0]+m[4]*p[1]+m[5]*p[2],m[6]*p[0]+m[7]*p[1]+m[8]*p[2]];
  const apply4=(m,p)=>[0,1,3].map(k=>m[k]*p[0]+m[k+4]*p[1]+m[k+8]*p[2]+m[k+12]);
- function planes(visible,mainVP,refVP,canvas,target,state){
+ function planes(visible,mainVP,refVP,canvas,target,state,worldCache){
   if(state.reflectionFootprint===false||!mainVP||!refVP||!Array.from(mainVP).every(Number.isFinite)||!Array.from(refVP).every(Number.isFinite))return null;
   const width=canvas.width,height=canvas.height,w=target.w,h=target.h,selected=state.selected??0,explode=state.explode??0;
   if(![width,height,w,h].every(x=>Number.isFinite(x)&&x>0)||!Number.isInteger(selected)||Math.fround(selected)!==selected||!Number.isFinite(explode)||!Number.isFinite(Math.fround(explode)))return null;
@@ -55,7 +55,7 @@
    if(b.uniformMaterial!==4||b.count!==1||!source||!m||m.length!==28||m[22]!==0||m[3]||m[7]||m[11]||m[15]!==1||m[1]||m[9]||!Number.isInteger(m[21])||!Array.from(m).every(Number.isFinite))return null;
    // Non-horizontal or animated water retains the original reflection volume.
    const lift=m[21]===selected&&selected>.5?Math.fround(explode)*m[23]:0;
-   let cached=b.reflectionFootprintWorld;
+   let cached=worldCache?(worldCache.get(b)||b.reflectionFootprintWorld):b.reflectionFootprintWorld;
    if(!cached||cached.source!==source||cached.matrix.some((value,k)=>value!==m[k])){
     const world=[],pad=[.05,.05,.05];
     for(const[x,z]of source.polygon){
@@ -63,7 +63,8 @@
      for(let k=0;k<3;k++)pad[k]=Math.max(pad[k],.05+32*EPS*(Math.abs(m[k]*x)+Math.abs(m[k+4]*source.y)+Math.abs(m[k+8]*z)+Math.abs(m[k+12])+1));
     }
     const footprint=expand(hull(world)||[],pad[0],pad[2]);if(!footprint)return null;
-    cached=b.reflectionFootprintWorld={source,matrix:Array.from(m.slice(0,16)),footprint,y:m[5]*source.y+m[13],padY:pad[1]};
+    cached={source,matrix:Array.from(m.slice(0,16)),footprint,y:m[5]*source.y+m[13],padY:pad[1]};
+    if(worldCache)worldCache.set(b,cached);else b.reflectionFootprintWorld=cached;
    }
    const footprint=cached.footprint,y=cached.y+lift,padY=cached.padY+32*EPS*Math.abs(lift);
    const ys=[y-padY,y+padY],projected=[];

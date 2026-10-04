@@ -12,12 +12,24 @@ test('scene byte restoration preserves every bit, including uneven lanes and big
   const encodedBefore=new Uint8Array(shuffled).slice();for(const little of [true,false])assert.deepEqual(new Uint8Array(restore(shuffled,width,little)),bytes,`width ${width}, length ${length}, little ${little}`);assert.deepEqual(new Uint8Array(shuffled),encodedBefore,'input stays immutable');
  }
 });
-test('the worker verifies restored original bytes before transferring the decoded chunk',()=>{
- assert.match(source,/buffer=unshuffle\(inflated,m.shuffle\)/);
- assert.ok(source.indexOf("digest('SHA-256',buffer)")>source.indexOf('buffer=unshuffle(inflated,m.shuffle)'));
- assert.match(source,/actual!==m.sha256/);
- assert.match(source,/compiled=\[\],transfers=\[buffer\]/);
- assert.match(source,/postMessage\(\{index:m.index,buffer,compiled\},transfers\)/);
+test('the worker hashes restored original bytes and transfers them only after verification',async()=>{
+ const {gzipSync}=require('node:zlib'),raw=Uint8Array.from({length:68},(_,i)=>(i*197+89)&255);
+ const packed=gzipSync(new Uint8Array(arrange(raw,4))),module=vm.createContext({YY:{}});
+ vm.runInContext(source.replace('Y.SceneCache46={','Y.workerSource=workerSource;Y.SceneCache46={'),module);
+ for(const matches of [true,false]){
+  let release,hashStarted,hashInput,reply,transferCount=0;
+  const gatedHash=new Promise(resolve=>{release=resolve;}),started=new Promise(resolve=>{hashStarted=resolve;});
+  const crypto={subtle:{digest(algorithm,buffer){assert.equal(algorithm,'SHA-256');hashInput=new Uint8Array(buffer).slice();hashStarted();return gatedHash;}}};
+  const c=vm.createContext({Uint8Array,Uint32Array,Blob,Response,DecompressionStream,atob,crypto,self:{crypto,postMessage(data,transfers){transferCount=transfers?.length||0;reply=structuredClone(data,{transfer:transfers||[]});}}});
+  vm.runInContext(module.YY.workerSource,c);
+  const pending=c.self.onmessage({data:{index:7,encoded:packed.toString('base64'),rawBytes:raw.length,shuffle:4,sha256:'00'.repeat(32)}});
+  await Promise.race([started,pending.then(()=>{throw Error('Worker finished before reaching raw SHA verification');})]);
+  assert.deepEqual(hashInput,raw,'digest must cover restored original bytes, not shuffled input');
+  assert.equal(reply,undefined,'unverified bytes must remain in the worker');
+  release(new Uint8Array(32).fill(matches?0:1).buffer);await pending;
+  if(matches){assert.equal(reply.index,7);assert.equal(reply.error,undefined);assert.equal(transferCount,1);assert.deepEqual(new Uint8Array(reply.buffer),raw);}
+  else{assert.match(reply.error,/checksum mismatch/);assert.equal(reply.buffer,undefined);assert.equal(transferCount,0);}
+ }
 });
 
 test('network stream and offline chunk decode the same bytes and reject damaged data',async()=>{
@@ -82,12 +94,12 @@ test('one response is prefetched during decoding and reused only after its own v
  for(const failure of [null,'checksum','http','network']){
   let release,hashStarted,hashes=0;const firstHash=new Promise(r=>release=r),started=new Promise(r=>hashStarted=r),fetches=[],replies=[];
   const crypto={subtle:{digest(...args){hashes++;if(hashes===1){hashStarted();return firstHash;}return webcrypto.subtle.digest(...args);}}};
-  const c=vm.createContext({Uint8Array,Uint32Array,Blob,Response,DecompressionStream,atob,crypto,self:{crypto,postMessage:r=>replies.push(r)},fetch:async url=>{
+  const c=vm.createContext({Uint8Array,Uint32Array,Blob,Response,DecompressionStream,AbortController,atob,crypto,self:{crypto,postMessage:r=>replies.push(r)},fetch:async url=>{
    fetches.push(url);if(url==='second'&&failure==='network')throw Error('prefetch network failure');
    return new Response(url==='second'&&failure==='checksum'?gzipSync(new Uint8Array(64).fill(18)):packed,{status:url==='second'&&failure==='http'?404:200});
   }});vm.runInContext(module.YY.workerSource,c);
   const message=(index,url,prefetchURL)=>({data:{index,url,prefetchURL,rawBytes:bytes.length,shuffle:0,sha256:digest}});
-  const active=c.self.onmessage(message(0,'first','second'));await started;
+  const active=c.self.onmessage(message(0,'first','second'));await Promise.race([started,active.then(()=>{throw Error('Worker finished before the first checksum: '+(replies[0]?.error||'no error detail'));})]);
   assert.deepEqual(fetches,['first','second']);assert.equal(hashes,1,'prefetch must not decode or hash another chunk');assert.equal(replies.length,0,'unverified bytes must not escape');
   release(await webcrypto.subtle.digest('SHA-256',bytes));await active;
   await c.self.onmessage(message(1,'second',undefined));

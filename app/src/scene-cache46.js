@@ -75,28 +75,64 @@ function unshuffle(buffer,width,little=new Uint8Array(new Uint32Array([1]).buffe
   }else{let q=0;for(let lane=0;lane<width;lane++)for(let i=lane;i<src.length;i+=width)out[i]=src[q++];}
   return out.buffer;
  }
- let prefetched;
- self.onmessage=async({data:m})=>{try{
-  let stream;
-  if(m.encoded){const s=atob(m.encoded),a=new Uint8Array(s.length);for(let i=0;i<s.length;i++)a[i]=s.charCodeAt(i);stream=new Blob([a]).stream();}
-  else{
-   const pending=prefetched;prefetched=null;
-   const r=await(pending?.url===m.url?pending.promise:fetch(m.url));
-   if(!r.ok)throw Error('Scene chunk HTTP '+r.status);
-   // One compressed response may arrive while this chunk decodes. No second
-   // decompression or checksum starts until the next explicit worker message.
-   if(m.prefetchURL){const promise=fetch(m.prefetchURL);promise.catch(()=>{});prefetched={url:m.prefetchURL,promise};}
-   stream=new Blob([await r.arrayBuffer()]).stream();
+ const modernCodec='gzip-meshopt-attributes-v1',maxCodecBytes=64*1024*1024;
+ let prefetched,modernDisabled=false,decoderReady;
+ function discardPrefetch(){
+  const pending=prefetched;prefetched=null;
+  if(pending){pending.controller.abort();pending.promise.then(r=>r.body?.cancel()).catch(()=>{});}
+ }
+ async function compressed(url,prefetchURL){
+  let pending;
+  if(prefetched?.url===url){pending=prefetched;prefetched=null;}else discardPrefetch();
+  const r=await(pending?pending.promise:fetch(url));
+  if(!r.ok){try{r.body?.cancel().catch(()=>{});}catch{}throw Error('Scene chunk HTTP '+r.status);}
+  // Retain one compressed response, never a second decoder task.
+  if(prefetchURL){const controller=new AbortController(),promise=fetch(prefetchURL,{signal:controller.signal});promise.catch(()=>{});prefetched={url:prefetchURL,promise,controller};}
+  return r.arrayBuffer();
+ }
+ async function verify(buffer,sha,required){
+  if(!self.crypto?.subtle){if(required)throw Error('Scene codec requires checksum verification');return;}
+  const digest=await crypto.subtle.digest('SHA-256',buffer),actual=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');
+  if(actual!==sha)throw Error('Scene chunk checksum mismatch');
+ }
+ async function inflate(bytes){return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();}
+ function modernCapable(m){return !modernDisabled&&!m.encoded&&/^https?:/.test(m.url)&&typeof WebAssembly==='object'&&!!self.crypto?.subtle&&typeof DecompressionStream==='function';}
+ function modernAvailable(m){return modernCapable(m)&&m.alternative?.codec===modernCodec;}
+ function nextURL(m,modern){return modern&&m.prefetchAlternative?m.prefetchAlternative.url:m.prefetchURL;}
+ function getDecoder(url){
+  if(!decoderReady){
+   let timer;
+   const initialized=import(url).then(async module=>{const decoder=module.MeshoptDecoder;if(!decoder?.supported||typeof decoder.decodeVertexBuffer!=='function')throw Error('Scene codec unavailable');await decoder.ready;return decoder;});
+   decoderReady=Promise.race([initialized,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Scene codec initialization timeout')),3000);})]).finally(()=>clearTimeout(timer));
   }
-  // The HTTP branch consumes the complete compressed response first.
-  // Decode its Blob stream through the original gzip validation path.
-  const inflated=await new Response(stream.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+  return decoderReady;
+ }
+ async function decodeModern(m){
+  const a=m.alternative;
+  if(![4,32].includes(a.stride)||!Number.isSafeInteger(a.count)||a.count<=0||a.count*a.stride!==m.rawBytes||!Number.isSafeInteger(m.rawBytes)||m.rawBytes>maxCodecBytes||!Number.isSafeInteger(a.bytes)||a.bytes<=0||a.bytes>maxCodecBytes||!Number.isSafeInteger(a.decodedBytes)||a.decodedBytes<=0||a.decodedBytes>maxCodecBytes||!/^[a-f0-9]{64}$/.test(a.sha256))throw Error('Invalid scene codec descriptor');
+  const decoder=await getDecoder(m.decoderURL);
+  const packed=await compressed(a.url,nextURL(m,true));
+  if(packed.byteLength!==a.bytes)throw Error('Incomplete scene codec transport');
+  // Transport SHA pins the offline package; runtime retains gzip integrity and final raw SHA.
+  const encoded=await inflate(packed);
+  if(encoded.byteLength!==a.decodedBytes)throw Error('Incomplete scene codec stream');
+  const raw=new Uint8Array(m.rawBytes);
+  decoder.decodeVertexBuffer(raw,a.count,a.stride,new Uint8Array(encoded));
+  // The attributes codec returns original opaque bytes: never legacy-unshuffle.
+  return prepare(raw.buffer,m,true);
+ }
+ async function decodeLegacy(m){
+  let bytes;
+  if(m.encoded){const s=atob(m.encoded),a=new Uint8Array(s.length);for(let i=0;i<s.length;i++)a[i]=s.charCodeAt(i);bytes=a;}
+  else bytes=await compressed(m.url,nextURL(m,modernCapable(m)));
+  const inflated=await inflate(bytes);
   if(inflated.byteLength!==m.rawBytes)throw Error('Incomplete scene chunk');
-  let buffer=inflated;
-  if(m.shuffle)buffer=unshuffle(inflated,m.shuffle);
-  const verified=(async()=>{
-  if(self.crypto?.subtle){const digest=await crypto.subtle.digest('SHA-256',buffer),actual=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');if(actual!==m.sha256)throw Error('Scene chunk checksum mismatch');}
-  })();verified.catch(()=>{});
+  const buffer=m.shuffle?unshuffle(inflated,m.shuffle):inflated;
+  return prepare(buffer,m,false);
+ }
+ async function prepare(buffer,m,required){
+  if(buffer.byteLength!==m.rawBytes)throw Error('Incomplete scene chunk');
+  const verified=verify(buffer,m.sha256,required);verified.catch(()=>{});
   const compiled=[],transfers=[buffer],records=m.buckets||[];
   // Directly compile typed metadata views into one aligned per-chunk arena.
   // The original records retain their own buffer and every view keeps its type.
@@ -121,9 +157,31 @@ function unshuffle(buffer,width,little=new Uint8Array(new Uint32Array([1]).buffe
   }
   if(metadataOffset!==metadataBytes)throw Error('Incomplete visibility metadata arena');
   await verified; // Never publish or upload records before checksum success.
-  self.postMessage({index:m.index,buffer,compiled},transfers);
+  return{buffer,compiled,transfers};
+ }
+ self.onmessage=async({data:m})=>{try{
+  let result,codec='legacy',fallbackReason;
+  if(modernAvailable(m)){
+   try{result=await decodeModern(m);codec=modernCodec;}
+   catch(e){modernDisabled=true;discardPrefetch();fallbackReason=String(e).slice(0,160);result=await decodeLegacy(m);}
+  }else result=await decodeLegacy(m);
+  // Both representations share this one final publication. Legacy failure is terminal.
+  self.postMessage({index:m.index,buffer:result.buffer,compiled:result.compiled,codec,fallbackReason},result.transfers);
  }catch(e){self.postMessage({index:m.index,error:String(e)});}};`;
  const yieldUI=()=>new Promise(resolve=>requestAnimationFrame(resolve));
+ function localCodecURL(base,file){
+  if(typeof file!=='string'||!file||file.includes('\\')||file.startsWith('/')||file.split('/').some(part=>part==='..')||!/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(file))return null;
+  try{const url=new URL(file,base);return /^https?:$/.test(url.protocol)&&url.origin===location.origin&&url.href.startsWith(base)?url.href:null;}catch{return null;}
+ }
+ function codecOptions(m,base){
+  if(!/^https?:$/.test(globalThis.location?.protocol)||typeof WebAssembly!=='object'||!globalThis.crypto?.subtle)return()=>null;
+  const decoderURL=localCodecURL(base,m.codecResources?.decoder?.file);
+  if(!decoderURL)return()=>null;
+  return chunk=>{
+   const a=chunk?.alternative;if(a?.codec!=='gzip-meshopt-attributes-v1')return null;
+   const url=localCodecURL(base,a.file);return url?{...a,url,decoderURL}:null;
+  };
+ }
  function localChunk(base,index,chunk){
   if(pendingFiles.has(chunk.key))return pendingFiles.get(chunk.key).promise;
   const script=document.createElement('script');script.src=base+chunk.fallback;
@@ -154,6 +212,8 @@ function unshuffle(buffer,width,little=new Uint8Array(new Uint32Array([1]).buffe
  async function load(engine,onProgress=()=>{},prepared){
   const m=Y.SCENE_PACKAGE46;if(!m||(m.version!==2&&m.version!==3)||(m.version===3&&(![1,2].includes(m.normalTransformFormat194)||![1,2].includes(Y.Engine.normalTransformFormat194)||Y.Engine.normalTransformFormat194<m.normalTransformFormat194)))throw Error('Prepared scene manifest is missing or incompatible');
   const started=performance.now(),base=new URL(m.base,document.baseURI).href;
+  const alternativeFor=codecOptions(m,base),codecStats={modernChunks:0,legacyChunks:0,fallbackChunks:0,selectedCompressedBytes:0};
+  if(engine.stats)engine.stats.sceneCodec=codecStats;
   const pool=prepared||warmup(),workers=pool.workers;let cursor=0,completed=0;
   try{
   const chunks=m.chunks.map(()=>({meshes:[],indices:[],buckets:[]}));
@@ -164,10 +224,11 @@ function unshuffle(buffer,width,little=new Uint8Array(new Uint32Array([1]).buffe
   const atlasSource=await textureSource('atlas',base+m.atlas),atlas=new Image();const atlasReady=new Promise((resolve,reject)=>{atlas.onload=resolve;atlas.onerror=()=>reject(Error('Scene lettering atlas could not load'));atlas.src=atlasSource;});
   // Attach a handler immediately, even while the chunk workers are still active.
   atlasReady.catch(()=>{});
-  const decode=(worker,index,chunk,encoded,prefetchURL)=>new Promise((resolve,reject)=>{
-   worker.onmessage=({data:r})=>r.error?reject(Error(r.error)):resolve(r);
+  const decode=(worker,index,chunk,encoded,prefetchURL,prefetchAlternative)=>new Promise((resolve,reject)=>{
+   const alternative=alternativeFor(chunk);
+   worker.onmessage=({data:r})=>{if(r.error){reject(Error(r.error));return;}const modern=r.codec==='gzip-meshopt-attributes-v1';codecStats[modern?'modernChunks':'legacyChunks']++;if(r.fallbackReason)codecStats.fallbackChunks++;codecStats.selectedCompressedBytes+=modern?alternative.bytes:chunk.bytes;resolve(r);};
    worker.onerror=e=>reject(Error(e.message||'Scene decoder failed'));
-   worker.postMessage({index,url:base+chunk.file,encoded,prefetchURL,rawBytes:chunk.rawBytes,shuffle:chunk.shuffle,sha256:chunk.sha256,buckets:chunks[index].buckets.map(record=>({...record,detailWidth:m.meshes[record.mesh].detailWidth||0}))});
+   worker.postMessage({index,url:base+chunk.file,encoded,prefetchURL,prefetchAlternative,alternative,decoderURL:alternative?.decoderURL,rawBytes:chunk.rawBytes,shuffle:chunk.shuffle,sha256:chunk.sha256,buckets:chunks[index].buckets.map(record=>({...record,detailWidth:m.meshes[record.mesh].detailWidth||0}))});
   });
    const takeIndex=()=>cursor<order.length?order[cursor++]:null,first=workers.map(takeIndex);
    await Promise.all(workers.map(async(worker,wi)=>{
@@ -177,7 +238,7 @@ function unshuffle(buffer,width,little=new Uint8Array(new Uint32Array([1]).buffe
      if(reserved===null)return null;
      const index=reserved,chunk=m.chunks[index];reserved=takeIndex();
      const prefetchURL=location.protocol!=='file:'&&reserved!==null?base+m.chunks[reserved].file:undefined;
-     const result=(async()=>{const encoded=location.protocol==='file:'?await localChunk(base,index,chunk):undefined;return decode(worker,index,chunk,encoded,prefetchURL);})();
+     const result=(async()=>{const encoded=location.protocol==='file:'?await localChunk(base,index,chunk):undefined;return decode(worker,index,chunk,encoded,prefetchURL,reserved!==null?alternativeFor(m.chunks[reserved]):null);})();
      result.catch(()=>{});return{index,result};
     };
     // Carry the same upload budget across chunk boundaries. A small chunk
@@ -204,7 +265,7 @@ function unshuffle(buffer,width,little=new Uint8Array(new Uint32Array([1]).buffe
    await atlasReady;if(engine.disposed)throw Error('Scene loading was interrupted');engine.setAtlas(atlas);await engine.finishPrepared(yieldUI);
    const by=new Map(Y.CAMPUS.features.map(f=>[f.properties.pickId,f]));
    const campus={...m.campus,registry:new Map(m.campus.registryIds.map(id=>[id,by.get(id)]))};delete campus.registryIds;
-   Y.sceneLoad46={ms:performance.now()-started,compressedBytes:m.packedStats.compressedBytes,chunks:m.chunks.length,sourceHash:m.sourceHash};
+   Y.sceneLoad46={ms:performance.now()-started,compressedBytes:m.packedStats.compressedBytes,chunks:m.chunks.length,sourceHash:m.sourceHash,codecStats};
    return campus;
   }finally{pool.dispose();}
  }

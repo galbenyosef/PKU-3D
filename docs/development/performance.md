@@ -1,8 +1,8 @@
 # Rendering performance
 
-## Current result
+## Retained reference comparison
 
-The maintained scene retains full model detail, original image resolution, shadows, reflections and antialiasing. The latest comparison covers the research-building entrance and glazing-grid correction, dormitory canopy, Resource Hotel, union building mass, Qiu roof and east sports field. All six incremental checks remain within the original thresholds; three of six checks against the original frozen reference fail. This is not a performance-improvement claim.
+The maintained scene retains full model detail, original image resolution, shadows, reflections and antialiasing. The retained comparison covers the research-building entrance and glazing-grid correction, dormitory canopy, Resource Hotel, union building mass, Qiu roof and east sports field. All six incremental checks remain within the original thresholds; three of six checks against the original frozen reference fail. This is not a performance-improvement claim.
 
 | Metric | Change from preceding maintained scene | Change from frozen reference | Frozen result |
 | --- | ---: | ---: | --- |
@@ -14,6 +14,8 @@ The maintained scene retains full model detail, original image resolution, shado
 | Lake main-thread median time | -0.847% | -25.595% | Pass |
 
 The incremental result and the three-of-six frozen result remain separate. First-frame submission, campus FPS and lake FPS remain unresolved global gaps. Both this and the preceding comparison passed three frozen checks; these runs do not establish a causal speedup or slowdown from the geometry changes alone. Heap API precision, shared browser processes and unobserved external GPU activity limit interpretation. All 24 phases completed with stable inputs, the registered environment decision and owned-process cleanup. Values are measurements from the retained comparison, not portable device promises. Physical-phone and whole-campus fidelity acceptance remain open.
+
+The table above belongs to its retained source/build comparison. It is not a result for a newly changed codec or initial-visibility candidate. Publish replacement figures only after completing the original comparison protocol on the exact accepted build; no newer formal values are asserted here.
 
 ## Delivered cost reductions
 
@@ -29,6 +31,16 @@ Shader completion may overlap decoding and uploads, but the ready barrier still 
 The idle-built bucket index requires an Engine-owned epoch. External raw-data or bucket-order edits must invalidate it and refresh derived bounds and visibility caches; uncertain cases retain the original ordered scan. Water-footprint culling likewise falls back when a safe restriction cannot be established. Material 0/6/21 specialization preserves the shared sampling and lighting equations.
 
 These paths retain model detail, original image resolution, shadows, reflection resolution and cadence, antialiasing, instance/transparent order, lossless caches and offline/context-recovery behavior. Changing scene inputs still requires `npm run build:scene`; a cached runtime build cannot validate stale geometry.
+
+### Optional transport and initial-visibility candidates
+
+An explicitly imported codec sidecar must match its original manifest/source hash and preserve every raw-byte SHA. Choose alternatives by strictly smaller compressed bytes, not measured timings. The reviewed candidate selects 36 of 94 chunks; all original gzip and script fallbacks remain, including legacy transport for every instance chunk. Keep two workers, one job per worker, one modern-to-legacy retry within that job, and one verified publication. The local-file path remains legacy. Modern decoder and MIT notice travel with the package. A new legacy manifest never activates old optional files merely because they remain in the directory.
+
+Track selected network bytes and retained distribution bytes separately. Keeping legacy assets means the reviewed candidate adds at least 34,728,843 bytes before metadata. Record real fallback behavior and both worker heaps; successful fallback is compatibility evidence, not proof that the modern codec improved startup.
+
+Initial visibility preparation reuses the ordinary CPU stream generator for main/shadow views. Adoption requires the exact camera/state key, viewport and scene generation; otherwise discard and rebuild normally. Idle preparation must not create GL resources, upload buffers or submit draws. Preserve order and all quality settings, cancel invalid work, and account for retained CPU buffers. A final source-built package needs its own functional, pixel, memory and formal performance gates; evidence from an earlier candidate does not certify a changed implementation.
+
+The local early-reflection candidate also prepares the reflection view after the required water resources are published, using exact snapshot and generation checks. Functional, pixel and recovery checks cover that candidate, but it has no completed formal frozen-reference acceptance. The preceding source candidate passed five of six frozen-reference checks; first-frame submission remained above its original threshold. Incremental startup diagnostics do not close that failure or establish sustained FPS or visual improvement. The historical table above remains tied to its original build.
 
 ## Validation protocol
 
