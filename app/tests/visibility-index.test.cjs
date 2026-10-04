@@ -213,3 +213,15 @@ test('reflection extra planes and index flag invalidate cache while preserving e
   assert.deepEqual(changed.result, reference.result);
   assert.equal(indexedCalls, 2);
 });
+
+test('index publication preserves only current-generation completed caches', () => {
+  const f=fixture(),e=f.engine();
+  e.bucketIndexGeneration=7;
+  const current={key:'current',generation:7},old={key:'old',generation:6},unknown={key:'unknown'};
+  e.visibilityCaches.set(0,current);e.visibilityCaches.set(2,old);e.visibilityCaches.set(3,unknown);
+  e.scheduleBucketIndex();let turns=0;while(f.callbacks.size){f.runIdle();assert.ok(++turns<1000);}
+  assert.equal(e.visibilityCaches.size,1);assert.equal(e.visibilityCaches.get(0),current);
+  e.invalidateBucketIndex();assert.equal(e.bucketIndexGeneration,8);e.scheduleBucketIndex();
+  while(f.callbacks.size){f.runIdle();assert.ok(++turns<2000);}
+  assert.equal(e.visibilityCaches.size,0);
+});

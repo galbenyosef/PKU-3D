@@ -188,3 +188,11 @@ test('borrowed add remains usable by a CPU-only collector without renderer lifec
   Y.Engine.prototype.beginPrepared.call(collector,{version:2,meshes:[],buckets:[],stats:{}});
   assert.equal(collector.buckets.size,0);assert.equal(collector.preparedInstanceCount,0);
 });
+
+test('adopted and synchronous caches both record the current geometry generation',()=>{
+ const early=fixture(),ordinary=fixture();
+ early.e.bucketIndexGeneration=7;ordinary.e.bucketIndexGeneration=7;
+ early.ready();early.render();ordinary.render();
+ assert.equal(early.e.initialVisibilityStats.adoptedMask,5);
+ for(const f of[early,ordinary])for(const slot of[0,2,3])assert.equal(f.e.visibilityCaches.get(slot).generation,7);
+});

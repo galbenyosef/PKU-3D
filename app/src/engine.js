@@ -808,7 +808,7 @@ class Engine{
    this.bucketIndexIdle=undefined;
    if(this.disposed||this.bucketIndexEpoch!==epoch||this.buckets!==buckets||this.state.bucketSpatialIndex===false){if(this.bucketIndexJob===job)this.bucketIndexJob=null;return;}
    const end=performance.now()+2;
-   while(deadline.timeRemaining()>.5&&performance.now()<end){const step=job.next();if(step.done){this.bucketIndex=step.value;this.bucketIndexJob=null;this.cancelInitialVisibility(true);this.visibilityCaches.clear();return;}}
+   while(deadline.timeRemaining()>.5&&performance.now()<end){const step=job.next();if(step.done){this.bucketIndex=step.value;this.bucketIndexJob=null;this.cancelInitialVisibility(true);for(const[slot,cache]of this.visibilityCaches)if(cache.generation!==epoch.generation)this.visibilityCaches.delete(slot);return;}}
    this.bucketIndexIdle=requestIdleCallback(tick);
   };
   this.bucketIndexIdle=requestIdleCallback(tick);
@@ -949,7 +949,7 @@ class Engine{
    // Only emitted draw heads need VAOs; retain every logical stream segment.
    // Materialize before upload, matching the original GL update ordering.
    if(state.deferredInstanceVAO!==false)for(const item of records.drawItems)item.record.vao=this.instanceVAO(item.b,slot,stream,item.record.offset).vao;
-   this.uploadInstances(stream);cached={key,...records};this.visibilityCaches.set(slot,cached);this.stats.visibilityBuilds++;
+   this.uploadInstances(stream);cached={key,generation:this.bucketIndexGeneration||0,...records};this.visibilityCaches.set(slot,cached);this.stats.visibilityBuilds++;
   }
   return cached;
  }
