@@ -45,12 +45,14 @@ node_modules/
 /app/data/*
 !/app/data/campus.json
 !/app/data/architecture-inventory.json
+!/app/data/pick-cull-profile.json
 !/app/data/scene-atlas-baseline46.json
 !/app/data/scene-atlas-derived879.json
 
 # Maintained build tools; source-specific research recipes remain local.
 /app/tools/*
 !/app/tools/bake-scene46.cjs
+!/app/tools/build-pick-cull.cjs
 !/app/tools/scene-collector46.js
 !/app/tools/atlas-input879.cjs
 !/app/tools/build-water-detail.py
@@ -79,6 +81,7 @@ node_modules/
 !/app/tests/material-specialization.test.cjs
 !/app/tests/observation-framing.test.cjs
 !/app/tests/pedestrian-program-prewarm.test.cjs
+!/app/tests/pick-range-cull.test.cjs
 !/app/tests/program-readiness.test.cjs
 !/app/tests/provoking-vertex46.test.cjs
 !/app/tests/reflection-plane46.test.cjs

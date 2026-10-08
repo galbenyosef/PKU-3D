@@ -16,6 +16,7 @@
     "observation-framing.test.cjs",
     "pedestrian-program-prewarm.test.cjs",
     "program-readiness.test.cjs",
+    "pick-range-cull.test.cjs",
     "provoking-vertex46.test.cjs",
     "reflection-plane46.test.cjs",
     "reflection-footprint.test.cjs",

@@ -95,6 +95,11 @@ if not package_text.startswith('YY.SCENE_PACKAGE46=') or not package_text.endswi
 if json.loads(package_text[len('YY.SCENE_PACKAGE46='):-1]) != {'base': 'assets/runtime-v46/scene/', **scene_manifest}:
     raise SystemExit('Scene package/manifest mismatch; incomplete codec import or bake')
 codec_files = codec_assets(scene_manifest, R / 'assets/runtime-v46/scene')
+# Audit existing range bytes at build time; no browser or scene regeneration.
+pick_cull = subprocess.run(['node', str(R / 'tools/build-pick-cull.cjs'), str(R)],
+                           check=True, capture_output=True, text=True).stdout.strip()
+json.loads(pick_cull)
+
 
 # File URLs cannot upload file-origin images to WebGL. Load only these two
 # byte-identical texture data URLs through a classic script when opened offline.
@@ -129,7 +134,7 @@ for file in scripts:
     if file == 'src/reference-gallery.js':
         source = 'YY.REFERENCE_GALLERY={images:{},places:{}};'
     if file == 'src/scene-package46.js':
-        source = runtime_scene_package(source)
+        source = 'YY.PICK_RANGE_CULL=' + pick_cull + ';\n' + runtime_scene_package(source)
     if file in asset_scripts:
         source = source.replace('assets/runtime-v46/', 'assets/runtime/')
     code.append('/* ' + file + ' */\n' + source)

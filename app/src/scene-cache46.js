@@ -270,6 +270,7 @@ function unshuffle(buffer,width,little=new Uint8Array(new Uint32Array([1]).buffe
    const by=new Map(Y.CAMPUS.features.map(f=>[f.properties.pickId,f]));
    const campus={...m.campus,registry:new Map(m.campus.registryIds.map(id=>[id,by.get(id)]))};delete campus.registryIds;
    Y.sceneLoad46={ms:performance.now()-started,compressedBytes:m.packedStats.compressedBytes,chunks:m.chunks.length,sourceHash:m.sourceHash,codecStats};
+   engine.preparedSceneComplete?.(m);
    return campus;
   }finally{pool.dispose();}
  }

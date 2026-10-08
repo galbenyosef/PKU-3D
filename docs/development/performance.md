@@ -30,6 +30,8 @@ Shader completion may overlap decoding and uploads, but the ready barrier still 
 
 The idle-built bucket index requires an Engine-owned epoch. External raw-data or bucket-order edits must invalidate it and refresh derived bounds and visibility caches; uncertain cases retain the original ordered scan. Water-footprint culling likewise falls back when a safe restriction cannot be established. Material 0/6/21 specialization preserves the shared sampling and lighting equations.
 
+Pick-range culling requires a build-audited scene descriptor, the qualified browser/GPU profile, unchanged pick shaders and a complete verified scene publication. Qualification runs after rendering and yields during descriptor preparation. Only ranges proven outside the pick region may be omitted; surviving draws retain their original order and streams. Unsupported profiles, incomplete qualification, selected/isolate/explode states and invalidated scene data use the original pick path. Resize and context recovery require fresh qualification. Geometry or bucket mutations invalidate the prepared publication; rebuilding the bucket index alone must not reactivate culling. Keep the profile narrow until equivalent native-pixel and interaction evidence supports an extension.
+
 These paths retain model detail, original image resolution, shadows, reflection resolution and cadence, antialiasing, instance/transparent order, lossless caches and offline/context-recovery behavior. Changing scene inputs still requires `npm run build:scene`; a cached runtime build cannot validate stale geometry.
 
 ### Optional transport and initial-visibility candidates
