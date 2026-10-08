@@ -122,7 +122,7 @@
    if(runStart<0){runStart=i;runOutput=count;}
    runEnd=i+28;count++;
   }
-  if(runStart>=0)out.set(data.subarray(runStart,runEnd),offset+runOutput*28);
+  if(runStart>=0)out.set(runStart===0&&runEnd===data.length?data:data.subarray(runStart,runEnd),offset+runOutput*28);
   result.count=count;result.culled=culled;return result;
  }
 
