@@ -122,6 +122,8 @@ node_modules/
 !/app/tests/fixtures/visibility-fixed46.js
 !/app/tests/fixtures/shared-pages208.json
 !/app/tests/fixtures/winter-foliage255-original-draw.json
+!/app/tests/fixtures/tree-high-quality-hashes.json
+!/app/tests/fixtures/roof-high-quality-hashes.json
 
 # Publish current guidance, not chronological experiment or review logs.
 /docs/*
