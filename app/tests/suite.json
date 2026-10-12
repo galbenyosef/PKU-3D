@@ -20,6 +20,7 @@
     "provoking-vertex46.test.cjs",
     "reflection-plane46.test.cjs",
     "reflection-footprint.test.cjs",
+    "reflection-descriptor-cache.test.cjs",
     "reflection-scissor.test.cjs",
     "render-startup46.test.cjs",
     "resolve-discard.test.cjs",
@@ -70,7 +71,13 @@
     "initial-reflection.test.cjs",
     "detail-compact-focus.test.cjs",
     "rendered-label-camera.test.cjs",
-    "label-layout-phases.test.cjs"
+    "label-layout-phases.test.cjs",
+    "visibility-singleton-copy.test.cjs",
+    "visibility-small-index.test.cjs",
+    "browse-camera-input.test.cjs",
+    "quality-preference.test.cjs",
+    "engine-quality.test.cjs",
+    "quality-lod.test.cjs"
   ],
   "packagingTests": [
     "runtime-scene-package284.test.py",

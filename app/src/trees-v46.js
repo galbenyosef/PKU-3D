@@ -3,12 +3,12 @@
 (function(Y){'use strict';const {M,Geo:G}=Y;
 const palette={broad:['#597b49','#68884e','#718d55'],spreading:['#587748','#63814a','#789057'],upright:['#647e42','#718a47','#7e9352'],pine:['#486b4d','#527655','#5a7e59'],cypress:['#466a4f','#507455','#597b59'],willow:['#729454','#7f9c5e','#6a8a4e']};
 const seedOf=n=>Math.imul(n^0x31f90ad,0x45d9f3b)>>>0;
-function geometry(type,variant){
+function geometry(type,variant,lod=0){
  const R=M.rng(460913+variant*179+type.length*131),wood=new G.Geometry(),light=new G.Geometry(),shade=new G.Geometry(),lobes=[];
  const pine=type==='pine',cypress=type==='cypress',willow=type==='willow',upright=type==='upright',wide=type==='spreading';
  const crownWidth=cypress?.20:upright?.30:wide?.43:willow?.43:.37;
  // Swept tapered stems keep true branch crotches and a finer terminal hierarchy.
- function stem(a,b,r0,r1,n=8){const dir=M.norm(M.sub(b,a)),side=M.norm(M.cross(dir,Math.abs(dir[1])>.95?[1,0,0]:[0,1,0])),up=M.cross(dir,side);
+ function stem(a,b,r0,r1,n=8){if(lod)n=lod===1?6:4;const dir=M.norm(M.sub(b,a)),side=M.norm(M.cross(dir,Math.abs(dir[1])>.95?[1,0,0]:[0,1,0])),up=M.cross(dir,side);
   for(let j=0;j<n;j++){const a0=j*Math.PI*2/n,a1=(j+1)*Math.PI*2/n,rad=(ang,r)=>M.add(M.mul(side,Math.cos(ang)*r),M.mul(up,Math.sin(ang)*r)),p=M.add(a,rad(a0,r0)),q=M.add(a,rad(a1,r0)),s=M.add(b,rad(a0,r1)),t=M.add(b,rad(a1,r1));wood.quad(p,q,t,s);}
   // The thin tip is closed; roots and connected crotches are internal surfaces.
   for(let j=1;j<n-1;j++){const rad=i=>M.add(b,M.add(M.mul(side,Math.cos(i*Math.PI*2/n)*r1),M.mul(up,Math.sin(i*Math.PI*2/n)*r1)));wood.tri(rad(0),rad(j),rad(j+1));}
@@ -42,7 +42,7 @@ function geometry(type,variant){
  for(let i=0;i<count;i++){
   const l=lobes[i%lobes.length],a=R()*Math.PI*2,u=R()*2-1,r=Math.pow(R(),.45),q=Math.sqrt(1-u*u),center=[l.center[0]+Math.cos(a)*q*l.rx*r,l.center[1]+u*l.ry*r,l.center[2]+Math.sin(a)*q*l.rz*r];
   const n=M.norm([R()-.5,.1+R()*.62,R()-.5]),side=M.norm(M.cross(n,Math.abs(n[1])>.95?[1,0,0]:[0,1,0])),up=M.cross(n,side),size=(pine||cypress?.019:.026)+R()*(pine||cypress?.014:.018),g=i%3===0?shade:light;
-  const pt=(x,y)=>M.add(center,M.add(M.mul(side,x*size),M.mul(up,y*size*(willow?1.3:1))));g.quad(pt(-1,-1),pt(1,-1),pt(1,1),pt(-1,1),n);
+  const ratio=lod===1?.60:lod===2?.32:1;if((i*37)%count>=count*ratio)continue;const stretch=1/Math.sqrt(ratio);const pt=(x,y)=>M.add(center,M.add(M.mul(side,x*size*stretch),M.mul(up,y*size*stretch*(willow?1.3:1))));g.quad(pt(-1,-1),pt(1,-1),pt(1,1),pt(-1,1),n);
  }
  // Small overlapping sprays bridge the outer lobes; retain the original cards
  // and silhouette, with species-specific inner shapes rather than opaque blobs.
@@ -52,9 +52,17 @@ function geometry(type,variant){
   const center=[c[0]+Math.cos(a)*q*l.rx*r*.55,c[1]+u*l.ry*r*.72,c[2]+Math.sin(a)*q*l.rz*r*.55];
   const n=M.norm([R()-.5,.1+R()*.62,R()-.5]),side=M.norm(M.cross(n,Math.abs(n[1])>.95?[1,0,0]:[0,1,0])),up=M.cross(n,side),size=(pine||cypress?.018:.024)+R()*.012;
   const aspect=willow?1.65:pine?.48:cypress?.72:upright?1.16:1,g=i%3===0?light:shade;
-  const pt=(x,y)=>M.add(center,M.add(M.mul(side,x*size),M.mul(up,y*size*aspect)));g.quad(pt(-1,-1),pt(1,-1),pt(1,1),pt(-1,1),n);
+  const ratio=lod===1?.60:lod===2?.32:1;if((i*37)%innerCount>=innerCount*ratio)continue;const stretch=1/Math.sqrt(ratio);const pt=(x,y)=>M.add(center,M.add(M.mul(side,x*size*stretch),M.mul(up,y*size*stretch*aspect)));g.quad(pt(-1,-1),pt(1,-1),pt(1,1),pt(-1,1),n);
  }
  let radius=0;for(const g of[wood,light,shade])for(let i=0;i<g.v.length;i+=8)radius=Math.max(radius,Math.hypot(g.v[i],g.v[i+2]));
+ if(!lod){
+  const alternatives=[geometry(type,variant,1),geometry(type,variant,2)];
+  for(const name of ['wood','light','shade']){
+   const original={wood,light,shade}[name],lo=[Infinity,Infinity,Infinity],hi=[-Infinity,-Infinity,-Infinity];
+   for(let i=0;i<original.v.length;i+=8)for(let j=0;j<3;j++){lo[j]=Math.min(lo[j],original.v[i+j]);hi[j]=Math.max(hi[j],original.v[i+j]);}
+   original.qualityRole='tree';original.qualityLods=alternatives.map(a=>{const g=a[name];for(let i=0;i<g.v.length;i+=8)for(let j=0;j<3;j++)g.v[i+j]=Math.max(lo[j],Math.min(hi[j],g.v[i+j]));return g;});
+  }
+ }
  return{wood,light,shade,radius,leafCards:count+innerCount};
 }
 function tree(x,z,h=12,type='broad',id,metadata={}){

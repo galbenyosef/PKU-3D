@@ -79,7 +79,7 @@ test('renderer construction failure releases decoders started before it',async()
  const helperStart=appSource.indexOf('/* Time-based orbit transitions.'),helperEnd=appSource.indexOf('/* Campus viewer */',helperStart);assert(helperStart>=0&&helperEnd>helperStart);
  const panelFunctions=['panelLayoutOffset','finishPanelOffset'].map(name=>{const line=appSource.split('\n').find(s=>s.startsWith('function '+name+'('));assert(line);return line;}).join('\n');
  rootNode.classList={contains:()=>true};
- const run=new Function('Y','root','events',`let renderGeneration=0,ready=false;const YY={},innerWidth=1440,canvas={},console={error(){}},$=()=>({hidden:true}),changeMode=mode=>events.push(mode);${appSource.slice(helperStart,helperEnd)};${panelFunctions};const panelOffset=new YY.PanelOffset(panelLayoutOffset());${text};return init(true);`);
+ const run=new Function('Y','root','events',`let renderGeneration=0,ready=false;const YY={},qualityPreset='high',innerWidth=1440,canvas={},console={error(){}},$=()=>({hidden:true}),changeMode=mode=>events.push(mode);${appSource.slice(helperStart,helperEnd)};${panelFunctions};const panelOffset=new YY.PanelOffset(panelLayoutOffset());${text};return init(true);`);
  await run(Y,rootNode,events);assert.deepEqual(events,['warmup','engine','plan','dispose']);assert.equal(rootNode.dataset.ready,'plan-only');
 });
 

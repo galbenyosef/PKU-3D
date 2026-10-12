@@ -4,7 +4,7 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const root=path.resolve(__dirname,'..'),repo=path.dirname(root),sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 function sourceHash(){
  const index=fs.readFileSync(path.join(root,'index.html'),'utf8');
- const scripts=[...index.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m=>m[1]).filter(p=>!/(?:assets|reference-gallery|engine|app-v29|materials|material-detail|water-detail|pedestrians-v46|scene-cache46|scene-package46)\.js$/.test(p));
+ const scripts=[...index.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m=>m[1]).filter(p=>!/(?:assets|reference-gallery|engine|app-v29|materials|material-detail|water-detail|quality-lod|pedestrians-v46|scene-cache46|scene-package46)\.js$/.test(p));
  const digest=crypto.createHash('sha256');for(const file of [...scripts,'tools/scene-collector46.js','tools/bake-scene46.cjs','tools/atlas-input879.cjs']){digest.update(file);digest.update(fs.readFileSync(path.join(root,file)));}
  const baseline=path.join(root,'data/scene-atlas-baseline46.json');if(fs.existsSync(baseline)){const value=fs.readFileSync(baseline);digest.update(value);digest.update(fs.readFileSync(path.join(root,JSON.parse(value).path)));}
  const derived=path.join(root,'data/scene-atlas-derived879.json');if(fs.existsSync(derived)){const value=fs.readFileSync(derived);digest.update(value);digest.update(fs.readFileSync(path.join(root,JSON.parse(value).path)));}

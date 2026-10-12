@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.5.0
+
+- Keep WebGL 2 as the maintained renderer and High as the fresh-viewer default, preserving the complete model, source textures, shadows, reflections and antialiasing.
+- Add road-constrained first-person walking, with restored camera and label preferences on exit.
+- Correct repeated wheel zoom input and advance walking input while the bounded GPU queue is full.
+- Fit architectural viewpoints around responsive panels and keep place labels aligned with submitted camera poses.
+- Reuse conservative visibility and reflection calculations; retain ordered instance streams, two decoding workers, bounded uploads, context recovery and local-file fallbacks.
+- Package the matching lossless scene transport and optional Low/Medium presets. Lower presets are explicit quality choices; High keeps the full scene.
+- Retain the campus, Student Center, daylight and shoreline refinements in the maintained scene. Stable interactive 60 FPS remains unachieved; see the [performance status](docs/development/performance.md).
+
 ## 1.4.0
 
 - Refine campus perimeter walls and gateways, including the South Gate and adjacent station, North Qiu Gate, Southeast Gate and Southwest Gate returns.

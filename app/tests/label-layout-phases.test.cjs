@@ -22,7 +22,7 @@ test('label planning finishes layout reads before updates on both creation and r
  h.panels.detail.hidden=false;h.panels.detail.rect={left:1100,top:100,right:1400,bottom:800};
  h.run();assertReadPhase(h);assert.deepEqual(shown(h),[10,11,12]);assert(h.events.some(e=>e.type==='read'&&e.detail==='detail'));
  const original=h.c.labelNodes.get(10);h.c.selectable[0].properties.centre=[200,240];h.run();assertReadPhase(h);assert.equal(h.c.labelNodes.get(10),original);
- const firstRead=h.events.findIndex(e=>e.type==='read');assert.equal(h.events.slice(0,firstRead).filter(e=>e.type==='hide').length,3,'retained nodes are hidden before planning as before');
+ const firstRead=h.events.findIndex(e=>e.type==='read');assert.equal(h.events.slice(0,firstRead).filter(e=>e.type==='hide').length,3);
 });
 
 test('feature and panel changes between calls remain live while retained labels keep their handlers',()=>{

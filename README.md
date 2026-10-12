@@ -37,6 +37,9 @@ PKU-3D is an interactive model of Peking University's Yanyuan campus, with indiv
 - 3D and plan views in the same coordinate system, with links to satellite and standard maps.
 - Time of day, seasons and weather, with vegetation, water reflections and walking pedestrians.
 - First-person walking, with keyboard/touch controls and automatic routes along the campus road network.
+- High quality by default, with optional Medium and Low presets in the lighting panel.
+
+Camera-motion performance still falls short of stable 60 FPS in the retained tests. See [performance status and validation scope](docs/development/performance.md).
 
 ## Controls
 

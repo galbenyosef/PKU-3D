@@ -1,0 +1,20 @@
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),test=require('node:test'),assert=require('node:assert/strict');
+const source=fs.readFileSync(path.join(__dirname,'../src/app-v29.js'),'utf8');
+const start=source.indexOf('// Quality preference is independent'),end=source.indexOf('const state={labels:true',start);
+assert(start>=0&&end>start);
+function fixture(saved,options={}){
+ const control={value:''},messages=[],writes=[],calls=[];
+ const engine={qualityPreset:'medium',disposed:false,setQualityPreset(value){calls.push(value);if(options.fail||!['low','medium','high'].includes(value))throw Error('allocation/validation failure');this.qualityPreset=value;return true;}};
+ const context={engine,ready:true,lastVisualKey:'old',Set,localStorage:{getItem(){if(options.blockRead)throw Error('blocked');return saved;},setItem(key,value){if(options.blockWrite)throw Error('blocked');writes.push([key,value]);}},$:()=>control,say:message=>messages.push(message)};
+ vm.createContext(context);vm.runInContext(source.slice(start,end)+'\nglobalThis.preference=()=>qualityPreset;',context);
+ engine.qualityPreset=context.preference();
+ return{context,control,messages,writes,calls,engine,change(value){control.value=value;context.changeQualityPreset();}};
+}
+test('default high and valid persisted presets survive reads',()=>{for(const value of [null,'','unknown','HIGH',' low '])assert.equal(fixture(value).context.preference(),'high');for(const value of ['low','medium','high'])assert.equal(fixture(value).context.preference(),value);assert.equal(fixture('high',{blockRead:true}).context.preference(),'high');});
+test('successful switch persists only applied preset and invalidates idle output',()=>{const h=fixture('high');h.change('low');assert.equal(h.context.preference(),'low');assert.equal(h.control.value,'low');assert.equal(h.context.lastVisualKey,'');assert.deepEqual(h.writes,[['yanyuan.quality.preset','low']]);assert.deepEqual(h.messages,[]);});
+test('failed allocation retains choice and persistence and reports failure',()=>{const h=fixture('high',{fail:true});h.change('low');assert.equal(h.context.preference(),'high');assert.equal(h.engine.qualityPreset,'high');assert.equal(h.control.value,'high');assert.equal(h.context.lastVisualKey,'old');assert.deepEqual(h.writes,[]);assert.equal(h.messages.length,1);});
+test('blocked storage does not roll back an applied quality switch',()=>{const h=fixture(null,{blockWrite:true});h.change('high');assert.equal(h.context.preference(),'high');assert.equal(h.engine.qualityPreset,'high');assert.equal(h.control.value,'high');assert.equal(h.messages.length,1);});
+test('not-ready or disposed engine cannot change preference',()=>{for(const state of ['not-ready','disposed']){const h=fixture('high');if(state==='not-ready')h.context.ready=false;else h.engine.disposed=true;h.change('low');assert.deepEqual(h.calls,[]);assert.equal(h.control.value,'high');assert.deepEqual(h.writes,[]);}});
+test('invalid injected select value cannot overwrite valid preference',()=>{const h=fixture('medium');h.change('ultra');assert.equal(h.context.preference(),'medium');assert.equal(h.control.value,'medium');assert.deepEqual(h.writes,[]);});
+test('startup and recovery share explicit preset before first resize; idle key includes quality',()=>{assert.match(source,/new Y\.Engine\(canvas,\{deferPrograms:true,qualityPreset\}\);engine=next;next\.resize/);assert.match(source,/webglcontextrestored',\(\)=>init\(true\)/);assert.match(source,/const visualKey=\[[^\n]*qualityPreset/);assert.doesNotMatch(source.slice(start,end),/browseCamera|orbit|state\.(selected|isolate)|cancelCamera/);});
+test('native selector has visible label, options and disabled loading state',()=>{const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');assert.match(html,/<label>画质<select id="quality-preset" disabled>/);for(const [value,label]of [['low','低 · 更流畅'],['medium','中 · 均衡'],['high','高 · 更清晰']])assert.match(html,new RegExp('<option value="'+value+'"[^>]*>'+label+'</option>'));});

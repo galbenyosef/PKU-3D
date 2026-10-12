@@ -79,19 +79,28 @@ Y.FirstPerson=FirstPerson;
 const copy=o=>({target:[...o.target],distance:o.distance,yaw:o.yaw,elevation:o.elevation});
 const assign=(o,p)=>{for(let i=0;i<3;i++)o.target[i]=p.target[i];o.distance=p.distance;o.yaw=p.yaw;o.elevation=p.elevation;};
 class BrowseCamera {
- constructor(orbit,{clock=()=>performance.now(),immediate=()=>false}={}){this.orbit=orbit;this.clock=clock;this.immediate=immediate;this.goal=null;this.time=0;this.tau=.095;}
- cancel(finish=false){if(finish&&this.goal)assign(this.orbit,this.goal);this.goal=null;this.time=0;}
+ constructor(orbit,{clock=()=>performance.now(),immediate=()=>false}={}){this.orbit=orbit;this.clock=clock;this.immediate=immediate;this.goal=null;this.pending=null;this.time=0;this.tau=.095;}
+ cancel(finish=false){if(finish&&this.goal)assign(this.orbit,this.goal);this.goal=null;this.pending=null;this.time=0;}
  focus(mutate){const from=copy(this.orbit);this.cancel();mutate();if(this.immediate())return;this.goal=copy(this.orbit);assign(this.orbit,from);this.time=this.clock();this.tau=.095;}
- zoom(factor){if(!(factor>0)||!Number.isFinite(factor))return;const next=copy(this.goal||this.orbit);const reversing=this.goal&&(factor-1)*(this.goal.distance-this.orbit.distance)<0;if(reversing){next.distance=this.orbit.distance;this.time=this.clock();}next.distance=Math.max(3,Math.min(10000,next.distance*factor));if(this.immediate()){assign(this.orbit,next);this.cancel();return;}if(!this.goal)this.time=this.clock();this.goal=next;this.tau=.065;}
- step(now){
+ zoom(factor){
+  if(!(factor>0)||!Number.isFinite(factor))return;
+  const next=copy(this.goal||this.orbit),reversing=this.goal&&(factor-1)*(this.goal.distance-this.orbit.distance)<0,now=this.clock();
+  if(reversing){next.distance=this.orbit.distance;this.pending=null;this.time=Math.max(this.time,now);}
+  else if(this.goal&&!this.immediate()){this.pending=this.pending||copy(this.orbit);this.step(now,false);}
+  next.distance=Math.max(3,Math.min(10000,next.distance*factor));
+  if(this.immediate()){assign(this.orbit,next);this.cancel();return;}
+  if(!this.goal)this.time=now;this.goal=next;this.tau=.065;
+ }
+ step(now,publish=true){
   if(!this.goal)return false;
   if(this.immediate()){this.cancel(true);return true;}
-  const dt=Math.max(0,(now-this.time)/1000);this.time=now;if(!dt)return false;
-  const a=-Math.expm1(-dt/this.tau),o=this.orbit,g=this.goal;
+  const dt=Math.max(0,(now-this.time)/1000);this.time=Math.max(this.time,now);if(!dt&&!this.pending)return false;
+  const a=-Math.expm1(-dt/this.tau),o=this.pending||this.orbit,g=this.goal;
   for(let i=0;i<3;i++)o.target[i]+=(g.target[i]-o.target[i])*a;
   o.distance=Math.exp(Math.log(o.distance)+(Math.log(g.distance)-Math.log(o.distance))*a);
   const yaw=Math.atan2(Math.sin(g.yaw-o.yaw),Math.cos(g.yaw-o.yaw));o.yaw+=yaw*a;o.elevation+=(g.elevation-o.elevation)*a;
-  if(Math.max(...g.target.map((v,i)=>Math.abs(v-o.target[i])))<.001&&Math.abs(Math.log(g.distance/o.distance))<1e-6&&Math.abs(yaw)*(1-a)<1e-6&&Math.abs(g.elevation-o.elevation)<1e-6)this.cancel(true);
+  if(publish&&this.pending){assign(this.orbit,o);this.pending=null;}
+  if(Math.max(...g.target.map((v,i)=>Math.abs(v-o.target[i])))<.001&&Math.abs(Math.log(g.distance/o.distance))<1e-6&&Math.abs(yaw)*(1-a)<1e-6&&Math.abs(g.elevation-o.elevation)<1e-6){if(publish)this.cancel(true);else assign(o,g);}
   return true;
  }
 }
@@ -121,6 +130,17 @@ const by=new Map(D.features.map(f=>[f.properties.pickId,f])),bySource=new Map(D.
 // Observation-button camera override only: retain canonical geography and model dimensions.
 // Fixed bounds enclose the reviewed full statue and base; oblique side avoids the foreground trunk.
 const liSideCameraOverride1111=by.get(1111);if(liSideCameraOverride1111?.properties.id==='node/2773008893')liSideCameraOverride1111.properties.sideObservation46={"target":[-168.7591552734375,1.6809999905526638,43.56147384643555],"bounds":[-169.93510984982132,-0.08000000268220903,42.235674161603676,-167.58320069705368,3.441999983787537,44.88727353126742],"yaw":-0.27896754852838135,"elevation":0.18};
+// Quality preference is independent of camera and scene selection.
+const qualityNames=new Set(['low','medium','high']),qualityStorageKey='yanyuan.quality.preset';
+function readQualityPreset(){try{const value=localStorage.getItem(qualityStorageKey);if(qualityNames.has(value))return value;}catch{}return 'high';}
+function saveQualityPreset(value){try{localStorage.setItem(qualityStorageKey,value);return true;}catch{return false;}}
+let qualityPreset=readQualityPreset();
+function changeQualityPreset(){
+ const control=$('quality-preset');
+ if(!ready||!engine||engine.disposed){control.value=qualityPreset;return;}
+ try{engine.setQualityPreset(control.value);qualityPreset=engine.qualityPreset;control.value=qualityPreset;lastVisualKey='';if(!saveQualityPreset(qualityPreset))say('画质已切换，本次设置无法保存。');}
+ catch(error){control.value=qualityPreset;say('画质切换未完成，请重试。');}
+}
 const state={labels:true,time:0,hour:10.5,season:1,weather:0,selected:0,isolate:0,explode:0,selection:[0,0,0,0],contact:true,detailLOD:true,mapClarity:true,vegetation:true,people:true,routeEdges:new Set()};
 let engine,campus,ready=false,mode='3d',filter='精选',animation=!matchMedia('(prefers-reduced-motion: reduce)').matches,selected=0,last=0,lastDraw=0,labelTick=0,gesture=null,keys=new Set(),route=null,routePlaying=false,routeDistance=0,routeBackup=null,isolationBackup=null,toastTimer,walker=null,walkBackup=null,walkDetached=false;
 const orbit={target:[-20,0,30],distance:2250,elevation:1.05,yaw:0},planView={x:-20,z:30,w:1500},presets={campus:D.displayScope45.bounds,lake:[-210,-320,250,120],north:[-265,-690,495,-320],central:[-270,50,135,365],west:[-610,180,-110,745],science:[190,-45,490,365],teaching:[180,340,470,520],sports:[180,450,510,755],gardens:[-1240,-450,-470,100]};
@@ -219,7 +239,7 @@ function drawPlanNow(){Y.Dorm45Basement338?.hide();if(mode==='3d')return;const v
  if(route){el('path',{d:path({type:'LineString',coordinates:route.points}),fill:'none',stroke:'#277c67','stroke-width':3*m,'stroke-linecap':'round'});const q=Y.Network.sample(route.points,routeDistance).point;el('circle',{cx:q[0],cy:q[1],r:4*m,fill:'#fff',stroke:'#277c67','stroke-width':2*m});}
  if(show&&state.labels){const occupied=[];for(const f of labelCandidates()){const p=f.properties,[x,z]=p.centre;if(x<v[0]||x>v[0]+v[2]||z<v[1]||z>v[1]+v[3])continue;const screen=[(x-v[0])/m,(z-v[1])/m];if(blocked(screen,Math.min(170,p.label.length*11),20,occupied))continue;occupied.push([screen[0]-p.label.length*5,screen[1]-10,Math.min(170,p.label.length*11),20]);const t=el('text',{x,y:z,'font-size':11*m,'text-anchor':'middle','dominant-baseline':'middle',fill:'#2a4c3b',stroke:'#f6f7ef','stroke-width':3*m,'paint-order':'stroke','stroke-linejoin':'round','pointer-events':'none'});t.textContent=p.label;if(occupied.length>=22)break;}}
 }
-function labelCandidates(){return selectable.filter(f=>(f.properties.name||f.properties.displayName)&&(!f.properties.precinct32||f.properties.pickId===selected||(mode==='3d'?orbit.distance>650:planView.w>650))).sort((a,b)=>{const score=f=>f.properties.pickId===selected?-100:f.properties.name==='未名湖'?-10:featured.includes(f.properties.id)?featured.indexOf(f.properties.id):100;return score(a)-score(b)})}
+function labelCandidates(){const candidates=selectable.filter(f=>(f.properties.name||f.properties.displayName)&&(!f.properties.precinct32||f.properties.pickId===selected||(mode==='3d'?orbit.distance>650:planView.w>650)));if(candidates.length<2)return candidates;const groups=new Map();for(const f of candidates){const score=f.properties.pickId===selected?-100:f.properties.name==='未名湖'?-10:featured.includes(f.properties.id)?featured.indexOf(f.properties.id):100,group=groups.get(score);if(group)group.push(f);else groups.set(score,[f]);}return [...groups.keys()].sort((a,b)=>a-b).flatMap(score=>groups.get(score))}
 function blocked(q,w,h,occupied){if(q[0]<w/2+10||q[0]>innerWidth-w/2-10||q[1]<145||q[1]>innerHeight-110)return true;for(const id of ['catalog','detail','environment','route-panel']){const e=$(id);if(e.hidden||(id==='catalog'&&root.classList.contains('catalog-hidden')))continue;const r=e.getBoundingClientRect();if(q[0]+w/2>r.left&&q[0]-w/2<r.right&&q[1]+h/2>r.top&&q[1]-h/2<r.bottom)return true;}return occupied.some(r=>q[0]+w/2>r[0]-6&&q[0]-w/2<r[0]+r[2]+6&&q[1]+h/2>r[1]-5&&q[1]-h/2<r[1]+r[3]+5)}
 let labelNodes=new Map();
 function drawLabels(){Y.Dorm45Basement338?.hide();if(!ready||mode!=='3d')return;for(const n of labelNodes.values())n.hidden=true;if(!state.labels)return;Y.Dorm45Basement338?.draw3D({engine,state,selected,ready,mode,container:$('labels'),viewport:{width:innerWidth,height:innerHeight}});const occupied=engine.people?.labelBoxes()||[],chosen=[];for(const f of labelCandidates()){const p=f.properties;if(state.isolate&&p.pickId!==state.isolate)continue;if(selected&&orbit.distance<180&&p.pickId!==selected&&Math.hypot(p.centre[0]-orbit.target[0],p.centre[1]-orbit.target[2])>100)continue;if(orbit.distance>1500&&!featured.includes(p.id)&&p.name!=='未名湖'&&p.pickId!==selected)continue;const q=engine.project([p.centre[0],p.height+4+(Y.Landscape42?.elevation(...p.centre)||0),p.centre[1]]),w=Math.min(205,p.label.length*10+14),h=22;if(!q.visible||blocked([q.x,q.y],w,h,occupied))continue;occupied.push([q.x-w/2,q.y-h/2,w,h]);chosen.push({p,q});if(occupied.length>=(innerWidth<=650?8:18))break;}for(const {p,q} of chosen){let n=labelNodes.get(p.pickId);if(!n){n=document.createElement('button');n.className='world-label';n.textContent=p.label;n.setAttribute('aria-label','查看'+p.label);n.onclick=()=>select(p.pickId,true);$('labels').append(n);labelNodes.set(p.pickId,n)}n.hidden=false;n.style.left=q.x+'px';n.style.top=q.y+'px';n.setAttribute('aria-current',String(p.pickId===selected));}}
@@ -297,6 +317,7 @@ for(const button of document.querySelectorAll('[data-walk-key]')){
 }
 $('show-people').onchange=()=>{state.people=$('show-people').checked;};
 $('walkers-view').onclick=()=>{if(!ready||!engine.people)return;changeMode('3d');closeDetail();routePlaying=false;$('environment').hidden=true;root.classList.add('catalog-hidden');Object.assign(orbit,engine.people.closeView());finishPanelOffset();engine.shadowDirty=true;};
+$('quality-preset').value=qualityPreset;$('quality-preset').onchange=changeQualityPreset;
 $('show-labels').onchange=()=>{state.labels=$('show-labels').checked;drawLabels();drawPlan();};$('vegetation').onchange=()=>{state.vegetation=$('vegetation').checked;engine.shadowDirty=true;};$('search').oninput=renderCatalog;document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.filter;document.querySelectorAll('[data-filter]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));renderCatalog()});document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>changeMode(b.dataset.mode));$('catalog-toggle').onclick=()=>setCatalogOpen(root.classList.contains('catalog-hidden'));$('catalog-collapse').onclick=()=>setCatalogOpen(false,true);$('catalog-restore').onclick=()=>setCatalogOpen(true,true);$('detail-close').onclick=closeDetail;$('detail-expand').onclick=()=>setDetailCompact(false);$('focus').onclick=()=>selected&&focusFeature(by.get(selected));$('isolate').onclick=isolate;$('front-view').onclick=()=>architectureView();$('side-view').onclick=()=>architectureView(false,Math.PI/2);$('back-view').onclick=()=>architectureView(false,Math.PI);$('roof-view').onclick=()=>architectureView(true);$('ne-view').onclick=()=>{if(!selected)return;changeMode('3d');browseCamera.cancel();finishPanelOffset();focusFeatureImmediate(by.get(selected));orbit.yaw=Math.PI*.75;orbit.elevation=.58;engine.shadowDirty=true;};$('isolation-exit').onclick=()=>exitIsolate();$('show-plan').onclick=()=>{changeMode('plan');if(selected)focusFeature(by.get(selected))};$('overlay').onchange=drawPlan;$('raw-overlay').onchange=drawPlan;$('home').onclick=()=>fitRegion('campus');$('north').onclick=()=>{browseCamera.cancel();finishPanelOffset();orbit.yaw=0;say('正北朝上')};$('top').onclick=()=>{browseCamera.cancel();finishPanelOffset();orbit.yaw=0;orbit.elevation=1.56;say('垂直俯视 · 北向朝上')};$('zoom-in').onclick=()=>zoom(.78);$('zoom-out').onclick=()=>zoom(1/.78);$('controls-open').onclick=()=>{stopWalkInput();$('controls-help').showModal()};$('sources-open').onclick=()=>$('sources').showModal();$('environment-open').onclick=()=>{stopWalkInput();$('environment').hidden=!$('environment').hidden;$('route-panel').hidden=true};document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{const e=$(b.dataset.close);e instanceof HTMLDialogElement?e.close():e.hidden=true;if(b.dataset.close==='route-panel')routePlaying=false});$('hour').oninput=()=>{state.hour=+$('hour').value;$('hour-value').textContent=String(Math.floor(state.hour)).padStart(2,'0')+':'+String(Math.round(state.hour%1*60)).padStart(2,'0');engine.shadowDirty=true};$('season').onchange=()=>{state.season=+$('season').value;engine.shadowDirty=true};$('weather').onchange=()=>{state.weather=+$('weather').value;engine.shadowDirty=true};$('animation').checked=animation;$('animation').onchange=()=>animation=$('animation').checked;$('route-open').onclick=()=>{if(state.firstPerson)exitFirstPerson();$('route-panel').hidden=false;$('environment').hidden=true;if(selected)$('route-to').value=String(selected)};$('route-plan').onclick=planRoute;$('route-clear').onclick=clearRoute;$('route-play').onclick=toggleTravel;$('route-progress').oninput=()=>{if(!route)return;const progress=+$('route-progress').value;pauseTravel();routeDistance=progress/1000*route.length;moveAlong();syncWalkUI()};
 const walkKeys=new Set(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight']);
 window.addEventListener('keydown',e=>{
@@ -346,7 +367,7 @@ function tick(now){
   const view=camera(),mask=state.inspectionMask;
   const labelCameraKey=[...view.eye,...view.target,...(view.up||[0,1,0]),view.fov||.80,view.offsetX||0,view.offsetY||0,canvas.width,canvas.height,innerWidth,innerHeight].join(',');
   const labelCameraChanged=labelCameraKey!==lastLabelCameraKey;
-  const visualKey=[...view.eye,...view.target,view.offsetX,view.offsetY,state.hour,state.season,state.weather,state.selected,state.isolate,state.explode,state.contact,state.detailLOD,state.labels,state.vegetation,state.people,[...state.routeEdges].join('/'),mask?.objectId,mask?.buckets?[...mask.buckets].join('/'):null,canvas.width,canvas.height,$('environment').hidden,$('route-panel').hidden].join(',');
+  const visualKey=[...view.eye,...view.target,view.offsetX,view.offsetY,state.hour,state.season,state.weather,state.selected,state.isolate,state.explode,state.contact,state.detailLOD,state.labels,state.vegetation,state.people,qualityPreset,[...state.routeEdges].join('/'),mask?.objectId,mask?.buckets?[...mask.buckets].join('/'):null,canvas.width,canvas.height,$('environment').hidden,$('route-panel').hidden].join(',');
   if(!animation&&!routePlaying&&!engine.shadowDirty&&visualKey===lastVisualKey&&!labelCameraChanged){if(labelsPending&&now-labelTick>170){drawLabels();labelTick=now;labelsPending=false;}return;}
   lastVisualKey=visualKey;engine.people?.setMotion(dt,animation);engine.render(view,state.firstPerson?{...state,routeEdges:noWalkRoute}:state);lastLabelCameraKey=labelCameraKey;labelsPending=true;if(labelCameraChanged||now-labelTick>170){drawLabels();labelTick=now;labelsPending=false;}
  }
@@ -364,18 +385,18 @@ async function init(recover=false){finishPanelOffset();
  const generation=++renderGeneration;let next,prepared;
  try{
   prepared=Y.SceneCache46&&Y.SCENE_PACKAGE46?Y.SceneCache46.warmup():undefined;
-  next=new Y.Engine(canvas,{deferPrograms:true});engine=next;next.resize(innerWidth,innerHeight);
+  next=new Y.Engine(canvas,{deferPrograms:true,qualityPreset});engine=next;next.resize(innerWidth,innerHeight);
   next.compilePrograms(true,state.people!==false&&!state.isolate);
   next.onInstanceDataReady=()=>{if(generation===renderGeneration&&!next.disposed&&mode==='3d')next.prepareInitialVisibility(camera(),state.firstPerson?{...state,routeEdges:noWalkRoute}:state);};
   const scene=await loadRenderResources(next,(n,total)=>{if(generation===renderGeneration)$('status').textContent=(recover?'正在恢复校园… ':'正在打开校园… ')+Math.round(n/total*100)+'%';},prepared);
   if(generation!==renderGeneration){next.dispose();return;}
-  campus=scene;next.people=Y.Pedestrians46.create(next,campus,state);$('show-people').disabled=false;$('walkers-view').disabled=false;ready=true;lastVisualKey='';lastInput=null;last=lastDraw=0;root.dataset.ready='true';$('coverage').textContent=`${D.features.filter(f=>f.properties.kind==='building'&&!f.properties.supersededBy43).length} 个建筑对象`;$('status').textContent='';
-  window.Yanyuan={version:'1.2.0',data:D,engine,campus,state,orbit,planView,get mode(){return mode},get walker(){return walker},select,changeMode,fitRegion};
+  campus=scene;next.people=Y.Pedestrians46.create(next,campus,state);$('show-people').disabled=false;$('walkers-view').disabled=false;$('quality-preset').disabled=false;ready=true;lastVisualKey='';lastInput=null;last=lastDraw=0;root.dataset.ready='true';$('coverage').textContent=`${D.features.filter(f=>f.properties.kind==='building'&&!f.properties.supersededBy43).length} 个建筑对象`;$('status').textContent='';
+  window.Yanyuan={version:'1.5.0',data:D,engine,campus,state,orbit,planView,get mode(){return mode},get walker(){return walker},select,changeMode,fitRegion};
   if(!recover&&developmentReferences){const script=document.createElement('script');script.src='private/reference-gallery.js';script.onload=()=>{if(selected)renderReferenceGallery(by.get(selected).properties);};document.head.appendChild(script);}
    cancelAnimationFrame(frameRequest);frameRequest=requestAnimationFrame(tick);
- }catch(e){next?.dispose();if(generation!==renderGeneration)return;console.error(e);$('status').textContent='三维暂不可用，已切换平面地图。';changeMode('plan');ready=true;root.dataset.ready='plan-only';}finally{prepared?.dispose();}
+ }catch(e){next?.dispose();if(generation!==renderGeneration)return;$('quality-preset').disabled=true;console.error(e);$('status').textContent='三维暂不可用，已切换平面地图。';changeMode('plan');ready=true;root.dataset.ready='plan-only';}finally{prepared?.dispose();}
 }
-canvas.addEventListener('webglcontextlost',event=>{browseCamera.cancel();finishPanelOffset();stopWalkInput();event.preventDefault();renderGeneration++;ready=false;cancelAnimationFrame(frameRequest);engine?.dispose();root.dataset.ready='recovering';$('status').textContent='正在恢复校园…';});
+canvas.addEventListener('webglcontextlost',event=>{browseCamera.cancel();finishPanelOffset();stopWalkInput();event.preventDefault();renderGeneration++;ready=false;$('quality-preset').disabled=true;cancelAnimationFrame(frameRequest);engine?.dispose();root.dataset.ready='recovering';$('status').textContent='正在恢复校园…';});
 canvas.addEventListener('webglcontextrestored',()=>init(true));
 
 // Keep disclosure buttons accurate when keyboard, selection or close controls hide panels.

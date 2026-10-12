@@ -72,8 +72,10 @@ node_modules/
 !/app/tests/builder-data318.test.cjs
 !/app/tests/building110-details.test.cjs
 !/app/tests/building111-details.test.cjs
+!/app/tests/browse-camera-input.test.cjs
 !/app/tests/ceramic-uv162.test.cjs
 !/app/tests/deferred-vao170.test.cjs
+!/app/tests/engine-quality.test.cjs
 !/app/tests/first-person-ground-entry.test.cjs
 !/app/tests/instance-transfer46.test.cjs
 !/app/tests/jianzhai200-details.test.cjs
@@ -84,6 +86,7 @@ node_modules/
 !/app/tests/pick-range-cull.test.cjs
 !/app/tests/program-readiness.test.cjs
 !/app/tests/provoking-vertex46.test.cjs
+!/app/tests/quality-preference.test.cjs
 !/app/tests/reflection-plane46.test.cjs
 !/app/tests/reflection-footprint.test.cjs
 !/app/tests/reflection-scissor.test.cjs
@@ -178,3 +181,9 @@ node_modules/
 !/app/tests/detail-compact-markup.test.py
 
 !/app/tests/label-layout-phases.test.cjs
+!/app/tests/visibility-singleton-copy.test.cjs
+!/app/tests/visibility-small-index.test.cjs
+
+!/app/tests/reflection-descriptor-cache.test.cjs
+
+!/app/tests/quality-lod.test.cjs

@@ -1,6 +1,35 @@
 # Rendering performance
 
-## Retained reference comparison
+## 1.5.0 release validation
+
+The maintained release uses WebGL 2 and starts fresh viewers at High. The slower WebGPU experiment is excluded. Stable interactive 60 FPS remains an open target.
+
+The exact release build passed 452 JavaScript checks and 17 packaging checks. Ten full-resolution fixed-state comparisons against the retained complete-program WebGL build were byte-identical. Trusted picking and walking, explicit quality switching and persistence, a narrow viewport, real WebGL context loss/restoration and local-file loading passed. This covers those fixtures and interactions; it does not certify every campus view or physical phone.
+
+The unchanged frozen-reference protocol completed three alternating pairs under matched browser, renderer, viewport and quality conditions. Five of six checks pass; first-frame submission remains above its original threshold. The reference and current scene differ in retained model content, so these ratios do not isolate an engine-only speedup. No thresholds or frozen assets were replaced.
+
+| Metric | Change from unchanged frozen reference | Result |
+| --- | ---: | --- |
+| First-frame submission time | +24.393% | Fail |
+| GPU-ready time | -3.298% | Pass |
+| Reported heap | +7.807% | Pass |
+| Campus animation FPS | +5.295% | Pass |
+| Lake orbit FPS | +3.095% | Pass |
+| Lake main-thread median time | -22.967% | Pass |
+
+Trusted-input measurements used a serial before/release/release/before order, High, the same complete scene and viewport, and no GPU timing queries. The release and retained WebGL build had similar submission cadence; no material speedup is established. These are accepted scene renders per second, not physical screen FPS or input-to-photon latency.
+
+| Input | Retained WebGL | Release WebGL |
+| --- | ---: | ---: |
+| Left drag | 13.3 | 13.6 |
+| Right drag | 12.0 | 12.1 |
+| Wheel zoom | 9.4 | 9.6 |
+
+Release P95 submission spacing was about 88 ms, 106 ms and 121 ms respectively, above the 16.7 ms budget. These observations apply to the retained run conditions and do not predict every device.
+
+The historical 1.4.0 table below remains attached to its earlier source/build comparison.
+
+## Retained 1.4.0 reference comparison
 
 The maintained scene retains full model detail, original image resolution, shadows, reflections and antialiasing. The retained comparison covers the research-building entrance and glazing-grid correction, dormitory canopy, Resource Hotel, union building mass, Qiu roof and east sports field. All six incremental checks remain within the original thresholds; three of six checks against the original frozen reference fail. This is not a performance-improvement claim.
 
@@ -13,9 +42,9 @@ The maintained scene retains full model detail, original image resolution, shado
 | Lake FPS | -1.034% | -26.711% | Fail |
 | Lake main-thread median time | -0.847% | -25.595% | Pass |
 
-The incremental result and the three-of-six frozen result remain separate. First-frame submission, campus FPS and lake FPS remain unresolved global gaps. Both this and the preceding comparison passed three frozen checks; these runs do not establish a causal speedup or slowdown from the geometry changes alone. Heap API precision, shared browser processes and unobserved external GPU activity limit interpretation. All 24 phases completed with stable inputs, the registered environment decision and owned-process cleanup. Values are measurements from the retained comparison, not portable device promises. Physical-phone and whole-campus fidelity acceptance remain open.
+The incremental result and the three-of-six frozen result remain separate. First-frame submission, campus FPS and lake FPS remained unresolved in that comparison. Both this and the preceding comparison passed three frozen checks; these runs do not establish a causal speedup or slowdown from the geometry changes alone. Heap API precision, shared browser processes and unobserved external GPU activity limit interpretation. All 24 phases completed with stable inputs, the registered environment decision and owned-process cleanup. Values are measurements from the retained comparison, not portable device promises. Physical-phone and whole-campus fidelity acceptance remain open.
 
-The table above belongs to its retained source/build comparison. It is not a result for a newly changed codec or initial-visibility candidate. Publish replacement figures only after completing the original comparison protocol on the exact accepted build; no newer formal values are asserted here.
+The table above belongs to the retained 1.4.0 source/build comparison. It remains unchanged and does not describe later codec or initial-visibility candidates. Current release results are recorded in the 1.5.0 section above.
 
 ## Delivered cost reductions
 
@@ -24,11 +53,21 @@ The table above belongs to its retained source/build comparison. It is not a res
 - Deferred builder data, shared geometry pages and conservative visibility handling retain ordinary fallback paths. Context recovery, lazy photos and local-file/offline behavior remain supported.
 - Reflection scissoring and conservative reflection culling retain full-resolution targets and fall back where bounds cannot prove a safe restriction.
 
+## User-selectable quality
+
+The viewer offers Low, Medium and High in the lighting panel. New visitors start at High; a valid saved choice is restored on reload and context recovery. High retains the original meshes and rendering settings. Medium and Low retain their existing render-target sizes, source images, 4× MSAA, shadows and reflections, and select prebuilt alternative meshes for supported tree forms and curved roof tiles. Switching preserves the camera and selection; target allocation failure keeps the previous settings.
+
+Lower tiers preserve tree locations and crown envelopes, roof planes, tile courses and ridge geometry. They reduce internal foliage and branch geometry and the subdivisions across tile arcs. Unsupported geometry keeps its original representation. Near or inspected objects use the original mesh; selection thresholds include a hysteresis band. Main, reflected and shadow views select their own detail levels from projected feature size. Reflection selection accounts for the reflected eye and target height; shadow selection uses the light projection and shadow-map size. These are intentional lower-tier approximations, not claims of pixel equivalence.
+
+Alternative mesh resources share the original instance records and conservative visibility bounds. They are baked, decoded and uploaded through the existing scene pipeline, with independent draw bindings and complete disposal. Attach alternatives before initial visibility preparation, include the preset in cache keys, and clear selection history on tier changes. Do not discard complete objects or increase the general-purpose visibility threshold to obtain a lower quality tier.
+
+Performance comparisons against the retained reference must explicitly select High. Lower-tier measurements describe a quality/performance tradeoff and must not be reported as a fidelity-preserving engine optimization. The Engine API retains High as its default; the viewer passes its saved or default High choice explicitly.
+
 ## Runtime maintenance contracts
 
 Shader completion may overlap decoding and uploads, but the ready barrier still includes every scene, texture and program resource. Failure cleanup waits for independent work to settle; context loss cancels pending waits. The two-worker decoder and two-frame GPU queue remain bounded. Navigation consumes elapsed input time before the GPU queue check, and reduced-motion preferences disable browse-camera transitions.
 
-The idle-built bucket index requires an Engine-owned epoch. External raw-data or bucket-order edits must invalidate it and refresh derived bounds and visibility caches; uncertain cases retain the original ordered scan. Water-footprint culling likewise falls back when a safe restriction cannot be established. Material 0/6/21 specialization preserves the shared sampling and lighting equations.
+The idle-built bucket index requires an Engine-owned epoch. External raw-data or bucket-order edits must invalidate it and refresh derived bounds and visibility caches; uncertain cases retain the original ordered scan. The same epoch owns cached center bounds for small ungrouped buckets. Only a conservative proof that every center lies inside every view plane may skip the repeated instance sphere tests; filters, detail decisions and ordered copying still run normally. Missing or mismatched epochs, displacement, aliases and ambiguous boundaries retain the scalar checks. Water-footprint culling likewise falls back when a safe restriction cannot be established. Reflection descriptor reuse compares the camera matrices, viewport, target and complete consumed water-footprint inputs, including in-place edits. Cached outputs are copied for each caller, and input identities are weak references. Job-owned world caches, replaced helper methods and uncertain descriptors retain the original calculation. Material 0/6/21 specialization preserves the shared sampling and lighting equations.
 
 Pick-range culling requires a build-audited scene descriptor, the qualified browser/GPU profile, unchanged pick shaders and a complete verified scene publication. Qualification runs after rendering and yields during descriptor preparation. Only ranges proven outside the pick region may be omitted; surviving draws retain their original order and streams. Unsupported profiles, incomplete qualification, selected/isolate/explode states and invalidated scene data use the original pick path. Resize and context recovery require fresh qualification. Geometry or bucket mutations invalidate the prepared publication; rebuilding the bucket index alone must not reactivate culling. Keep the profile narrow until equivalent native-pixel and interaction evidence supports an extension.
 

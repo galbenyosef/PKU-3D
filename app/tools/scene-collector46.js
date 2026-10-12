@@ -4,7 +4,7 @@
   constructor(){this.buckets=new Map();this.stats={instances:0,triangles:0};}
   add(key,geometry,matrix,color,meta=[0,0,0,0],uv=[0,0,1,1]){
    let b=this.buckets.get(key);
-   if(!b){b={geometry:{v:new Float32Array(geometry.v)},detailWidth:geometry.detailWidth||0,instances:[]};this.buckets.set(key,b);}
+   if(!b){b={geometry:{v:new Float32Array(geometry.v)},detailWidth:geometry.detailWidth||0,qualityRole:geometry.qualityRole||null,qualityMetric:geometry.qualityMetric||0,qualityLods:geometry.qualityLods,instances:[]};this.buckets.set(key,b);}
    if(typeof color==='string')color=Y.M.color(color);
    b.instances.push(...matrix,...color.slice(0,3),1,...meta,...uv);this.stats.instances++;
   }
@@ -20,11 +20,15 @@
   let count=0;
   for(const[key,b]of e.buckets){
    const spatial=Y.Visibility.prepare(b.data,b.geometry);
-   const header=new TextEncoder().encode(JSON.stringify({key,detailWidth:b.detailWidth,vertices:b.geometry.v.length,instances:b.data.length,spatial:spatial.length}));
+   const header=new TextEncoder().encode(JSON.stringify({key,qualityRole:b.qualityRole,qualityMetric:b.qualityMetric,detailWidth:b.detailWidth,vertices:b.geometry.v.length,instances:b.data.length,spatial:spatial.length}));
    const prefix=new Uint32Array([header.length]);
    // Blob avoids an additional concatenated copy of the large vertex arrays.
    await post('bucket',new Blob([prefix,header,b.geometry.v,b.data,spatial]));
-   b.geometry=null;b.data=null;
+   if(b.qualityLods)for(let level=0;level<b.qualityLods.length;level++){
+    const v=new Float32Array(b.qualityLods[level].v),h=new TextEncoder().encode(JSON.stringify({key,lod:level+1,detailWidth:0,vertices:v.length,instances:0,spatial:0}));
+    await post('bucket',new Blob([new Uint32Array([h.length]),h,v]));
+   }
+   b.geometry=null;b.data=null;b.qualityLods=null;
    if(++count%256===0)console.log('Cached',count,'of',e.buckets.size,'source buckets');
   }
   await post('done',JSON.stringify({buildMs:performance.now()-started}),'application/json');

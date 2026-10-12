@@ -49,7 +49,7 @@ function tiledRoof(b,name,w,d){
  for(const [face,L,depth,topHalf,x,z,rot]of specs){
   const N=Math.ceil(L/.30),pitch=L/N,rows=Math.ceil(depth/.36),course=depth/rows,slope=rise/depth;
   const polygon=[[-L/2,0],[L/2,0],[topHalf,depth],[-topHalf,depth]];
-  function column(a,partial,start=0,end=rows,hipInterior=false){const g=new G.Geometry();
+  function column(a,partial,start=0,end=rows,hipInterior=false,lod=0){const segments=lod===1?4:lod===2?2:8;const g=new G.Geometry();
    for(let row=start;row<end;row++){
     const t0=row*course,t1=(row+1)*course;
     const shape=u=>.012+.025*(1-Math.cos(2*Math.PI*u/pitch))/2;
@@ -57,8 +57,8 @@ function tiledRoof(b,name,w,d){
     const bottom=t=>H.eave+slope*t-.003;
     // Piecewise shallow curved section: closed top/bottom/front/back/side faces.
     // Each section is a convex prism, clipped before height construction.
-    for(let k=0;k<8;k++){
-     const u0=k*pitch/8,u1=(k+1)*pitch/8;
+    for(let k=0;k<segments;k++){
+     const u0=k*pitch/segments,u1=(k+1)*pitch/segments;
      let p=partial?polygon.map(v=>v.slice()):[[a+u0,t0],[a+u1,t0],[a+u1,t1],[a+u0,t1]];
      if(partial)for(const [axis,value,greater]of [[0,a+u0,true],[0,a+u1,false],[1,t0,true],[1,t1,false]])if(p.length)p=cut(p,axis,value,greater);
      // Clipping through an existing corner can repeat that exact corner.
@@ -79,15 +79,15 @@ function tiledRoof(b,name,w,d){
       // Adjacent section strips share these internal faces; omit only the
       // exact common face, retaining tile edges, course lips and hip closures.
       const x=p[i][0]-a,xx=p[j][0]-a;
-      if(Math.abs(x-xx)<1e-9&&((k>0&&Math.abs(x-u0)<1e-9)||(k<7&&Math.abs(x-u1)<1e-9)))continue;
+      if(Math.abs(x-xx)<1e-9&&((k>0&&Math.abs(x-u0)<1e-9)||(k<segments-1&&Math.abs(x-u1)<1e-9)))continue;
       g.quad(dn[i],up[i],up[j],dn[j]);
      }
     }
    }
-   for(let i=0;i<g.v.length;i+=8){g.v[i+6]=g.v[i];g.v[i+7]=g.v[i+2];}return g;
+   for(let i=0;i<g.v.length;i+=8){g.v[i+6]=g.v[i];g.v[i+7]=g.v[i+2];}if(!lod){g.qualityRole='roof';g.qualityMetric=pitch;g.qualityLods=[column(a,partial,start,end,hipInterior,1),column(a,partial,start,end,hipInterior,2)];}return g;
   }
   b.local(x,0,z,rot,()=>{
-   const cuts=new G.Geometry();let shared;
+   const cuts=new G.Geometry();cuts.qualityRole='roof';cuts.qualityMetric=pitch;cuts.qualityLods=[new G.Geometry(),new G.Geometry()];let shared;
    for(let i=0;i<N;i++){
     const a=-L/2+i*pitch,full=a>=-topHalf-1e-9&&a+pitch<=topHalf+1e-9;
     if(full){shared=shared||b.geo(prefix+face+'-column',()=>column(a,false));b.mesh(prefix+face+'-column',shared,a,0,0,1,1,1,'#7c827f',25);}
@@ -104,7 +104,7 @@ function tiledRoof(b,name,w,d){
       const key=prefix+face+'-courses-'+size,g=b.geo(key,()=>column(0,false,0,size,true));
       b.mesh(key,g,a,slope*at*course,at*course,1,1,1,'#7c827f',25);at+=size;left-=size;
      }
-     const g=column(a,true,whole);for(let j=0;j<g.v.length;j+=8){cuts.v.push(g.v[j]+a,...g.v.slice(j+1,j+8));}
+     const g=column(a,true,whole);for(let j=0;j<g.v.length;j+=8){cuts.v.push(g.v[j]+a,...g.v.slice(j+1,j+8));}for(let l=0;l<2;l++)for(let j=0;j<g.qualityLods[l].v.length;j+=8){const v=g.qualityLods[l].v;cuts.qualityLods[l].v.push(v[j]+a,...v.slice(j+1,j+8));}
     }
    }
    b.mesh(prefix+face+'-hip-cuts',b.geo(prefix+face+'-hip-cuts',()=>cuts),0,0,0,1,1,1,'#7c827f',25);

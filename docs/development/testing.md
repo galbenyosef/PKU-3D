@@ -6,6 +6,8 @@ The suite covers rendering routes, texture/material handling, visibility and ord
 
 Tests exercise a defined scope. Mock WebGL checks do not establish rendered quality, frame rate, physical-phone behavior or reference fidelity. The actual scene's retained visual and performance review is described in [performance](performance.md) and [model status](model-status.md).
 
+Quality regressions retain the original High tree and curved-roof mesh checksums under `app/tests/fixtures/`. They separately check lower-tier bounds and finite geometry, explicit preset persistence, target-allocation rollback, ordered view partitions and context recovery. Do not regenerate the High fixtures to accommodate a mismatch.
+
 ## Historical research checks
 
 The local research collection also contains hundreds of per-stage comparison scripts. Many reconstruct old components, old campus feature coordinates or an intermediate module order. They are not copied into the public suite automatically. Their source, fixtures and failed results remain in the local evidence archive.

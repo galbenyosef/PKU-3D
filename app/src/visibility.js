@@ -55,7 +55,34 @@
   const data=bucket.data,sp=bucket.spatial,c=bucket.coarse;
   bucket.singleSphere=!!(data.length===28&&!bucket.groups&&c[0]===sp[0]&&c[1]===sp[1]&&c[2]===sp[2]&&Number.isFinite(sp[0])&&Number.isFinite(sp[1])&&Number.isFinite(sp[2])&&Number.isFinite(sp[3])&&Number.isFinite(c[3])&&c[3]>=sp[3]&&Number.isFinite(data[23]));
  }
- function select(bucket,planes,eye,focal,state,scratch,ownedScratch=false,appendToStream=false,result={count:0,culled:0}){
+ const smallInsideProofs=new WeakMap();
+ function prepareSmallInside(bucket,epoch){
+  smallInsideProofs.delete(bucket);
+  const d=bucket.data,sp=bucket.spatial,c=bucket.coarse,n=d?.length/28;
+  if(!epoch||!(d instanceof Float32Array)||!(sp instanceof Float32Array)||n<8||n>=128||!Number.isInteger(n)||sp.length!==n*5||bucket.count!==n||bucket.groups!==null||!c||c.length!==4||!c.every(Number.isFinite)||c[3]<0)return false;
+  const bounds=[Infinity,Infinity,Infinity,-Infinity,-Infinity,-Infinity];
+  for(let k=0;k<n;k++){const j=k*5;
+   if(!Number.isFinite(sp[j])||!Number.isFinite(sp[j+1])||!Number.isFinite(sp[j+2])||!Number.isFinite(sp[j+3])||sp[j+3]<0||!Number.isFinite(d[k*28+23]))return false;
+   for(let a=0;a<3;a++){bounds[a]=Math.min(bounds[a],sp[j+a]);bounds[a+3]=Math.max(bounds[a+3],sp[j+a]);}
+  }
+  smallInsideProofs.set(bucket,{epoch,data:d,spatial:sp,coarse:c,count:n,bounds,scale:[0,1,2].map(k=>Math.max(Math.abs(bounds[k]),Math.abs(bounds[k+3])))});return true;
+ }
+ function smallInside(bucket,planes,state,out,epoch){
+  if(!epoch||bucket.data.length<224||bucket.data.length>=3584)return false;
+  const proof=epoch&&smallInsideProofs.get(bucket);
+  if(!proof||proof.epoch!==epoch||proof.data!==bucket.data||proof.spatial!==bucket.spatial||proof.coarse!==bucket.coarse||proof.count!==bucket.count||bucket.data.length!==proof.count*28||bucket.spatial.length!==proof.count*5||bucket.groups!==null||state.explode!==0||out?.buffer===bucket.data.buffer||out?.buffer===bucket.spatial.buffer)return false;
+  const a=proof.bounds,abs=proof.scale;
+  for(let k=0;k<planes.length;k++){
+   const p=planes[k],px=p[0],py=p[1],pz=p[2],pw=p[3];
+   if(!Number.isFinite(px)||!Number.isFinite(py)||!Number.isFinite(pz)||!Number.isFinite(pw))return false;
+   const x=px*a[px<0?3:0],y=py*a[py<0?4:1],z=pz*a[pz<0?5:2],lower=x+y+z+pw;
+   const scale=Math.abs(px)*abs[0]+Math.abs(py)*abs[1]+Math.abs(pz)*abs[2]+Math.abs(pw)+1;
+   const error=32*Number.EPSILON*scale;
+   if(!Number.isFinite(lower)||!Number.isFinite(error)||!(lower>error))return false;
+  }
+  return true;
+ }
+ function select(bucket,planes,eye,focal,state,scratch,ownedScratch=false,appendToStream=false,result={count:0,culled:0},insideEpoch=null){
   // Engine may provide one synchronous result slot; ordinary callers still
   // receive a fresh object. Reset before any early exit or possible error.
   result.count=0;result.culled=0;
@@ -73,7 +100,35 @@
   const offset=appendToStream?scratch.used:0;
   let out=scratch?scratch.data:bucket.visible;if(!out){out=new Float32Array(Math.min(64,bucket.count)*28);if(scratch)scratch.data=out;else bucket.visible=out;}let count=0,culled=0;
   const enabled=state.detailLOD!==false,selected=state.selected,surface=bucket.surfaceWidths,flags=bucket.essentialFlags,groups=bucket.groups;
-  let inside=singleInside,runStart=-1,runEnd=0,runOutput=0;
+  let inside=singleInside||smallInside(bucket,planes,state,out,insideEpoch);
+  // A native one-record source needs the same scalar decisions, but no group
+  // traversal or accepted-run bookkeeping. Groups and source/output aliases
+  // retain the generic path, including its exact detached-buffer exceptions.
+  if(data.length===28&&!groups&&data.buffer!==out.buffer){
+   const i=0,j=0,k=0;
+   singleton:{
+   const id=data[i+21];if(iso&&id!==iso&&id!==999999)break singleton;
+   if((state.vegetation===false&&id>=800000&&id<900000)||(id>=950000&&id<960000&&!state.routeEdges?.has(id-950000)))break singleton;
+   const x=sp[j],y=sp[j+1]+(id===selected?(state.explode||0)*data[i+23]:0),z=sp[j+2],r=sp[j+3];
+   if(!inside&&!sphereVisible(planes,x,y,z,r))break singleton;
+   if(enabled){
+    const dx=x-eye[0],dy=y-eye[1],dz=z-eye[2],distanceSq=dx*dx+dy*dy+dz*dz,width=data[i+20]===38?sp[j+4]:(surface?surface[k]:0);
+    const surfaceLimit=width*focal/.85;
+    if(width&&Math.max(1,distanceSq)>surfaceLimit*surfaceLimit){culled++;break singleton;}
+    if(!iso&&id!==selected&&!flags[k]&&distanceSq>=260*260){const limit=sp[j+4]*focal/1.6;if(distanceSq>limit*limit){culled++;break singleton;}}
+   }
+   if(offset+(count+1)*28>out.length){
+    const length=appendToStream?Math.max(offset+(count+1)*28,Math.ceil(out.length*1.25)):Math.min(data.length,Math.max(28,out.length*2));let next;
+    // Engine consumes each prefix synchronously before reusing its own scratch.
+    if(ownedScratch&&scratch&&out.byteOffset===0&&out.byteLength===out.buffer.byteLength&&typeof out.buffer.transfer==='function')next=new Float32Array(out.buffer.transfer(length*4));
+    else{next=new Float32Array(length);next.set(out);}
+    out=next;if(scratch)scratch.data=next;else bucket.visible=next;
+   }
+    out.set(data,offset);count=1;
+   }
+   result.count=count;result.culled=culled;return result;
+  }
+  let runStart=-1,runEnd=0,runOutput=0;
   for(let i=0,j=0,k=0;i<data.length;i+=28,j+=5,k++){
    if(groups&&(k&63)===0){
     const q=(k>>6)*5,r=groups[q+3]+Math.abs(state.explode||0)*groups[q+4];let outside=false;inside=true;
@@ -136,7 +191,7 @@
   if(!epoch||!(buckets instanceof Map)||buckets[Symbol.iterator]!==Map.prototype[Symbol.iterator])return null;
   const entries=[],fallback=[],bands=new Map();let i=0;
   for(const entry of buckets){
-   entries.push(entry);const b=entry[1],c=b.coarse,p=b.maxPart;
+   entries.push(entry);const b=entry[1],c=b.coarse,p=b.maxPart;prepareSmallInside(b,epoch);
    if(!c||![c[0],c[1],c[2],c[3],p].every(Number.isFinite)||c[3]<0||p<0)fallback.push(i);
    else{
     const a=[c[0],c[1],c[2]],z=a.slice();let r=c[3],valid=true;
@@ -196,5 +251,5 @@
   for(let word=0;word<bits.length;word++){let mask=bits[word];while(mask){const bit=31-Math.clz32(mask&-mask);ordered.push(index.entries[word*32+bit]);mask=(mask&(mask-1))>>>0;}}
   return ordered;
  }
- Y.Visibility={buildBucketIndex,buildBucketIndexSteps,indexedBuckets,essentialMaterials:Object.freeze([...essential]),keepDetail,keepSurfaceDetail,prepare,bounds,sphereVisible,compile,prepareSingle,select};
+ Y.Visibility={prepareSmallInside,buildBucketIndex,buildBucketIndexSteps,indexedBuckets,essentialMaterials:Object.freeze([...essential]),keepDetail,keepSurfaceDetail,prepare,bounds,sphereVisible,compile,prepareSingle,select};
 })(YY);

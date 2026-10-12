@@ -11,7 +11,7 @@ function render(b,q,{origin:O,rotation:R,key,color,eaveHigh=false,offset=.13}){
   const derivative=t=>(height(t+.0001)-height(t-.0001))/.0002;
   const roofPolygon={type:'Polygon',coordinates:[[...q.p,q.p[0]]]};
   const inRoof=p=>F.inside(p,roofPolygon)||q.p.some((a,i)=>F.distSegment(p,a,q.p[(i+1)%q.p.length])<1e-7);
-  function column(s,clipped){const g=new G.Geometry();let rowStart,rowEnd;
+  function column(s,clipped,lod=0){const segments=lod===1?4:lod===2?2:8,longitudinal=lod?1:2,pans=lod===1?2:lod===2?1:4;const g=new G.Geometry();let rowStart,rowEnd;
    function patch(x0,x1,t0,t1,profile,normal){
     let poly=clipped?q.p:[[s+x0,t0],[s+x1,t0],[s+x1,t1],[s+x0,t1]].map(p=>axis===1?p:[p[1],p[0]]);
     if(clipped)for(const [ax,k,greater]of [[across,s+x0,true],[across,s+x1,false],[axis,Math.min(t0,t1),true],[axis,Math.max(t0,t1),false]])if(poly.length)poly=clip(poly,ax,k,greater);
@@ -25,14 +25,14 @@ function render(b,q,{origin:O,rotation:R,key,color,eaveHigh=false,offset=.13}){
    const norm=(dx,dt)=>Y.M.norm(axis===1?[-dx,1,-dt]:[-dt,1,-dx]);
    for(let j=0;j<courses;j++){
     const t0=eave+direction*j*course,t1=eave+direction*(j+1)*course;rowStart=t0;rowEnd=t1;
-    for(let k=0;k<8;k++){
-     const x0=-radius*Math.cos(k*Math.PI/8),x1=-radius*Math.cos((k+1)*Math.PI/8);
+    for(let k=0;k<segments;k++){
+     const x0=-radius*Math.cos(k*Math.PI/segments),x1=-radius*Math.cos((k+1)*Math.PI/segments);
      const shape=x=>.016+Math.sqrt(Math.max(0,radius*radius-x*x));
      const normal=(x,dt)=>norm(-x/Math.sqrt(Math.max(.0000001,radius*radius-x*x)),dt);
      // Two longitudinal subdivisions retain the underlying curved roof profile.
-     for(let h=0;h<2;h++)patch(x0,x1,t0+(t1-t0)*h/2,t0+(t1-t0)*(h+1)/2,shape,normal);
+     for(let h=0;h<longitudinal;h++)patch(x0,x1,t0+(t1-t0)*h/longitudinal,t0+(t1-t0)*(h+1)/longitudinal,shape,normal);
      // A real semicircular ceramic lip, rather than a painted line at the eave.
-     const rim=[];for(const [r,ang]of [[radius,k*Math.PI/8],[radius,(k+1)*Math.PI/8],[radius-.013,(k+1)*Math.PI/8],[radius-.013,k*Math.PI/8]]){
+     const rim=[];for(const [r,ang]of [[radius,k*Math.PI/segments],[radius,(k+1)*Math.PI/segments],[radius-.013,(k+1)*Math.PI/segments],[radius-.013,k*Math.PI/segments]]){
       const x=-r*Math.cos(ang),p=axis===1?[s+x,t0]:[t0,s+x];rim.push({p,x,y:height(t0)+.024+r*Math.sin(ang)});
      }
      if(!clipped||rim.every(v=>inRoof(v.p))){
@@ -40,8 +40,8 @@ function render(b,q,{origin:O,rotation:R,key,color,eaveHigh=false,offset=.13}){
      }
     }
     // Shallow concave pan tiles carry runoff between the rounded cover tiles.
-    for(let k=0;k<4;k++){
-     const x0=radius+(.31-2*radius)*k/4,x1=radius+(.31-2*radius)*(k+1)/4;
+    for(let k=0;k<pans;k++){
+     const x0=radius+(.31-2*radius)*k/pans,x1=radius+(.31-2*radius)*(k+1)/pans;
      const shape=x=>.008+.008*Math.pow((x-.155)/.08,2),normal=(x,dt)=>norm(.016*(x-.155)/(.08*.08),dt);
      patch(x0,x1,t0,t1,shape,normal);
     }
@@ -49,14 +49,15 @@ function render(b,q,{origin:O,rotation:R,key,color,eaveHigh=false,offset=.13}){
    // Ceramic shading uses metric surface coordinates; coherent unused UVs let
    // the lossless cache share identical vertices without changing any triangles.
    for(let i=0;i<g.v.length;i+=8){g.v[i+6]=g.v[i];g.v[i+7]=g.v[i+2];}
+   if(!lod){g.qualityRole='roof';g.qualityMetric=.31;g.qualityLods=[column(s,clipped,1),column(s,clipped,2)];}
    return g;
   }
-  const edgeTiles=new G.Geometry();let shared=null;
+  const edgeTiles=new G.Geometry();edgeTiles.qualityRole='roof';edgeTiles.qualityMetric=.31;edgeTiles.qualityLods=[new G.Geometry(),new G.Geometry()];let shared=null;
   b.local(O[0],0,O[1],R,()=>{
    for(let s=a+offset;s<c;s+=.31){
     const full=[lo,hi].every(t=>[-radius,.31-radius].every(x=>{const p=axis===1?[s+x,t]:[t,s+x];return inRoof(p);}));
     if(full){if(!shared)shared=column(s,false);b.mesh(key+'-tile-column-'+q.name,shared,axis===1?s:0,0,axis===0?s:0,1,1,1,color,25);}
-    else{const g=column(s,true);for(let i=0;i<g.v.length;i+=8){const v=g.v.slice(i,i+8);v[axis===1?0:2]+=s;edgeTiles.v.push(...v);}}
+    else{const g=column(s,true);for(let i=0;i<g.v.length;i+=8){const v=g.v.slice(i,i+8);v[axis===1?0:2]+=s;edgeTiles.v.push(...v);}for(let l=0;l<2;l++)for(let i=0;i<g.qualityLods[l].v.length;i+=8){const v=g.qualityLods[l].v.slice(i,i+8);v[axis===1?0:2]+=s;edgeTiles.qualityLods[l].v.push(...v);}}
    }
    b.mesh(key+'-tile-hip-cuts-'+q.name,edgeTiles,0,0,0,1,1,1,color,25);
   });

@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const source=fs.readFileSync(path.join(__dirname,'../src/app-v29.js'),'utf8');
 function fixture(width=1440){
  let now=0,available=true,detail=false,catalog=true;
- const rendered=[],labels=[],c={YY:{},Math,performance:{now:()=>now},innerWidth:width,innerHeight:1000,
+ const rendered=[],labels=[],c={YY:{},qualityPreset:'high',Math,performance:{now:()=>now},innerWidth:width,innerHeight:1000,
   state:{firstPerson:false,time:0,routeEdges:new Set()},orbit:{target:[20,5,9.5],distance:500,yaw:.4,elevation:.31},
   root:{classList:{contains:()=>!catalog}},document:{hidden:false},$:id=>({hidden:id==='detail'?!detail:true}),canvas:{width,height:1000},
   ready:true,mode:'3d',last:0,lastInput:null,lastDraw:0,frameRequest:0,animation:false,routePlaying:false,route:null,routeDistance:0,

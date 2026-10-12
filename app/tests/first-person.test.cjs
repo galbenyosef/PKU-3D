@@ -50,7 +50,7 @@ function navigationClock({gpuBusy=false}={}){
   gl:{TIMEOUT_EXPIRED:1,clientWaitSync:f=>f.ready?2:1,deleteSync(){}},
   render(){renders++;this.frameFences.push({ready:!gpuBusy});assert(this.frameFences.length<=2,'GPU queue must remain bounded');}};
  const context=vm.createContext({
-  YY:{},performance,innerWidth:800,innerHeight:600,browseMotion:{matches:false},lastLabelCameraKey:'',
+  YY:{},qualityPreset:'high',performance,innerWidth:800,innerHeight:600,browseMotion:{matches:false},lastLabelCameraKey:'',
   ready:true,mode:'3d',animation:true,last:0,lastDraw:0,lastInput:null,labelTick:0,frameRequest:0,lastVisualKey:'',labelsPending:false,
   state:{firstPerson:true,time:0,routeEdges:new Set()},keys:new Set(),walker:walk,engine,noWalkRoute:new Set(),
   route:null,routePlaying:false,routeDistance:0,walkDetached:false,

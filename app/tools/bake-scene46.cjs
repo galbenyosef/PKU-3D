@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..'),out=path.join(root,'assets/runtime-v46/s
 function playwright(){try{return require('playwright');}catch{}return require(path.join(require('os').homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));}
 const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
 const index=fs.readFileSync(path.join(root,'index.html'),'utf8');
-const scripts=[...index.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m=>m[1]).filter(p=>!/(?:assets|reference-gallery|engine|app-v29|materials|material-detail|water-detail|pedestrians-v46|scene-cache46|scene-package46)\.js$/.test(p));
+const scripts=[...index.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m=>m[1]).filter(p=>!/(?:assets|reference-gallery|engine|app-v29|materials|material-detail|water-detail|quality-lod|pedestrians-v46|scene-cache46|scene-package46)\.js$/.test(p));
 // Load the real decoder capability without changing geometry/atlas digests.
 const loadScripts=[...index.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m=>m[1]).filter(p=>scripts.includes(p)||p==='src/engine.js');
 const atlasSourceHash=hash(Buffer.from(JSON.stringify(scripts.filter(p=>!p.endsWith('/visibility.js')).map(file=>[file,hash(fs.readFileSync(path.join(root,file)))]))));
@@ -87,8 +87,9 @@ const server=http.createServer(async(req,res)=>{
      for(let j=0;j<v.length;j+=32)for(let k=0;k<3;k++){const x=v.readFloatLE(j+k*4);lo[k]=Math.min(lo[k],x);hi[k]=Math.max(hi[k],x);}
      meshes[mi].waterBounds=[...lo,...hi];
     }
+    if(h.lod){const base=buckets[buckets.length-1];if(!base||base.key!==h.key||![1,2].includes(h.lod))throw Error('Invalid quality mesh');(base.lods ||= [])[h.lod-1]=mi;}else{
     const i=buckets.length,file=path.join(temp,'instances-'+i+'.raw');fs.writeFileSync(file,Buffer.concat([d,s]));instanceBlobs.push({file,dataBytes:d.length});
-    buckets.push({key:h.key,mesh:mi,count:h.instances/28,dataHash:hash(d),spatialHash:hash(s)});bucketHashes.push({key:h.key,vertexHash:signature,dataHash:hash(d)});
+    buckets.push({key:h.key,...(h.qualityRole?{qualityRole:h.qualityRole,qualityMetric:h.qualityMetric||0}:{}),mesh:mi,count:h.instances/28,dataHash:hash(d),spatialHash:hash(s)});bucketHashes.push({key:h.key,vertexHash:signature,dataHash:hash(d)});}
    }else if(name==='done'){buildStats=JSON.parse(data);doneResolve();}
    else throw Error('Unknown bake endpoint');
    res.writeHead(200);res.end('ok');return;
