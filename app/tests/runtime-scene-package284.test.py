@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import unittest
 import subprocess
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 BUILD = ROOT / 'app/build.py'
@@ -25,6 +26,10 @@ helper = next(node for node in module.body if isinstance(node, ast.FunctionDef) 
 namespace = {'json': json}
 exec(compile(ast.Module(body=[helper], type_ignores=[]), str(BUILD), 'exec'), namespace)
 project = namespace['runtime_scene_package']
+data_helper = next(node for node in module.body if isinstance(node, ast.FunctionDef) and node.name == 'runtime_data_assignment')
+exec(compile(ast.Module(body=[data_helper], type_ignores=[]), str(BUILD), 'exec'), namespace)
+data_assignment = namespace['runtime_data_assignment']
+emit_helper = next(node for node in module.body if isinstance(node, ast.FunctionDef) and node.name == 'emit_runtime_payload')
 
 JS_VERIFY = r'''
 'use strict';
@@ -43,6 +48,49 @@ def javascript_equal(before, after):
                             input=json.dumps({'before': before, 'after': after}),
                             text=True, capture_output=True, check=True)
     return json.loads(result.stdout)
+
+class DeferredRuntimeData(unittest.TestCase):
+    def test_deferred_data_scripts_transfer_at_original_adapter_positions(self):
+        # Execute the actual campus/architecture data and the projected manifest.
+        # Data scripts run before the application, which must still expose values
+        # at their original positions and release the temporary staging object.
+        with tempfile.TemporaryDirectory() as folder:
+            scope = {**namespace, 'hashlib': hashlib, 'destination': Path(folder), 'runtime_data': []}
+            exec(compile(ast.Module(body=[emit_helper], type_ignores=[]), str(BUILD), 'exec'), scope)
+            emit = scope['emit_runtime_payload']
+            sources = [('YY.CAMPUS', (ROOT / 'app/src/data.js').read_text()),
+                       ('YY.ARCHIVE', (ROOT / 'app/src/architecture-data.js').read_text()),
+                       ('YY.PICK_RANGE_CULL', 'YY.PICK_RANGE_CULL={"buckets":[3,2,1],"zero":-0,"tiny":5e-324,"large":9007199254740993};'),
+                       ('YY.SCENE_PACKAGE46', project(SOURCE.read_text()))]
+            adapters = [data_assignment(source, name, emit) for name, source in sources]
+            scripts = []
+            for item in scope['runtime_data']:
+                content = (Path(folder) / item['file']).read_bytes()
+                self.assertEqual(len(content), item['bytes'])
+                self.assertEqual(hashlib.sha256(content).hexdigest(), item['sha256'])
+                scripts.append(content.decode())
+            script = r'''
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const input=JSON.parse(fs.readFileSync(0,'utf8'));
+const realm=vm.createContext({assert});
+vm.runInContext('var YY={};',realm);
+for(const source of input.scripts)vm.runInContext(source,realm);
+vm.runInContext('assert.equal(Object.keys(YY).length,0);',realm);
+for(let i=0;i<input.sources.length;i++){
+ const [name,source]=input.sources[i],key=name.slice(3);
+ vm.runInContext(input.adapters[i],realm);
+ vm.runInContext(`assert.deepStrictEqual(YY[${JSON.stringify(key)}],(function(){const YY={};${source}return YY[${JSON.stringify(key)}];})());assert.equal(Object.hasOwn(globalThis.__PKU_RUNTIME_DATA,${JSON.stringify(name)}),false);`,realm);
+}
+vm.runInContext('assert.deepStrictEqual(YY.DATA.places,[]);assert.deepStrictEqual(YY.DATA.toWorld([2,7]),[2,7]);assert.equal(Object.keys(globalThis.__PKU_RUNTIME_DATA).length,0);delete globalThis.__PKU_RUNTIME_DATA;assert.equal(Object.hasOwn(globalThis,"__PKU_RUNTIME_DATA"),false);',realm);
+'''
+            subprocess.run(['node', '-e', script], input=json.dumps({'sources': sources, 'adapters': adapters, 'scripts': scripts}), text=True, capture_output=True, check=True)
+
+    def test_wrapper_fails_closed_before_emitting(self):
+        def forbidden_emit(*args):
+            self.fail('Invalid data source reached the emitter')
+        for source in ['YY.WRONG={};', 'YY.CAMPUS={}bad;', 'YY.CAMPUS={']:
+            with self.assertRaises(ValueError):
+                data_assignment(source, 'YY.CAMPUS', forbidden_emit)
 
 class Projection(unittest.TestCase):
     def test_javascript_number_semantics(self):

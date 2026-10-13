@@ -58,6 +58,17 @@ def runtime_builder_data(file, source):
         return lean, ('HaiyantangCarvingSource315', payload)
     return source, None
 
+def runtime_data_assignment(source, name, emit):
+    """Retain executable suffixes after a leading, validated JSON assignment."""
+    prefix = name + '='
+    if not source.startswith(prefix):
+        raise ValueError('Unexpected runtime data wrapper: ' + name)
+    payload = source[len(prefix):]
+    _, end = json.JSONDecoder().raw_decode(payload)
+    if payload[end:end + 1] != ';':
+        raise ValueError('Unterminated runtime data assignment: ' + name)
+    return emit(name, payload[:end]) + payload[end + 1:]
+
 subprocess.run([sys.executable, str(R / 'tools/build-water-detail.py')], check=True)
 
 if '--cached' not in sys.argv:
@@ -118,9 +129,25 @@ page = (R / 'index.html').read_text()
 scripts = re.findall(r'<script src="([^"]+)"></script>', page)
 code = []
 builder_data = []
+runtime_data = []
+
+def emit_runtime_payload(name, payload):
+    # Let the browser compile data-only scripts independently of application code.
+    # Retain literal syntax: JSON.parse would add a large string allocation.
+    key = json.dumps(name)
+    source = '(globalThis.__PKU_RUNTIME_DATA ||= {})[' + key + ']=' + payload + ';'
+    digest = hashlib.sha256(source.encode()).hexdigest()
+    filename = 'data-' + digest[:16] + '.js'
+    (destination / filename).write_text(source, encoding='utf-8')
+    runtime_data.append({'file': filename, 'bytes': len(source.encode()), 'sha256': digest})
+    access = 'globalThis.__PKU_RUNTIME_DATA[' + key + ']'
+    return name + '=' + access + ';delete ' + access + ';'
+
 asset_scripts = {'src/assets.js', 'src/materials.js', 'src/reference-gallery.js', 'src/scene-package46.js'}
 for file in scripts:
     source = (R / file).read_text()
+    if file in ('src/data.js', 'src/architecture-data.js'):
+        source = runtime_data_assignment(source, 'YY.CAMPUS' if file == 'src/data.js' else 'YY.ARCHIVE', emit_runtime_payload)
     source, data_asset = runtime_builder_data(file, source)
     if data_asset:
         key, payload = data_asset
@@ -134,7 +161,10 @@ for file in scripts:
     if file == 'src/reference-gallery.js':
         source = 'YY.REFERENCE_GALLERY={images:{},places:{}};'
     if file == 'src/scene-package46.js':
-        source = 'YY.PICK_RANGE_CULL=' + pick_cull + ';\n' + runtime_scene_package(source)
+        projected = runtime_scene_package(source)
+        # Apply the release path rewrite to the payload before emitting its file.
+        payload = projected[len('YY.SCENE_PACKAGE46='):-1].replace('assets/runtime-v46/', 'assets/runtime/')
+        source = emit_runtime_payload('YY.PICK_RANGE_CULL', pick_cull.replace('assets/runtime-v46/', 'assets/runtime/')) + '\n' + emit_runtime_payload('YY.SCENE_PACKAGE46', payload) + '\ndelete globalThis.__PKU_RUNTIME_DATA;'
     if file in asset_scripts:
         source = source.replace('assets/runtime-v46/', 'assets/runtime/')
     code.append('/* ' + file + ' */\n' + source)
@@ -164,12 +194,13 @@ page = re.sub(r'<script src="([^"]+)"></script>', '', page)
 for mode, (label, href) in MAP_LINKS.items():
     page = re.sub(r'<button data-mode="' + mode + r'"[^>]*>.*?</button>', '<a href="' + html.escape(href, quote=True) + '" target="_blank" rel="noopener" title="在地图官网打开">' + label + '</a>', page)
 page = page.replace('<link rel="stylesheet" href="src/styles.css">', '<link rel="stylesheet" href="assets/' + style_name + '">')
-page = page.replace('</body>', '<script defer src="assets/' + bundle_name + '"></script></body>')
+runtime_scripts = ''.join('<script defer src="assets/' + item['file'] + '"></script>' for item in runtime_data)
+page = page.replace('</body>', runtime_scripts + '<script defer src="assets/' + bundle_name + '"></script></body>')
 page = page.replace('src/assets/', 'assets/')
 (R.parent / 'dist/index.html').write_text(page)
 (R.parent / 'dist/.nojekyll').touch()
 for notice in ('LICENSE', 'DATA_LICENSE.md'):
     shutil.copy2(R.parent / notice, destination.parent / notice)
-summary = {'version': (R.parent / 'VERSION').read_text().strip(), 'htmlBytes': len(page.encode()), 'scriptBytes': len(bundle.encode()), 'sceneCompressedBytes': manifest['packedStats']['compressedBytes'], 'sceneSourceHash': manifest['sourceHash'], 'images': len(gallery['images']), 'copiedAssets': len(paths), 'bundle': bundle_name}
+summary = {'version': (R.parent / 'VERSION').read_text().strip(), 'htmlBytes': len(page.encode()), 'scriptBytes': len(bundle.encode()) + sum(item['bytes'] for item in runtime_data), 'runtimeData': runtime_data, 'sceneCompressedBytes': manifest['packedStats']['compressedBytes'], 'sceneSourceHash': manifest['sourceHash'], 'images': len(gallery['images']), 'copiedAssets': len(paths), 'bundle': bundle_name}
 (destination / 'build-manifest.json').write_text(json.dumps(summary, indent=2))
 print('Built fast page:', json.dumps(summary))
