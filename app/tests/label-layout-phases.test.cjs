@@ -5,7 +5,7 @@ const line=(s,n)=>{const l=s.split('\n').find(x=>x.startsWith('function '+n+'(')
 function harness(){
  const events=[],nodes=[],clicks=[],panels={};let c;
  const record=(type,detail)=>events.push({type,detail});
- function node(){const n={attrs:{},_style:{},_hidden:false};Object.defineProperty(n,'hidden',{get:()=>n._hidden,set(v){n._hidden=v;record(v?'hide':'write','hidden')}});for(const k of ['className','textContent','onclick'])Object.defineProperty(n,k,{get:()=>n['_'+k],set(v){n['_'+k]=v;record('write',k)}});n.style=new Proxy(n._style,{set(o,k,v){o[k]=v;record('write','style.'+k);return true}});n.setAttribute=(k,v)=>{n.attrs[k]=v;record('write',k)};return n}
+ function node(){const n={attrs:{},_style:{},_hidden:false};Object.defineProperty(n,'hidden',{get:()=>n._hidden,set(v){n._hidden=v;record(v?'hide':'write','hidden')}});for(const k of ['className','textContent','onclick'])Object.defineProperty(n,k,{get:()=>n['_'+k],set(v){n['_'+k]=v;record('write',k)}});n.style=new Proxy(n._style,{set(o,k,v){o[k]=v;record('write','style.'+k);return true}});n.setAttribute=(k,v)=>{n.attrs[k]=String(v);record('write',k)};n.getAttribute=k=>n.attrs[k]??null;return n}
  for(const id of ['catalog','detail','environment','route-panel'])panels[id]={hidden:true,rect:{left:0,top:0,right:0,bottom:0},getBoundingClientRect(){record('read',id);return this.rect}};
  const container={append(n){record('write','append');nodes.push(n)}};
  c={ready:true,mode:'3d',selected:0,state:{labels:true,isolate:0},orbit:{distance:800,target:[0,0,0]},planView:{w:800},innerWidth:1440,innerHeight:1000,selectable:[],featured:['f2','f4'],labelNodes:new Map(),Math,root:{classList:{contains:()=>c.catalogHidden}},catalogHidden:false,$:id=>id==='labels'?container:panels[id],document:{createElement(){record('write','create');return node()}},select:(id,flag)=>clicks.push([id,flag]),Y:{Landscape42:{elevation(x,z){record('elevation',[x,z]);return c.elevation}},Dorm45Basement338:{hide(){record('dorm','hide')},draw3D(){record('dorm','draw3D')}}},elevation:0,people:[],engine:{people:{labelBoxes(){record('people',null);return c.people.map(x=>[...x])}},project(p){record('read','project');return{x:p[0],y:p[2]-p[1],visible:p[0]>=0}}}};
@@ -15,14 +15,15 @@ function harness(){
 }
 function feature(i,x,y){return{properties:{id:'f'+i,pickId:i,name:i===1?'未名湖':'name'+i,label:'Label'+i,displayName:'D'+i,height:10,centre:[x,y],precinct32:i%7===0}}}
 function shown(h){return [...h.c.labelNodes].filter(([,n])=>!n.hidden).map(([id])=>id)}
-function assertReadPhase(h){const firstWrite=h.events.findIndex(e=>e.type==='write'),lastRead=h.events.findLastIndex(e=>e.type==='read');assert(firstWrite>=0,'fixture must update labels');assert(lastRead>=0,'fixture must project/read layout');assert(lastRead<firstWrite,'all projection and blocker reads must precede chosen-label DOM writes')}
+function assertReadPhase(h){const firstWrite=h.events.findIndex(e=>e.type==='write'||e.type==='hide'),lastRead=h.events.findLastIndex(e=>e.type==='read');assert(firstWrite>=0,'fixture must update labels');assert(lastRead>=0,'fixture must project/read layout');assert(lastRead<firstWrite,'all projection and blocker reads must precede chosen-label DOM writes')}
 
 test('label planning finishes layout reads before updates on both creation and retained nodes',()=>{
  const h=harness();h.c.featured=[];h.c.selectable=[feature(10,150,230),feature(11,420,340),feature(12,690,450)];
  h.panels.detail.hidden=false;h.panels.detail.rect={left:1100,top:100,right:1400,bottom:800};
  h.run();assertReadPhase(h);assert.deepEqual(shown(h),[10,11,12]);assert(h.events.some(e=>e.type==='read'&&e.detail==='detail'));
  const original=h.c.labelNodes.get(10);h.c.selectable[0].properties.centre=[200,240];h.run();assertReadPhase(h);assert.equal(h.c.labelNodes.get(10),original);
- const firstRead=h.events.findIndex(e=>e.type==='read');assert.equal(h.events.slice(0,firstRead).filter(e=>e.type==='hide').length,3);
+ const firstRead=h.events.findIndex(e=>e.type==='read');assert.equal(h.events.slice(0,firstRead).filter(e=>e.type==='hide').length,0,'retained labels stay visible through layout reads so focus is preserved');
+ h.run();assert(!h.events.some(e=>e.type==='write'||e.type==='hide'),'an unchanged label set needs no DOM writes');
 });
 
 test('feature and panel changes between calls remain live while retained labels keep their handlers',()=>{

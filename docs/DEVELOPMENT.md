@@ -41,7 +41,7 @@ Directional building views fit the eight envelope corners using the current yaw,
 
 Angle actions compact the place card on narrow screens and short landscape windows, retaining its title, view controls and an explicit way to reopen the information. Fit the camera after this layout change. Preserve keyboard focus and restore the full card when selecting a place or leaving the compact browsing context.
 
-World labels follow each camera pose actually submitted to the renderer. Refresh them for camera motion only after the GPU queue accepts the frame, retain the idle cadence when the camera is unchanged, and calculate label placement before applying label DOM updates. Read live feature and panel data on each call; do not retain a cache that can become stale after a public data mutation.
+World labels follow each camera pose actually submitted to the renderer. Refresh them for camera motion only after the GPU queue accepts the frame, retain the idle cadence when the camera is unchanged, and calculate label placement before applying label DOM updates. Keep surviving labels visible while reading panel bounds so layout reads do not hide the focused label. Hide only labels that leave the chosen set, and write visibility, position and current-selection attributes only when their values change. Read live feature and panel data on each call; do not retain a cache that can become stale after a public data mutation.
 
 ## Maintained renderer and quality
 
