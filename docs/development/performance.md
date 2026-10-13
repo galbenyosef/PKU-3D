@@ -50,6 +50,7 @@ The table above belongs to the retained 1.4.0 source/build comparison. It remain
 
 - Cache startup defers the two road meshes until the live builder actually needs them, preserving captured inputs and retry behavior. This removes unnecessary computation; the retained startup median difference of 5.2 ms does not establish a large speedup.
 - Prebuilt scene loading retains lossless mesh reuse and compression, checksum verification, two decoding workers, bounded uploads, visibility caches, ordered instance streams, the two-frame GPU queue and idle scheduling.
+- Decoder messages carry only the record counts, byte offsets, lengths and detail widths consumed by the worker. The complete manifest remains on the main thread; decoded scene bytes and visibility metadata remain unchanged.
 - Deferred builder data, shared geometry pages and conservative visibility handling retain ordinary fallback paths. Context recovery, lazy photos and local-file/offline behavior remain supported.
 - Reflection scissoring and conservative reflection culling retain full-resolution targets and fall back where bounds cannot prove a safe restriction.
 

@@ -67,6 +67,7 @@
     "panel-layout-transition.test.cjs",
     "studentcenter195-side-stairs.test.cjs",
     "scene-codec.test.cjs",
+    "scene-worker-descriptor.test.cjs",
     "initial-visibility.test.cjs",
     "initial-reflection.test.cjs",
     "detail-compact-focus.test.cjs",

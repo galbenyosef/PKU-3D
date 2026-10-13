@@ -232,7 +232,7 @@ function unshuffle(buffer,width,little=new Uint8Array(new Uint32Array([1]).buffe
    const alternative=alternativeFor(chunk);
    worker.onmessage=({data:r})=>{if(r.error){reject(Error(r.error));return;}const modern=r.codec==='gzip-meshopt-attributes-v1';codecStats[modern?'modernChunks':'legacyChunks']++;if(r.fallbackReason)codecStats.fallbackChunks++;codecStats.selectedCompressedBytes+=modern?alternative.bytes:chunk.bytes;resolve(r);};
    worker.onerror=e=>reject(Error(e.message||'Scene decoder failed'));
-   worker.postMessage({index,url:base+chunk.file,encoded,prefetchURL,prefetchAlternative,alternative,decoderURL:alternative?.decoderURL,rawBytes:chunk.rawBytes,shuffle:chunk.shuffle,sha256:chunk.sha256,buckets:chunks[index].buckets.map(record=>({...record,detailWidth:m.meshes[record.mesh].detailWidth||0}))});
+   worker.postMessage({index,url:base+chunk.file,encoded,prefetchURL,prefetchAlternative,alternative,decoderURL:alternative?.decoderURL,rawBytes:chunk.rawBytes,shuffle:chunk.shuffle,sha256:chunk.sha256,buckets:chunks[index].buckets.map(record=>({count:record.count,data:{offset:record.data.offset,length:record.data.length},spatial:{offset:record.spatial.offset,length:record.spatial.length},detailWidth:m.meshes[record.mesh].detailWidth||0}))});
   });
    const takeIndex=()=>cursor<order.length?order[cursor++]:null,first=workers.map(takeIndex);
    await Promise.all(workers.map(async(worker,wi)=>{
