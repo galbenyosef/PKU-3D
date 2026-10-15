@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.1
+
+- Reuse immutable singleton instance bindings, pass-local texture bindings and conservative hierarchical plane results to reduce rendering work.
+- Preserve complete model detail, original textures, shadows, reflections, 4× MSAA, ordered instance streams and the two-frame GPU queue.
+- Compile deferred scene data separately, omit unused worker descriptor fields and retain place-label focus across view refreshes.
+- Refresh the checksum-pinned scene package with the same lossless compressed geometry and offline fallbacks.
+- Validate ten exact full-resolution comparisons, context recovery and offline loading, and both original incremental and frozen performance thresholds. Stable interactive 60 FPS remains open.
+
 ## 1.5.0
 
 - Keep WebGL 2 as the maintained renderer and High as the fresh-viewer default, preserving the complete model, source textures, shadows, reflections and antialiasing.

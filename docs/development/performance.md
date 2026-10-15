@@ -1,6 +1,6 @@
 # Rendering performance
 
-## Unreleased renderer integration
+## 1.5.1 renderer integration
 
 The singleton-binding, pass-local texture-binding and hierarchical-plane changes passed 478 JavaScript checks and 19 packaging checks. Ten full-resolution comparisons of the rebuilt package were byte-identical to the preceding maintained build. Picking, walking, quality persistence, a narrow viewport, context recovery and local-file loading also passed.
 
@@ -50,7 +50,7 @@ The maintained scene retains full model detail, original image resolution, shado
 
 The incremental result and the three-of-six frozen result remain separate. First-frame submission, campus FPS and lake FPS remained unresolved in that comparison. Both this and the preceding comparison passed three frozen checks; these runs do not establish a causal speedup or slowdown from the geometry changes alone. Heap API precision, shared browser processes and unobserved external GPU activity limit interpretation. All 24 phases completed with stable inputs, the registered environment decision and owned-process cleanup. Values are measurements from the retained comparison, not portable device promises. Physical-phone and whole-campus fidelity acceptance remain open.
 
-The table above belongs to the retained 1.4.0 source/build comparison. It remains unchanged and does not describe later codec or initial-visibility candidates. Current release results are recorded in the 1.5.0 section above.
+The table above belongs to the retained 1.4.0 source/build comparison. It remains unchanged and does not describe later codec or initial-visibility candidates. Current release results are recorded in the 1.5.1 section above.
 
 ## Delivered cost reductions
 
