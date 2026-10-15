@@ -728,7 +728,11 @@ class Engine{
   const saved=old?.length===n?old:new Float64Array(n);for(let i=0;i<n;i++)saved[i]=value[i];cache[name]=saved;
   if(n===16)gl.uniformMatrix4fv(u,false,value);else if(n===4)gl.uniform4fv(u,value);else if(n===3)gl.uniform3fv(u,value);else gl.uniform2fv(u,value);
  }
- sampler(p,name,unit,texture){let gl=this.gl;if(!(name in p.u))p.u[name]=gl.getUniformLocation(p.p,name);gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture((name==='uMaterials'||name==='uScan1119')?gl.TEXTURE_2D_ARRAY:gl.TEXTURE_2D,texture);
+ sampler(p,name,unit,texture,textureState){let gl=this.gl;if(!(name in p.u))p.u[name]=gl.getUniformLocation(p.p,name);
+  const target=(name==='uMaterials'||name==='uScan1119')?gl.TEXTURE_2D_ARRAY:gl.TEXTURE_2D,slot=unit*2;
+  // Preserve the active unit after every request, including cached bindings.
+  if(!textureState||textureState.activeUnit!==unit){gl.activeTexture(gl.TEXTURE0+unit);if(textureState)textureState.activeUnit=unit;}
+  if(!textureState||textureState[slot]!==target||textureState[slot+1]!==texture){gl.bindTexture(target,texture);if(textureState){textureState[slot]=target;textureState[slot+1]=texture;}}
   const units=p.samplerUnits||(p.samplerUnits=Object.create(null));if(units[name]!==unit){gl.uniform1i(p.u[name],unit);units[name]=unit;}
  }
  target(w,h,depthOnly=false,hdr=false){
@@ -770,6 +774,7 @@ class Engine{
   for(const fence of this.frameFences||[])g.deleteSync(fence);this.frameFences=[];
   for(const b of this.buckets.values())for(const view of b.lodViews||[b])for(const p of view.passes?.values()||[])g.deleteVertexArray(p.vao);this.qualityHistory?.clear();this.qualityScratch=null;this.qualityLevels=null;
   for(const stream of this.instanceStreams?.values()||[])g.deleteBuffer(stream.buffer);this.instanceStreams?.clear();
+  if(this.staticInstanceBindings){g.deleteBuffer(this.staticInstanceBindings.buffer);this.staticInstanceBindings.entries.clear();this.staticInstanceBindings=null;}
   const deleted208=new Set();for(const m of this.meshResources||[])for(const buffer of[m.vertexBuffer,m.indexBuffer])if(buffer&&!deleted208.has(buffer)){g.deleteBuffer(buffer);deleted208.add(buffer);}this.pages208=[];this.pageIndexScratch208=null;
   for(const key of ['pickTarget','reflectTarget','sceneTarget','shadowTarget']){this.disposeTarget(this[key]);this[key]=null;}
   for(const key of ['atlas','materials','dummy','shoreTexture','scan1119'])if(this[key]){g.deleteTexture(this[key]);this[key]=null;}
@@ -870,18 +875,59 @@ class Engine{
   if(deferVAO)return{offset,count};
   const c=this.instanceVAO(bucket,pass,stream,offset);c.count=count;return c;
  }
- instanceVAO(bucket,pass,stream,offset){
-  const g=this.gl;let c=bucket.passes.get(pass);
+ // A private immutable copy of original singleton records. The compact ordered
+ // stream, draw grouping and every draw count remain the existing authorities.
+ // Byte comparison against that live stream makes changed or unsupported records
+ // fall back; raw source identity or an epoch alone never admits stale bytes.
+ prepareStaticInstanceBindings(){
+  const g=this.gl,entries=new Map();let count=0,buffer=null;
+  for(const b of this.buckets.values())if(b.count===1&&b.data instanceof Float32Array&&b.data.length===28)count++;
+  if(!count)return this.staticInstanceBindings=null;
+  // Larger external scenes retain the ordinary path instead of adding an
+  // unbounded synchronous allocation. The complete maintained scene is 1 MiB.
+  if(count*112>4*1024*1024)return this.staticInstanceBindings=null;
+  try{
+   const words=new Uint32Array(count*28);let offset=0;
+   for(const b of this.buckets.values())if(b.count===1&&b.data instanceof Float32Array&&b.data.length===28){
+    words.set(new Uint32Array(b.data.buffer,b.data.byteOffset,28),offset);
+    entries.set(b,{offset,buffer:null});offset+=28;
+   }
+   buffer=g.createBuffer();if(!buffer)return this.staticInstanceBindings=null;
+   g.bindBuffer(g.ARRAY_BUFFER,buffer);g.bufferData(g.ARRAY_BUFFER,words,g.STATIC_DRAW);
+   // WebGL allocation failure need not throw. Query only this optional startup
+   // buffer's size, without consuming an unrelated gl.getError() flag.
+   if(g.getBufferParameter(g.ARRAY_BUFFER,g.BUFFER_SIZE)!==words.byteLength){g.deleteBuffer(buffer);return this.staticInstanceBindings=null;}
+   for(const entry of entries.values())entry.buffer=buffer;
+   return this.staticInstanceBindings={buffer,words,entries,count,bytes:words.byteLength};
+  }catch(error){if(buffer)g.deleteBuffer(buffer);this.staticInstanceBindingsError=String(error);return this.staticInstanceBindings=null;}
+ }
+ staticInstanceBindingSource(bucket,count,stream,offset){
+  if(count!==1||bucket.count!==1||this.state.deferredInstanceVAO===false||this.state.staticInstanceBindings===false)return null;
+  const arena=this.staticInstanceBindings===undefined?this.prepareStaticInstanceBindings():this.staticInstanceBindings;
+  if(!arena)return null;const entry=arena.entries.get(bucket);if(!entry)return null;
+  let words=stream.staticInstanceBindingWords;
+  if(!words||words.buffer!==stream.data.buffer||words.byteOffset!==stream.data.byteOffset||words.length!==stream.data.length)words=stream.staticInstanceBindingWords=new Uint32Array(stream.data.buffer,stream.data.byteOffset,stream.data.length);
+  if(!Number.isInteger(offset)||offset<0||offset+28>stream.used||offset+28>words.length)return null;
+  for(let i=0;i<28;i++)if(words[offset+i]!==arena.words[entry.offset+i])return null;
+  return entry;
+ }
+ instanceVAO(bucket,pass,stream,offset,count=0){
+  const g=this.gl,source=this.staticInstanceBindingSource(bucket,count,stream,offset),buffer=source?source.buffer:stream.buffer,attributeOffset=source?source.offset:offset;let c=bucket.passes.get(pass);
   if(!c){
    c={vao:g.createVertexArray(),offset:-1};bucket.passes.set(pass,c);g.bindVertexArray(c.vao);g.bindBuffer(g.ARRAY_BUFFER,bucket.resource.vertexBuffer);
    for(const[a,n,offset]of[[0,3,0],[1,3,12],[2,2,24]]){g.enableVertexAttribArray(a);g.vertexAttribPointer(a,n,g.FLOAT,false,32,offset);}
    if(bucket.resource.indexBuffer)g.bindBuffer(g.ELEMENT_ARRAY_BUFFER,bucket.resource.indexBuffer);
    for(let a=3;a<=9;a++){g.enableVertexAttribArray(a);g.vertexAttribDivisor(a,1);}
   }
-  if(c.offset!==offset){g.bindVertexArray(c.vao);g.bindBuffer(g.ARRAY_BUFFER,stream.buffer);for(let a=3;a<=9;a++)g.vertexAttribPointer(a,4,g.FLOAT,false,112,offset*4+(a-3)*16);c.offset=offset;}
+  if(c.instanceBuffer!==buffer||c.instanceOffset!==attributeOffset){g.bindVertexArray(c.vao);g.bindBuffer(g.ARRAY_BUFFER,buffer);for(let a=3;a<=9;a++)g.vertexAttribPointer(a,4,g.FLOAT,false,112,attributeOffset*4+(a-3)*16);c.instanceBuffer=buffer;c.instanceOffset=attributeOffset;}
+  // Public records and grouping always retain the logical compact-stream offset.
+  c.offset=offset;
   return c;
  }
  uploadInstances(stream){
+  // Clear stale CPU aliases even when this visibility rebuild has no eligible
+  // singleton. Fallback browsers may grow streams without buffer.transfer().
+  if(stream.staticInstanceBindingWords&&stream.staticInstanceBindingWords.buffer!==stream.data.buffer)stream.staticInstanceBindingWords=null;
   if(!stream.used)return;const g=this.gl,bytes=stream.used*4;g.bindBuffer(g.ARRAY_BUFFER,stream.buffer);
   stream.capacity=Math.max(stream.capacity,bytes);g.bufferData(g.ARRAY_BUFFER,stream.capacity,g.DYNAMIC_DRAW);
   g.bufferSubData(g.ARRAY_BUFFER,0,stream.data,0,stream.used);this.stats.instanceUploadBytes+=bytes;
@@ -1198,31 +1244,33 @@ class Engine{
    const{stream:cpuStream,...records}=plan;
    // Only emitted draw heads need VAOs; retain every logical stream segment.
    // Materialize before upload, matching the original GL update ordering.
-   if(state.deferredInstanceVAO!==false)for(const item of records.drawItems)item.record.vao=this.instanceVAO(item.b,slot,stream,item.record.offset).vao;
+   if(state.deferredInstanceVAO!==false)for(const item of records.drawItems)item.record.vao=this.instanceVAO(item.b,slot,stream,item.record.offset,item.record.count).vao;
    this.uploadInstances(stream);cached={key,generation:this.bucketIndexGeneration||0,...records};this.visibilityCaches.set(slot,cached);this.stats.visibilityBuilds++;
   }
   return cached;
  }
  draw(p,vp,eye,pass){
+  // Texture bindings are local to this pass; external drawing uses no snapshot.
+  let textureState=[];
   const g=this.gl,foliage=p===this.main&&(pass===0||pass===3)&&this.state.specializedFoliage!==false;
-  if(foliage){this.stateUniforms(this.foliage,vp,eye,pass);this.sampler(this.foliage,'uShadowMap',0,this.shadowTarget.tex);}
+  if(foliage){this.stateUniforms(this.foliage,vp,eye,pass);this.sampler(this.foliage,'uShadowMap',0,this.shadowTarget.tex,textureState);}
   this.stateUniforms(p,vp,eye,pass);
-  if(p===this.main){this.sampler(p,'uShadowMap',0,this.shadowTarget.tex);this.sampler(p,'uReflectionMap',1,pass===3?this.dummy:this.reflectTarget.tex);this.sampler(p,'uAtlas',2,this.atlas||this.dummy);this.sampler(p,'uMaterials',3,this.materials||this.dummy);this.sampler(p,'uShoreDistance',4,this.shoreTexture);this.sampler(p,'uScan1119',5,this.scan1119);}
+  if(p===this.main){this.sampler(p,'uShadowMap',0,this.shadowTarget.tex,textureState);this.sampler(p,'uReflectionMap',1,pass===3?this.dummy:this.reflectTarget.tex,textureState);this.sampler(p,'uAtlas',2,this.atlas||this.dummy,textureState);this.sampler(p,'uMaterials',3,this.materials||this.dummy,textureState);this.sampler(p,'uShoreDistance',4,this.shoreTexture,textureState);this.sampler(p,'uScan1119',5,this.scan1119,textureState);}
   const ceramic=p===this.main&&(pass===0||pass===3)&&this.state.specializedCeramic!==false;
-  if(ceramic){this.stateUniforms(this.ceramic,vp,eye,pass);this.sampler(this.ceramic,'uShadowMap',0,this.shadowTarget.tex);this.sampler(this.ceramic,'uReflectionMap',1,pass===3?this.dummy:this.reflectTarget.tex);this.sampler(this.ceramic,'uAtlas',2,this.atlas||this.dummy);this.sampler(this.ceramic,'uMaterials',3,this.materials||this.dummy);this.sampler(this.ceramic,'uShoreDistance',4,this.shoreTexture);this.sampler(this.ceramic,'uScan1119',5,this.scan1119);}
+  if(ceramic){this.stateUniforms(this.ceramic,vp,eye,pass);this.sampler(this.ceramic,'uShadowMap',0,this.shadowTarget.tex,textureState);this.sampler(this.ceramic,'uReflectionMap',1,pass===3?this.dummy:this.reflectTarget.tex,textureState);this.sampler(this.ceramic,'uAtlas',2,this.atlas||this.dummy,textureState);this.sampler(this.ceramic,'uMaterials',3,this.materials||this.dummy,textureState);this.sampler(this.ceramic,'uShoreDistance',4,this.shoreTexture,textureState);this.sampler(this.ceramic,'uScan1119',5,this.scan1119,textureState);}
   const ordinary=p===this.main&&(pass===0||pass===3)&&this.state.specializedOrdinary!==false;
   const ground=p===this.main&&(pass===0||pass===3)&&this.state.specializedGround!==false;
   const ordinaryReady=new Set();
   const cached=this.visibleScene(vp,pass===1?0:pass);
   // stateUniforms binds its program; ceramic setup was the last binding above.
   const season45=typeof this.state.season==='number'?Math.fround(this.state.season):NaN;const winter45=Number.isFinite(season45)&&season45>2.5;let skipped45Instances=0,skipped45Triangles=0;let calls=0,blending=false,index=0,active=ceramic?this.ceramic:p;try{for(const{b,record,ranges,pageRange208}of cached.drawItems){
-   if(index===cached.drawClearStart&&(pass===0||pass===3)){this.people?.draw(vp,eye,pass);if(this.state.skyAfterOpaque!==false)this.sky(vp,eye,true);}
+   if(index===cached.drawClearStart&&(pass===0||pass===3)){this.people?.draw(vp,eye,pass);if(this.state.skyAfterOpaque!==false)this.sky(vp,eye,true);textureState=[];}
    if(index++===cached.drawClearStart&&(pass===0||pass===3)){
     const glass=this.glass;this.stateUniforms(glass,vp,eye,pass);active=glass;
-    this.sampler(glass,'uShadowMap',0,this.shadowTarget.tex);this.sampler(glass,'uReflectionMap',1,pass===3?this.dummy:this.reflectTarget.tex);this.sampler(glass,'uAtlas',2,this.atlas||this.dummy);this.sampler(glass,'uMaterials',3,this.materials||this.dummy);this.sampler(glass,'uShoreDistance',4,this.shoreTexture);this.sampler(glass,'uScan1119',5,this.scan1119);
+    this.sampler(glass,'uShadowMap',0,this.shadowTarget.tex,textureState);this.sampler(glass,'uReflectionMap',1,pass===3?this.dummy:this.reflectTarget.tex,textureState);this.sampler(glass,'uAtlas',2,this.atlas||this.dummy,textureState);this.sampler(glass,'uMaterials',3,this.materials||this.dummy,textureState);this.sampler(glass,'uShoreDistance',4,this.shoreTexture,textureState);this.sampler(glass,'uScan1119',5,this.scan1119,textureState);
     g.enable(g.BLEND);g.blendFunc(g.SRC_ALPHA,g.ONE_MINUS_SRC_ALPHA);g.depthMask(false);blending=true;
    }
-   if(blending){const next=b.uniformMaterial===47?this.membrane:this.glass;if(active!==next){this.stateUniforms(next,vp,eye,pass);this.sampler(next,'uShadowMap',0,this.shadowTarget.tex);this.sampler(next,'uReflectionMap',1,pass===3?this.dummy:this.reflectTarget.tex);this.sampler(next,'uAtlas',2,this.atlas||this.dummy);this.sampler(next,'uMaterials',3,this.materials||this.dummy);this.sampler(next,'uShoreDistance',4,this.shoreTexture);this.sampler(next,'uScan1119',5,this.scan1119);active=next;}}
+   if(blending){const next=b.uniformMaterial===47?this.membrane:this.glass;if(active!==next){this.stateUniforms(next,vp,eye,pass);this.sampler(next,'uShadowMap',0,this.shadowTarget.tex,textureState);this.sampler(next,'uReflectionMap',1,pass===3?this.dummy:this.reflectTarget.tex,textureState);this.sampler(next,'uAtlas',2,this.atlas||this.dummy,textureState);this.sampler(next,'uMaterials',3,this.materials||this.dummy,textureState);this.sampler(next,'uShoreDistance',4,this.shoreTexture,textureState);this.sampler(next,'uScan1119',5,this.scan1119,textureState);active=next;}}
    if((foliage||ceramic||ordinary||ground)&&!blending){
     const next=ceramic&&b.uniformMaterial===25?this.ceramic:foliage&&b.foliageIsotropic?this.foliage:ordinary&&b.ordinaryMaterial===21?this.stone:ordinary&&b.ordinaryMaterial===6?this.mapped:ground&&b.groundMaterial?this.ground:p;
     if(active!==next){
@@ -1232,7 +1280,7 @@ class Engine{
       this.stateUniforms(next,vp,eye,pass);
       // Assign every sampler its original unit even if its branch is constant
       // dead: WebGL may retain the uniform, and sampler types cannot alias unit 0.
-      this.sampler(next,'uShadowMap',0,this.shadowTarget.tex);this.sampler(next,'uReflectionMap',1,pass===3?this.dummy:this.reflectTarget.tex);this.sampler(next,'uAtlas',2,this.atlas||this.dummy);this.sampler(next,'uMaterials',3,this.materials||this.dummy);this.sampler(next,'uShoreDistance',4,this.shoreTexture);this.sampler(next,'uScan1119',5,this.scan1119);
+      this.sampler(next,'uShadowMap',0,this.shadowTarget.tex,textureState);this.sampler(next,'uReflectionMap',1,pass===3?this.dummy:this.reflectTarget.tex,textureState);this.sampler(next,'uAtlas',2,this.atlas||this.dummy,textureState);this.sampler(next,'uMaterials',3,this.materials||this.dummy,textureState);this.sampler(next,'uShoreDistance',4,this.shoreTexture,textureState);this.sampler(next,'uScan1119',5,this.scan1119,textureState);
       ordinaryReady.add(next);
      }else g.useProgram(next.p);
      active=next;
@@ -1243,7 +1291,7 @@ class Engine{
    if(pageRange208){g.drawElementsInstanced(g.TRIANGLES,pageRange208[1],g.UNSIGNED_SHORT,pageRange208[0]*2,1);calls++;}
    else if(ranges){for(const[first,count]of ranges){if(pass===1&&pickR5ShouldSkip(this,p,vp,cached,b,record,ranges,first,count))continue;if(b.resource.indexBuffer)g.drawElementsInstanced(g.TRIANGLES,count,b.resource.indexType==='uint16'?g.UNSIGNED_SHORT:g.UNSIGNED_INT,first*(b.resource.indexType==='uint16'?2:4),record.count);else g.drawArraysInstanced(g.TRIANGLES,first,count,record.count);calls++;}}
    else{if(b.resource.indexBuffer)g.drawElementsInstanced(g.TRIANGLES,b.vertexCount,b.resource.indexType==='uint16'?g.UNSIGNED_SHORT:g.UNSIGNED_INT,b.resource.indexByteOffset208||0,record.count);else g.drawArraysInstanced(g.TRIANGLES,0,b.vertexCount,record.count);calls++;}
-  }if(cached.drawClearStart===cached.drawItems.length&&(pass===0||pass===3)){this.people?.draw(vp,eye,pass);if(this.state.skyAfterOpaque!==false)this.sky(vp,eye,true);}
+  }if(cached.drawClearStart===cached.drawItems.length&&(pass===0||pass===3)){this.people?.draw(vp,eye,pass);if(this.state.skyAfterOpaque!==false)this.sky(vp,eye,true);textureState=[];}
   }finally{if(blending){g.depthMask(true);g.disable(g.BLEND);}g.bindVertexArray(null);}
   if(pass===0){const people=this.people?.active&&this.people.mask?this.people.metrics:null;Object.assign(this.stats,{drawnInstances:cached.submitted-skipped45Instances+(people?.instances||0),drawnTriangles:cached.triangles-skipped45Triangles+(people?.triangles||0),detailCulled:cached.culled,drawCalls:calls+(people?.mainCalls||0)+(people?.shadowCalls||0),people});}
  }

@@ -231,17 +231,25 @@
   const root=index.root;
   if(root&&planes.every(p=>p[0]*(p[0]<0?root.z[0]:root.a[0])+p[1]*(p[1]<0?root.z[1]:root.a[1])+p[2]*(p[2]<0?root.z[2]:root.a[2])+p[3]>=0))return buckets;
   const ids=index.fallback.slice(),explode=Math.abs(state.explode);
-  function visit(node){
+  function visit(node,inside=0){
    if(!node)return;
-   if(node.children){for(const child of node.children)visit(child);return;}
+   if(node.children){for(const child of node.children)visit(child,inside);return;}
    const r=node.r+explode*node.p;
    for(let k=0;k<planes.length;k++){
+    if(k<31&&(inside&(1<<k)))continue;
     const p=planes[k],x=p[0]*(p[0]<0?node.a[0]:node.z[0]),y=p[1]*(p[1]<0?node.a[1]:node.z[1]),z=p[2]*(p[2]<0?node.a[2]:node.z[2]),d=x+y+z+p[3];
     // Outward roundoff allowance; overflow/ambiguous arithmetic never rejects.
     const error=32*Number.EPSILON*(Math.abs(x)+Math.abs(y)+Math.abs(z)+Math.abs(p[3])+Math.abs(r)+1);
     if(Number.isFinite(d)&&Number.isFinite(r)&&Number.isFinite(error)&&d < -r-error)return;
+    if(!node.ids&&k<31){
+     const lower=p[0]*(p[0]<0?node.z[0]:node.a[0])+p[1]*(p[1]<0?node.z[1]:node.a[1])+p[2]*(p[2]<0?node.z[2]:node.a[2])+p[3];
+     // Descendant upper-corner terms are each >= this lower corner's terms.
+     // Identical left-to-right arithmetic is monotone: finite lower >= 0
+     // proves every descendant's original outside rejection must accept.
+     if(Number.isFinite(lower)&&lower>=0)inside|=1<<k;
+    }
    }
-   if(node.ids)ids.push(...node.ids);else{visit(node.left);visit(node.right);}
+   if(node.ids)ids.push(...node.ids);else{visit(node.left,inside);visit(node.right,inside);}
   }
   visit(index.root);if(ids.length>buckets.size*.7)return buckets;
   // Restore Map order with a compact bitset rather than sorting thousands of

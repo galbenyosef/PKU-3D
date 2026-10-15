@@ -225,3 +225,50 @@ test('index publication preserves only current-generation completed caches', () 
   while(f.callbacks.size){f.runIdle();assert.ok(++turns<2000);}
   assert.equal(e.visibilityCaches.size,0);
 });
+
+// Plane masks only reuse hierarchical rejection proofs; final native selection,
+// filtering and record order must remain equal to the ordinary full Map scan.
+test('inherited plane masks preserve partial certificates and planes beyond bit 30', () => {
+  const f=fixture(),map=f.scene(),epoch=Object.freeze({generation:11});
+  const index=f.V.buildBucketIndex(map,epoch);
+  function freezeNode(node){
+    if(!node)return;
+    if(node.children){for(const child of node.children)freezeNode(child);Object.freeze(node.children);}
+    freezeNode(node.left);freezeNode(node.right);
+    Object.freeze(node.a);Object.freeze(node.z);if(node.ids)Object.freeze(node.ids);Object.freeze(node);
+  }
+  freezeNode(index.root);
+  const sourceBytes=Array.from(map,([key,b])=>[key,Buffer.from(new Uint8Array(b.data.buffer,b.data.byteOffset,b.data.byteLength))]);
+  const views=[[[0,1,0,0],[1,0,0,0],[-1,0,0,7]]];
+  for(const count of [31,32,33,40])views.push(Array.from({length:count},(_,i)=>i===count-1?[1,0,0,0]:[0,0,0,1]));
+  for(const values of views){
+    const ps=f.planes(values);for(const p of ps)Object.freeze(p);Object.freeze(ps);
+    for(const changes of [{},{explode:-2,selected:70},{isolate:81},{vegetation:false},{detailLOD:true}]){
+      const state={...f.state,...changes},entries=f.V.indexedBuckets(index,map,ps,state,epoch);
+      if(changes.explode===undefined)assert.notEqual(entries,map,'zero-displacement fixture must exercise indexed output');
+      assert.deepEqual(f.stream(entries,ps,changes),f.stream(map,ps,changes));
+    }
+  }
+  for(const[key,before]of sourceBytes){const b=map.get(key);assert.deepEqual(Buffer.from(b.data.buffer,b.data.byteOffset,b.data.byteLength),before);}
+});
+
+test('plane mask finite and extreme arithmetic agrees with native ordered full scans', () => {
+  const f=fixture(),map=f.scene(),epoch=Object.freeze({generation:12});
+  let seed=0x13579bdf;const random=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
+  // Keep finite Float32 source coordinates, including cancellation at large scales.
+  for(const[key,b]of map){for(let k=0;k<b.count;k++){
+    const scale=Number(key.slice(7))%5===0?1e30:100;
+    const x=(random()-.5)*scale,y=(random()-.5)*scale,z=(random()-.5)*scale;
+    b.spatial.set([x,y,z],k*5);b.data.set([x,y,z],k*28+12);
+  }f.V.compile(b);}
+  for(const [id,radius]of [[1001,-1],[1002,NaN],[1003,Infinity]]){const b=f.bucket(id,0);b.coarse[3]=radius;map.set(`invalid-${id}`,b);}
+  const index=f.V.buildBucketIndex(map,epoch);assert.equal(index.fallback.length,3);
+  const views=[[],[[0,0,0,-0]],[[Number.MIN_VALUE,0,0,-Number.MIN_VALUE]],[[1e308,-1e308,1e308,-1e308]],[[NaN,0,0,0]],[[Infinity,0,0,0]],[[1,1,-1,0]]];
+  for(let i=0;i<24;i++)views.push(Array.from({length:i%3===0?37:6},()=>{
+    const scale=10**(random()*600-300);return[(random()-.5)*scale,(random()-.5)*scale,(random()-.5)*scale,(random()-.5)*scale];
+  }));
+  for(const values of views){const ps=f.planes(values);for(const explode of [0,-2,1e308,Infinity,NaN]){
+    const changes={explode},entries=f.V.indexedBuckets(index,map,ps,{...f.state,...changes},epoch);
+    assert.deepEqual(f.stream(entries,ps,changes),f.stream(map,ps,changes));
+  }}
+});

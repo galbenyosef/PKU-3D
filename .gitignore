@@ -75,6 +75,8 @@ node_modules/
 !/app/tests/browse-camera-input.test.cjs
 !/app/tests/ceramic-uv162.test.cjs
 !/app/tests/deferred-vao170.test.cjs
+!/app/tests/static-instance-bindings.test.cjs
+!/app/tests/texture-state.test.cjs
 !/app/tests/engine-quality.test.cjs
 !/app/tests/first-person-ground-entry.test.cjs
 !/app/tests/instance-transfer46.test.cjs

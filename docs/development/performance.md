@@ -1,5 +1,11 @@
 # Rendering performance
 
+## Unreleased renderer integration
+
+The singleton-binding, pass-local texture-binding and hierarchical-plane changes passed 478 JavaScript checks and 19 packaging checks. Ten full-resolution comparisons of the rebuilt package were byte-identical to the preceding maintained build. Picking, walking, quality persistence, a narrow viewport, context recovery and local-file loading also passed.
+
+All 24 original performance stages completed. Both the incremental and unchanged frozen-reference comparisons passed their six original thresholds in the retained run. Trusted-input captures showed lower pan and rotation CPU medians, but no consistent submission-rate improvement; one zoom arm had worse CPU tail latency. These changes reduce rendering work without establishing stable interactive 60 FPS. Historical release measurements below retain their original scope.
+
 ## 1.5.0 release validation
 
 The maintained release uses WebGL 2 and starts fresh viewers at High. The slower WebGPU experiment is excluded. Stable interactive 60 FPS remains an open target.
@@ -48,6 +54,9 @@ The table above belongs to the retained 1.4.0 source/build comparison. It remain
 
 ## Delivered cost reductions
 
+- Singleton instance draws can reuse an immutable instance-buffer binding when all 28 words still match the current ordered stream. Grouped draws and changed records keep the ordinary path. The optional buffer is bounded to 4 MiB, falls back on allocation failure and is released with the engine.
+- Texture bindings are reused within one draw pass. Sampler uniforms and the active texture unit retain their original behavior; pedestrian and sky callbacks invalidate the local binding snapshot. No binding state survives into another pass.
+- Hierarchical visibility traversal carries forward planes whose bounds already prove that descendants cannot be rejected. Final instance selection, ordered streams and conservative fallback rules remain unchanged.
 - Cache startup defers the two road meshes until the live builder actually needs them, preserving captured inputs and retry behavior. This removes unnecessary computation; the retained startup median difference of 5.2 ms does not establish a large speedup.
 - Prebuilt scene loading retains lossless mesh reuse and compression, checksum verification, two decoding workers, bounded uploads, visibility caches, ordered instance streams, the two-frame GPU queue and idle scheduling.
 - Decoder messages carry only the record counts, byte offsets, lengths and detail widths consumed by the worker. The complete manifest remains on the main thread; decoded scene bytes and visibility metadata remain unchanged.
