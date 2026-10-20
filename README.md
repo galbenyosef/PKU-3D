@@ -8,7 +8,7 @@ Built with **GPT-6 Astra**. All source data and modeling references are publicly
 
 **[Demo](https://sldyns.github.io/PKU-3D/)** · [中文](README.zh-CN.md) · [Releases](https://github.com/sldyns/PKU-3D/releases) · [Contributing](CONTRIBUTING.md)
 
-[![Version](https://img.shields.io/badge/version-1.5.1-8b302c)](https://github.com/sldyns/PKU-3D/releases/tag/v1.5.1)
+[![Version](https://img.shields.io/badge/version-1.5.2-8b302c)](https://github.com/sldyns/PKU-3D/releases/tag/v1.5.2)
 [![WebGL 2](https://img.shields.io/badge/rendering-WebGL%202-2f6555)](https://sldyns.github.io/PKU-3D/)
 
 </div>
@@ -40,6 +40,8 @@ PKU-3D is an interactive model of Peking University's Yanyuan campus, with indiv
 - High quality by default, with optional Medium and Low presets in the lighting panel.
 
 Camera-motion performance still falls short of stable 60 FPS in the retained tests. See [performance status and validation scope](docs/development/performance.md).
+
+Version 1.5.2 is a documentation and release-maintenance update. It retains the 1.5.1 renderer and complete scene; subsequent performance candidates have not passed adoption checks.
 
 ## Controls
 

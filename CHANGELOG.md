@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.2
+
+- Refresh the English and Chinese project status, performance documentation and release guidance after reviewing the subsequent rendering experiments.
+- Retain the 1.5.1 renderer and complete scene. Visibility, reflection, depth-buffer and worker-rendering candidates remain experimental because repeatable interaction gains without regressions have not been established.
+- Publish the matching checksum-pinned asset package and synchronize the displayed and package versions. This maintenance release does not claim a rendering speedup or stable interactive 60 FPS.
+
 ## 1.5.1
 
 - Reuse immutable singleton instance bindings, pass-local texture bindings and conservative hierarchical plane results to reduce rendering work.

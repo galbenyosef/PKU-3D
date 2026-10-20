@@ -111,6 +111,8 @@ Early reflection preparation uses the same ordered CPU stream generator after ev
 
 Keep `VERSION`, package metadata and displayed version information in sync. Build the scene when needed, then run `npm run assets:pack` and attach the archive to the matching GitHub release.
 
+Separate maintenance releases from renderer changes. A version-only runtime edit can be verified by comparing generated files with the preceding release while accounting for the exact version strings, content-derived bundle name and build metadata. Verify the packaged assets and a clean source build as well. This check does not certify an experimental renderer or replace its visual, lifecycle and performance gates. Release notes must distinguish newly measured results from retained historical evidence.
+
 Run `npm run deploy` to build and push the generated website to `gh-pages`. GitHub Pages publishes that branch at `https://sldyns.github.io/PKU-3D/`. The `main` branch contains the editable source; `gh-pages` contains only the generated website. Publishing requires Git push access to this repository.
 
 ## Local reference material

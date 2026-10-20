@@ -1,5 +1,21 @@
 # Rendering performance
 
+## 1.5.2 maintenance release
+
+This release updates project status, maintenance guidance and versioned packaging. Rendering behavior and scene content remain those of 1.5.1; only the runtime version identifier changes. It introduces no accepted performance optimization. The retained 1.5.1 results below describe their original build and run, not a new benchmark of 1.5.2.
+
+The subsequent investigations produced isolated implementations and correctness checks, but none established repeatable complete-viewer gains without interaction regressions. Their current disposition is:
+
+| Candidate | Finding and adoption status |
+| --- | --- |
+| Additional reflection mask | Interaction comparisons had inconsistent gains and regressions in some zoom measurements; not adopted. |
+| Group-support visibility, full-instance bindings and strict WebAssembly selection | Group skipping preserved recorded plan output but did not establish a reliable complete-planner improvement; one variant was slower. Binding gains were inconclusive, and WebAssembly had input-response regressions. Not adopted. |
+| Removing unused default-framebuffer depth | Repeated submission-rate gains accompanied worse zoom tail spacing. Offscreen scene and shadow depth remained intact, but the interaction no-regression check failed; not adopted. |
+| Worker rendering and bitmap publication | Complete-frame ownership and publication were exercised. Main-thread callback improvements did not establish consistent complete-frame throughput gains; not adopted. |
+| Submission when GPU capacity and bitmap publication are ready | Implemented in isolation and passed fixed-state image comparisons. Continuous-input performance and native trigger timing remain unverified; not adopted. |
+
+These candidates and their detailed evidence stay in the local research archive. They are not included in the website or asset package. Fixed-state pixel equality does not establish continuous-motion fidelity, lower input latency or stable screen FPS. Submission throughput, main-thread callback cadence and physical presentation must remain separate measurements.
+
 ## 1.5.1 renderer integration
 
 The singleton-binding, pass-local texture-binding and hierarchical-plane changes passed 478 JavaScript checks and 19 packaging checks. Ten full-resolution comparisons of the rebuilt package were byte-identical to the preceding maintained build. Picking, walking, quality persistence, a narrow viewport, context recovery and local-file loading also passed.
@@ -50,7 +66,7 @@ The maintained scene retains full model detail, original image resolution, shado
 
 The incremental result and the three-of-six frozen result remain separate. First-frame submission, campus FPS and lake FPS remained unresolved in that comparison. Both this and the preceding comparison passed three frozen checks; these runs do not establish a causal speedup or slowdown from the geometry changes alone. Heap API precision, shared browser processes and unobserved external GPU activity limit interpretation. All 24 phases completed with stable inputs, the registered environment decision and owned-process cleanup. Values are measurements from the retained comparison, not portable device promises. Physical-phone and whole-campus fidelity acceptance remain open.
 
-The table above belongs to the retained 1.4.0 source/build comparison. It remains unchanged and does not describe later codec or initial-visibility candidates. Current release results are recorded in the 1.5.1 section above.
+The table above belongs to the retained 1.4.0 source/build comparison. It remains unchanged and does not describe later codec or initial-visibility candidates. The latest renderer integration results are recorded in the 1.5.1 section above; 1.5.2 preserves that implementation.
 
 ## Delivered cost reductions
 
@@ -98,6 +114,10 @@ The local early-reflection candidate also prepares the reflection view after the
 Validate modified geometry and interactions in actual desktop and narrow-screen WebGL views. For rendering-path changes, compare matching cameras, state, ordered instance streams and final pixels where equivalence is expected. Include real context recovery and offline loading; unit tests do not replace these checks.
 
 Formal comparisons retain the original 24 stages: three alternating A/B pairs and three alternating frozen-reference/B pairs, with startup and motion recorded separately. Compare matching builds, viewport, browser and quality settings; use the original median formulas and thresholds. Never replace the frozen reference, relax thresholds or repeat unchanged failed candidates to obtain a pass. Preserve source identity, raw samples, failed attempts and cleanup receipts in the local evidence archive.
+
+For continuous-input comparisons, record the actual native pixel ratio, viewport, input delivery, controller consumption, submitted camera and complete render work. An identical command plan does not prove identical submitted camera paths. Keep native and overridden pixel ratios distinct, qualify input before timing, and report every direction's spacing and input-response tails alongside aggregate throughput. Removing diagnostic observers requires a separate equivalence check. An aggregate gain cannot override a repeated directional regression.
+
+Worker or readiness-driven scheduling must preserve the original input clock, bounded GPU queue and ownership of each complete frame. Match rendered camera state, bitmap publication and label updates through resize, interruption and context recovery. A fixed-view comparison or a faster main-thread callback does not certify this lifecycle or visible interaction speed.
 
 The original frozen bundle and machine-specific measurement harness are not distributed as public product assets. A fresh checkout can run the portable tests and the exact packaged scene, but cannot independently reproduce the historical table without that retained measurement archive.
 

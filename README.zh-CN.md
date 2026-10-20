@@ -8,7 +8,7 @@
 
 **[在线演示](https://sldyns.github.io/PKU-3D/)** · [English](README.md) · [版本发布](https://github.com/sldyns/PKU-3D/releases) · [贡献指南](CONTRIBUTING.zh-CN.md)
 
-[![Version](https://img.shields.io/badge/version-1.5.1-8b302c)](https://github.com/sldyns/PKU-3D/releases/tag/v1.5.1)
+[![Version](https://img.shields.io/badge/version-1.5.2-8b302c)](https://github.com/sldyns/PKU-3D/releases/tag/v1.5.2)
 [![WebGL 2](https://img.shields.io/badge/rendering-WebGL%202-2f6555)](https://sldyns.github.io/PKU-3D/)
 
 </div>
@@ -40,6 +40,8 @@ PKU-3D 是北京大学燕园校区的交互式三维模型，包含楼宇、院�
 - 默认使用高画质，可在光影面板中手动选择中、低画质。
 
 现有测试中，镜头交互仍未达到稳定 60 FPS。测量结果与验证范围见[性能说明](docs/development/performance.md)。
+
+1.5.2 是文档与发布维护更新，沿用 1.5.1 的渲染实现和完整场景。后续性能候选尚未通过合入验证，本版不宣称新增渲染提速。
 
 ## 操作
 
